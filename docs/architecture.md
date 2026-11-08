@@ -40,8 +40,8 @@ MySQL specifics we work around:
 
 ```
 apps/web        Next.js: customer flow + /admin
-apps/api        NestJS: config, database, health (Phase 1) · catalog, availability,
-                booking, payment, customer, admin-auth, notification (Phases 2–6)
+apps/api        NestJS: config, database, health (Phase 1) · availability + catalog (Phase 2) ·
+                booking, payment, customer, admin-auth, notification (Phases 3–6)
 packages/shared Domain enums, French labels, money helpers shared by API and web
 infra/          docker-compose (dev today; prod in Phase 8), MySQL init scripts
 docs/           This documentation (mirrored in the claude.ai project)
@@ -51,25 +51,25 @@ docs/           This documentation (mirrored in the claude.ai project)
 
 Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:00'`). Each space has an IANA timezone (`Africa/Lome`). Money is integer XOF.
 
-| Table                             | Purpose                                                                                              | Key integrity rules                                                                                               |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `t_spaces`                        | A bookable studio, with its settings (slot length, booking lead time, horizon, hold duration, modes) | UNIQUE slug; slot 15–480 min; at least one mode enabled                                                           |
-| `t_space_owner_recipients`        | Owner emails notified of confirmed bookings                                                          | UNIQUE(space, email)                                                                                              |
-| `t_opening_hours`                 | Weekly hours, ISO weekday 1 = Monday … 7 = Sunday                                                    | UNIQUE(space, weekday); closes > opens                                                                            |
-| `t_closures`                      | Exceptional closures                                                                                 | ends > starts                                                                                                     |
-| `t_packages`                      | Sellable formulas                                                                                    | UNIQUE(space, code); full-day ⇔ slot_count NULL                                                                   |
-| `t_package_prices`                | Versioned prices per mode                                                                            | price > 0; **one current price per (package, mode)**                                                              |
-| `t_customers`                     | Booking customers                                                                                    | UNIQUE phone (E.164 format checked)                                                                               |
-| `t_bookings`                      | One booking: type SLOTS or PACKAGE, price snapshot, status, hold expiry                              | UNIQUE reference; total = list − discount; PACKAGE ⇔ package set; pending ⇒ hold expiry; confirmed ⇒ confirmed_at |
-| `t_booking_slots`                 | **Permanent** list of the slots a booking covers (kept after expiry or cancellation)                 | PK(booking, slot)                                                                                                 |
-| `t_slot_blocks`                   | Admin blocks (maintenance, private event)                                                            | –                                                                                                                 |
-| `t_slot_occupancies`              | **Live lock** on slots                                                                               | **UNIQUE(space, slot)**; owned by exactly one booking or block; composite FKs as described in §2                  |
-| `t_payments`                      | Payment attempts                                                                                     | UNIQUE idempotency key; UNIQUE(provider, provider_ref); **one success per booking**                               |
-| `t_payment_events`                | Raw provider webhooks                                                                                | UNIQUE(provider, event id): idempotent processing                                                                 |
-| `t_notifications`                 | Outbox of emails/SMS/WhatsApp                                                                        | **UNIQUE(booking, template, recipient): never sent twice**                                                        |
-| `t_admin_users`                   | Admin accounts (OWNER / STAFF)                                                                       | UNIQUE email                                                                                                      |
-| `t_audit_log`                     | Append-only trail of sensitive actions                                                               | –                                                                                                                 |
-| `t_schema_migrations` (+ `_lock`) | Migration bookkeeping (Kysely)                                                                       | –                                                                                                                 |
+| Table                             | Purpose                                                                                                                           | Key integrity rules                                                                                               |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `t_spaces`                        | A bookable studio, with its settings (slot length, booking lead time, horizon, hold duration, "presque complet" threshold, modes) | UNIQUE slug; slot 15–480 min; at least one mode enabled                                                           |
+| `t_space_owner_recipients`        | Owner emails notified of confirmed bookings                                                                                       | UNIQUE(space, email)                                                                                              |
+| `t_opening_hours`                 | Weekly hours, ISO weekday 1 = Monday … 7 = Sunday                                                                                 | UNIQUE(space, weekday); closes > opens                                                                            |
+| `t_closures`                      | Exceptional closures                                                                                                              | ends > starts                                                                                                     |
+| `t_packages`                      | Sellable formulas                                                                                                                 | UNIQUE(space, code); full-day ⇔ slot_count NULL                                                                   |
+| `t_package_prices`                | Versioned prices per mode                                                                                                         | price > 0; **one current price per (package, mode)**                                                              |
+| `t_customers`                     | Booking customers                                                                                                                 | UNIQUE phone (E.164 format checked)                                                                               |
+| `t_bookings`                      | One booking: type SLOTS or PACKAGE, price snapshot, status, hold expiry                                                           | UNIQUE reference; total = list − discount; PACKAGE ⇔ package set; pending ⇒ hold expiry; confirmed ⇒ confirmed_at |
+| `t_booking_slots`                 | **Permanent** list of the slots a booking covers (kept after expiry or cancellation)                                              | PK(booking, slot)                                                                                                 |
+| `t_slot_blocks`                   | Admin blocks (maintenance, private event)                                                                                         | –                                                                                                                 |
+| `t_slot_occupancies`              | **Live lock** on slots                                                                                                            | **UNIQUE(space, slot)**; owned by exactly one booking or block; composite FKs as described in §2                  |
+| `t_payments`                      | Payment attempts                                                                                                                  | UNIQUE idempotency key; UNIQUE(provider, provider_ref); **one success per booking**                               |
+| `t_payment_events`                | Raw provider webhooks                                                                                                             | UNIQUE(provider, event id): idempotent processing                                                                 |
+| `t_notifications`                 | Outbox of emails/SMS/WhatsApp                                                                                                     | **UNIQUE(booking, template, recipient): never sent twice**                                                        |
+| `t_admin_users`                   | Admin accounts (OWNER / STAFF)                                                                                                    | UNIQUE email                                                                                                      |
+| `t_audit_log`                     | Append-only trail of sensitive actions                                                                                            | –                                                                                                                 |
+| `t_schema_migrations` (+ `_lock`) | Migration bookkeeping (Kysely)                                                                                                    | –                                                                                                                 |
 
 ## 5. Booking lifecycle
 
@@ -93,22 +93,26 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | --- | ---------------------------------------------------------------------------------- | ------------------------- |
 | 0   | Discovery & design                                                                 | ✅ Done                   |
 | 1   | Foundations: monorepo, MySQL schema, seed, API skeleton + health, web skeleton, CI | ✅ Done (see progress.md) |
-| 2   | Availability & pricing engine                                                      | Next                      |
-| 3   | Booking API + customer screens                                                     | –                         |
+| 2   | Availability & pricing engine                                                      | ✅ Done                   |
+| 3   | Booking API + customer screens                                                     | Next                      |
 | 4   | Payments                                                                           | –                         |
 | 5   | Admin                                                                              | –                         |
 | 6   | Notifications                                                                      | –                         |
 | 7   | Hardening                                                                          | –                         |
 | 8   | Deployment                                                                         | –                         |
 
-## 8. Open questions
+## 8. API
+
+Public endpoints, error format and availability rules: see `api.md`.
+
+## 9. Open questions
 
 - Cancellation and refund policy
 - SMS/WhatsApp provider; transactional email provider (needs a sending domain with SPF/DKIM)
 - Exact opening hours
 - Admin roles: is OWNER vs STAFF enough?
 
-## 9. Changes made during Phase 1 (vs. the version approved on 2026-11-08)
+## 10. Changes made during Phase 1 (vs. the version approved on 2026-11-08)
 
 None of these changes alter an agreed requirement; they make the agreed design implementable and safer.
 
