@@ -1,5 +1,6 @@
 import { Migrator, type Kysely, type Migration, type MigrationResultSet } from 'kysely';
 import * as initialSchema from './migrations/2026_11_08_001_initial_schema';
+import * as fewSlotsThreshold from './migrations/2026_11_08_002_space_few_slots_threshold';
 
 /**
  * Migrations are registered explicitly (not discovered from the file system),
@@ -9,6 +10,7 @@ import * as initialSchema from './migrations/2026_11_08_001_initial_schema';
  */
 const migrations: Record<string, Migration> = {
   '2026_11_08_001_initial_schema': initialSchema,
+  '2026_11_08_002_space_few_slots_threshold': fewSlotsThreshold,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the migrator works on any schema

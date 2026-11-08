@@ -49,6 +49,7 @@ export interface SpacesTable {
   min_lead_min: Generated<number>;
   horizon_days: Generated<number>;
   hold_duration_min: Generated<number>;
+  few_slots_threshold: Generated<number>;
   in_person_enabled: Generated<boolean>;
   virtual_enabled: Generated<boolean>;
   is_active: Generated<boolean>;

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
+import { AvailabilityModule } from './availability/availability.module';
+import { ClockModule } from './common/clock';
 import { ConfigModule, ENV } from './config/config.module';
 import type { Env } from './config/env';
 import { DatabaseModule } from './database/database.module';
@@ -38,8 +40,10 @@ import { HealthModule } from './health/health.module';
         },
       }),
     }),
+    ClockModule,
     DatabaseModule,
     HealthModule,
+    AvailabilityModule,
   ],
 })
 export class AppModule {}

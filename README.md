@@ -5,6 +5,7 @@ Online booking for the Bovann OCD Live live-stream studio in Lomé: customers ch
 - Requirements: [docs/requirements.md](docs/requirements.md)
 - Architecture & data model: [docs/architecture.md](docs/architecture.md)
 - Payment providers analysis: [docs/payment-providers-analysis.md](docs/payment-providers-analysis.md)
+- API reference: [docs/api.md](docs/api.md)
 - Progress & next steps: [docs/progress.md](docs/progress.md)
 
 ## Repository layout
