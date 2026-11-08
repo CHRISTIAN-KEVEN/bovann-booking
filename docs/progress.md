@@ -14,7 +14,7 @@
 - Dev services: `infra/docker-compose.dev.yml` (MySQL 8 + Mailpit to catch emails locally)
 - CI (GitHub Actions): format, lint, typecheck, migrations round-trip, unit + integration tests against MySQL 8, builds
 
-### Tests (27, all passing)
+### Tests (32, all passing: 27 API, 5 shared)
 
 - **Database integrity (real MySQL):** double booking rejected; a multi-slot hold rolls back entirely if one slot is taken; 8 concurrent holds on one slot → exactly 1 succeeds; occupancy can't point at a slot outside its booking; block + booking on the same occupancy refused; blocked slot can't be booked; totals must add up; package booking requires a package; pending booking requires a hold expiry; phone format; one current price per package/mode; full-day package can't have a fixed size; one succeeded payment per booking; an owner email can't be queued twice; times round-trip in UTC
 - API health endpoints against real MySQL; health service and env validation unit tests
