@@ -1,6 +1,6 @@
 # Architecture & data model
 
-_Approved 2026-11-08 · updated at the end of Phase 1 (see §9 for what changed and why)_
+_Approved 2026-11-08 · updated through Phase 2 (see §10 for what changed in Phase 1 and why)_
 
 ## 1. Technical decisions
 
