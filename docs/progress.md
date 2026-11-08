@@ -64,18 +64,11 @@
 - `POST /api/v1/bookings` ("Payer"), `GET /api/v1/bookings/:reference`, `POST /api/v1/bookings/:reference/cancel`, plus the development-only payment simulator (see `docs/api.md`)
 - **Hold for 5 minutes**, started only at "Payer"; slots freed immediately on cancel or payment failure; expired holds count as free right away; a cleanup job marks them every 30 s
 - **Atomic slot lock:** one transaction saves the customer, replaces the same phone's previous hold, reclaims expired holds, creates the booking, locks the slots and records the payment attempt
-- **Anti-abuse rules:**
-  - 1 active hold per phone
-  - 2 per connection
-  - 3 unpaid holds in 24 h → 24 h cooldown, by phone or connection
-  - 5 "Payer" requests per minute
-  - Cloudflare Turnstile (mandatory in production)
-  - Limits stored in `t_booking_policy`
+- **Anti-abuse rules** (1 hold per phone, limits per connection, 24 h cooldown, `t_booking_policy`). _Removed in Phase 3b at the product owner's request; see below._
 - **Confirmation:** booking `CONFIRMED` and owner and customer emails queued in the same transaction (sent in Phase 6); late payments re-take the slots if free, otherwise are flagged for refund to the owners
 - **Customer records:** one per phone, latest details win, existing email kept if none given
 - **Payment gateway interface** with the simulated provider; production refuses to start with it
 - **Privacy & security:**
-  - client IPs stored only as an HMAC fingerprint
   - booking access tokens stored hashed
   - wrong token = same 404 as an unknown reference
 - **Migration `003`:** hold duration 2–15 min (default 5), `t_booking_policy`, `t_bookings.client_fingerprint` and `access_token_hash`
@@ -89,13 +82,53 @@
 
 Under heavy contention, MySQL deadlocks made some losing requests fail with a 500 (never a double booking). The transaction now locks only real rows (the customer record, then specific bookings) and retries deadlock victims with a short random delay.
 
-## Next: Phase 3b — Customer screens
+## Phase 3b — Customer screens ✅ (2026-11-09)
 
-The 6 approved screens wired to the API: mode, month calendar, day (slots / packages), details, payment with countdown and status polling, confirmation. Loading, empty, error and "slot just taken" states; Turnstile widget; responsive, accessible, French.
+**Objective:** the approved booking screens, connected to the real API.
+
+### Delivered
+
+- **Screens** (French, mobile-first, centred card on desktop):
+  1. Mode
+  2. Month calendar with day statuses
+  3. Day: single slots / packages, start-time chips, "switch to the package and save" suggestion
+  4. Details form with inline validation
+  5. Payment: Mobile Money (T-Money / Flooz) or card, "Payer" holds the slots, server-driven countdown, status polling, cancel, simulated outcome buttons in demo mode
+  6. Confirmation, with an "add to calendar" file
+- **States:** loading skeletons; errors with "Réessayer"; no availability; slot taken just before "Payer" (back to the day, slot shown as taken); payment failed; payment time expired; network down
+- **Continuity:** progress survives reloads and the back button; opening a later step directly sends the customer back to the first missing step; the confirmation page can be reopened later in the same browser
+- **Accessibility:** real form controls, labels and error descriptions, `aria-pressed` chips, live regions for countdown and status, visible focus, 44 px touch targets, colours meeting WCAG AA
+- **Product decision applied (2026-11-09): no anti-abuse penalties.** Migration `004` removes them; kept are the 5-minute configurable hold, immediate release on failure or cancel, one unpaid hold per phone (a retry replaces it), the request rate limit and an optional Turnstile check.
+- **API:** `holdSecondsLeft` in the booking DTO, so customers' device clocks don't affect the countdown
+
+### Tests
+
+- **Totals:** 136 automated tests (112 API, 5 shared, 19 web)
+- **Web unit tests:** French dates and Monday-first calendar, slot ranges and prices, package suggestion, flow state rules, phone composition and validation, API error mapping, token storage, calendar file
+- **Web component tests:** the details form (redirect when a step is missing, French errors, saving valid details)
+- **API:** 2 new tests lock in the "retry freely" decision
+- **End-to-end in a real Chrome against the running API** (one-off, not yet in CI):
+  - full booking from mode to confirmed, with owner and customer emails queued
+  - another customer takes the slot just before "Payer" → clear message, back to the day, slot shown as taken; this also proves the shared calendar between modes
+  - no browser errors and no horizontal scrolling on any screen
+
+### Found and fixed during the visual check
+
+- Horizontal overflow on the payment screen (browser default on form groups)
+- Price wrapping in the bottom bar
+- A package's slots listed separately instead of one range on the confirmation
+- French punctuation spacing
+- Missing site icon
+
+## Next: Phase 4 — Payments
+
+Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.
 
 ## Known issues / technical debt
 
 - TypeScript table types are maintained by hand (see architecture.md §1). Consider generating them with `kysely-codegen` in CI if drift becomes a problem.
 - `ts-jest` 29 runs with Jest 30. Works today; move to ts-jest 30 when it is released.
 - Booking slot end times are derived from the space's current slot duration when displayed. Changing the slot duration must be blocked while future bookings exist (admin, Phase 5).
+- The end-to-end browser test was run manually (Puppeteer + Chrome). Automate it with Playwright in CI during Phase 7 (hardening).
+- No terms and conditions page yet: the checkbox text refers to the studio's booking and cancellation conditions, which are still to be written (cancellation policy open question).
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.

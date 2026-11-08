@@ -96,6 +96,7 @@ describe('creating a hold ("Payer")', () => {
       slotCount: 2,
       price: { listPriceXof: 30000, discountXof: 0, totalXof: 30000 },
       holdExpiresAt: '2026-11-08T21:05:00.000Z',
+      holdSecondsLeft: 300,
       payment: { status: 'PENDING', method: 'MOBILE_MONEY', channel: 'TMONEY' },
     });
     expect(body.accessToken.length).toBeGreaterThanOrEqual(43);
@@ -106,7 +107,6 @@ describe('creating a hold ("Payer")', () => {
     expect(statusAt(d, '09:30')).toBe('BOOKED');
 
     const row = await bookingRow(body.booking.reference);
-    expect(row.client_fingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(row.access_token_hash).not.toBe(body.accessToken);
   });
 
@@ -394,103 +394,50 @@ describe('payment outcome (simulated provider)', () => {
   });
 });
 
-describe('anti-abuse rules', () => {
-  it('at most 2 active unpaid holds from one connection', async () => {
-    const ip = newIp();
-    await post(
-      holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-11-30', '08:00')] } }),
-      ip,
-    ).expect(201);
-    await post(
-      holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-11-30', '09:30')] } }),
-      ip,
-    ).expect(201);
-    const third = await post(
-      holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-11-30', '11:00')] } }),
-      ip,
-    ).expect(429);
-    expect(third.body.code).toBe('TOO_MANY_ACTIVE_HOLDS');
-    // Another connection is not affected.
-    await post(
-      holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-11-30', '11:00')] } }),
-    ).expect(201);
-  });
-
-  it('after 3 unpaid holds in 24 h, the phone must wait 24 h after the last one', async () => {
+describe('retrying (no penalties: product-owner decision of 2026-11-09)', () => {
+  it('a customer may abandon and retry as many times as they like', async () => {
     const phone = newPhone();
-    for (const hhmm of ['08:00', '09:30', '11:00']) {
+    const ip = newIp();
+    for (const hhmm of ['08:00', '09:30', '11:00', '12:30', '14:00']) {
       const { booking, accessToken } = (
         await post(
           holdRequest({
             phone,
             selection: { type: 'SLOTS', slotStarts: [slot('2026-12-01', hhmm)] },
           }),
-        ).expect(201)
-      ).body as CreateBookingResponse;
-      await cancel(booking.reference, accessToken).expect(200);
-      clock.advanceMinutes(10);
-    }
-    const blocked = await post(
-      holdRequest({
-        phone,
-        selection: { type: 'SLOTS', slotStarts: [slot('2026-12-01', '14:00')] },
-      }),
-    ).expect(429);
-    expect(blocked.body.code).toBe('TOO_MANY_UNPAID_HOLDS');
-    expect(blocked.body.message).toMatch(/dans environ 24 h/);
-
-    clock.advanceMinutes(24 * 60 + 1);
-    await post(
-      holdRequest({
-        phone,
-        selection: { type: 'SLOTS', slotStarts: [slot('2026-12-01', '14:00')] },
-      }),
-    ).expect(201);
-  });
-
-  it('the same limit applies per connection, across different phone numbers', async () => {
-    const ip = newIp();
-    for (const hhmm of ['08:00', '09:30', '11:00']) {
-      const { booking, accessToken } = (
-        await post(
-          holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-12-02', hhmm)] } }),
           ip,
         ).expect(201)
       ).body as CreateBookingResponse;
       await cancel(booking.reference, accessToken).expect(200);
     }
-    const res = await post(
-      holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-12-02', '14:00')] } }),
-      ip,
-    ).expect(429);
-    expect(res.body.code).toBe('TOO_MANY_UNPAID_HOLDS');
-  });
-
-  it('a payment provider failure on our side is not counted against the customer', async () => {
-    const phone = newPhone();
-    const service = app.get(BookingLifecycleService);
-    for (const hhmm of ['08:00', '09:30', '11:00']) {
+    for (const hhmm of ['15:30', '17:00']) {
       const { booking } = (
         await post(
           holdRequest({
             phone,
-            selection: { type: 'SLOTS', slotStarts: [slot('2026-12-03', hhmm)] },
+            selection: { type: 'SLOTS', slotStarts: [slot('2026-12-01', hhmm)] },
           }),
+          ip,
         ).expect(201)
       ).body as CreateBookingResponse;
-      const payment = await db
-        .selectFrom('t_payments as p')
-        .innerJoin('t_bookings as b', 'b.id', 'p.booking_id')
-        .select('p.id')
-        .where('b.reference', '=', booking.reference)
-        .executeTakeFirstOrThrow();
-      await service.failInitiation(payment.id);
+      await devPay(booking.reference, 'fail').expect(200);
     }
     await post(
       holdRequest({
         phone,
-        selection: { type: 'SLOTS', slotStarts: [slot('2026-12-03', '14:00')] },
+        selection: { type: 'SLOTS', slotStarts: [slot('2026-12-01', '18:30')] },
       }),
+      ip,
     ).expect(201);
+  });
+
+  it('several customers on the same connection can all hold at once', async () => {
+    const ip = newIp();
+    for (const hhmm of ['08:00', '09:30', '11:00', '12:30']) {
+      await post(
+        holdRequest({ selection: { type: 'SLOTS', slotStarts: [slot('2026-12-02', hhmm)] } }),
+        ip,
+      ).expect(201);
+    }
   });
 });

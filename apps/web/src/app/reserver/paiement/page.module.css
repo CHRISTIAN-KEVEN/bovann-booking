@@ -1,0 +1,263 @@
+.sectionTitle {
+  margin: 0 0 10px;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.recap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.recap .sectionTitle {
+  margin: 0;
+}
+
+.amounts {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.amounts > div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.amounts dt {
+  color: #4b4d55;
+}
+
+.amounts dd {
+  margin: 0;
+}
+
+.strike {
+  color: #6b6b70;
+  text-decoration: line-through;
+}
+
+.saving {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.total {
+  padding-top: 8px;
+  border-top: 1px solid #f0f0ec;
+}
+
+.total dt {
+  font-weight: 700;
+  color: var(--color-text) !important;
+}
+
+.total dd {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.methods {
+  margin: 0;
+  padding: 0;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.method {
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.methodSelected {
+  border: 2px solid var(--color-accent);
+}
+
+.methodRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  cursor: pointer;
+}
+
+.methodRow:focus-within {
+  outline: 3px solid var(--color-accent);
+  outline-offset: -3px;
+}
+
+.radio {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.methodText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.methodText strong {
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+.methodBody {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.channels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.channel {
+  min-height: var(--touch-target);
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  color: #4b4d55;
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+
+.channelSelected {
+  border: 2px solid var(--color-ink);
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.fieldLabel {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.phoneRow {
+  display: flex;
+  gap: 8px;
+}
+
+.phoneRow select,
+.phoneRow input {
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font: 400 16px var(--font-body);
+  color: var(--color-text);
+}
+
+.phoneRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.phoneRow input[aria-invalid='true'] {
+  border-color: #b91c1c;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.secure {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.waiting {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 0;
+  text-align: center;
+}
+
+.waitingIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waitingTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.waitingText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #4b4d55;
+}
+
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-hover);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.simulation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border-strong);
+  font-size: 13px;
+}
+
+.simulationButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.simulationButtons button {
+  font-size: 13px;
+  padding: 0 10px;
+}

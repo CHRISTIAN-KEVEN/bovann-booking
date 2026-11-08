@@ -10,7 +10,7 @@ export function configureApp(
   app: INestApplication,
   options: { corsOrigins: string[]; trustProxyHops?: number },
 ): void {
-  // Behind the VPS reverse proxy, use the real client IP (rate limits, abuse rules).
+  // Behind the VPS reverse proxy, use the real client IP (request rate limit).
   if (options.trustProxyHops)
     app.getHttpAdapter().getInstance().set('trust proxy', options.trustProxyHops);
   app.use(helmet());

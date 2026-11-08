@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { BookingDto } from '@bovann/shared';
 import type { Kysely } from 'kysely';
 import { utcToLocalDate, utcToLocalTime } from '../availability/domain/time';
+import { CLOCK, type Clock } from '../common/clock';
 import { notFound } from '../common/errors';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
@@ -10,7 +11,10 @@ import { hashAccessToken } from './domain/identifiers';
 /** Read side of bookings: builds the customer-facing DTO. */
 @Injectable()
 export class BookingQueryService {
-  constructor(@Inject(DB) private readonly db: Kysely<Database>) {}
+  constructor(
+    @Inject(DB) private readonly db: Kysely<Database>,
+    @Inject(CLOCK) private readonly clock: Clock,
+  ) {}
 
   /**
    * Finds a booking by reference AND access token. A wrong token gets the same
@@ -74,6 +78,10 @@ export class BookingQueryService {
     ]);
 
     const tz = b.timezone;
+    const holding = b.status === 'PENDING_PAYMENT' && b.hold_expires_at !== null;
+    const secondsLeft = holding
+      ? Math.max(0, Math.floor((b.hold_expires_at!.getTime() - this.clock.now().getTime()) / 1000))
+      : null;
     return {
       reference: b.reference,
       status: b.status,
@@ -95,10 +103,8 @@ export class BookingQueryService {
       packageName: b.package_name,
       slotCount: b.slot_count,
       price: { listPriceXof: b.list_price_xof, discountXof: b.discount_xof, totalXof: b.total_xof },
-      holdExpiresAt:
-        b.status === 'PENDING_PAYMENT' && b.hold_expires_at
-          ? b.hold_expires_at.toISOString()
-          : null,
+      holdExpiresAt: holding ? b.hold_expires_at!.toISOString() : null,
+      holdSecondsLeft: secondsLeft,
       customer: { fullName: b.full_name, businessName: b.business_name },
       payment: payment
         ? { status: payment.status, method: payment.method, channel: payment.channel }

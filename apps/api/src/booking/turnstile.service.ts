@@ -6,9 +6,8 @@ import type { Env } from '../config/env';
 const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
 /**
- * Cloudflare Turnstile bot check on the "Payer" step. Invisible for most real
- * customers. Disabled when no secret is configured (development and tests);
- * the environment validation makes the secret mandatory in production.
+ * Optional Cloudflare Turnstile bot check on the "Payer" step, invisible for
+ * most real customers. Active only when TURNSTILE_SECRET_KEY is configured.
  */
 @Injectable()
 export class TurnstileService {

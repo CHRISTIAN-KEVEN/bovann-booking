@@ -222,7 +222,7 @@ export class BookingLifecycleService {
 
   /**
    * The provider could not even start the payment (our side or theirs).
-   * Slots are freed; this is not counted against the customer.
+   * Slots are freed.
    */
   async failInitiation(paymentId: number): Promise<void> {
     const now = this.clock.now();

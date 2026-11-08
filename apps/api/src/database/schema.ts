@@ -147,8 +147,6 @@ export interface BookingsTable {
   cancelled_at: Date | null;
   cancel_reason: string | null;
   live_description: string | null;
-  /** HMAC-SHA256 of the client IP (never the IP itself), for per-connection limits. */
-  client_fingerprint: string | null;
   /** SHA-256 of the secret token the customer uses to follow this booking. */
   access_token_hash: string | null;
   version: Generated<number>;
@@ -226,16 +224,6 @@ export interface NotificationsTable {
   updated_at: UpdatedAt;
 }
 
-export interface BookingPolicyTable {
-  id: 1;
-  max_active_holds_per_client: Generated<number>;
-  unpaid_hold_limit: Generated<number>;
-  unpaid_window_hours: Generated<number>;
-  cooldown_hours: Generated<number>;
-  updated_by: number | null;
-  updated_at: UpdatedAt;
-}
-
 export interface AuditLogTable {
   id: Generated<number>;
   actor_type: 'ADMIN' | 'CUSTOMER' | 'SYSTEM' | 'PROVIDER';
@@ -263,7 +251,6 @@ export interface Database {
   t_payments: PaymentsTable;
   t_payment_events: PaymentEventsTable;
   t_notifications: NotificationsTable;
-  t_booking_policy: BookingPolicyTable;
   t_audit_log: AuditLogTable;
 }
 
@@ -273,4 +260,3 @@ export type Booking = Selectable<BookingsTable>;
 export type NewBooking = Insertable<BookingsTable>;
 export type BookingUpdate = Updateable<BookingsTable>;
 export type Customer = Selectable<CustomersTable>;
-export type BookingPolicy = Selectable<BookingPolicyTable>;

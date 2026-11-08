@@ -144,6 +144,11 @@ export interface BookingDto {
   price: { listPriceXof: number; discountXof: number; totalXof: number };
   /** Set while the booking waits for payment. */
   holdExpiresAt: string | null;
+  /**
+   * Seconds left on the hold, computed by the server: count down from this
+   * value rather than from holdExpiresAt, because customer device clocks drift.
+   */
+  holdSecondsLeft: number | null;
   customer: { fullName: string; businessName: string };
   payment: {
     status: PaymentStatus;

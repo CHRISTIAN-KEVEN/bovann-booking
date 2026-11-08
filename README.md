@@ -29,11 +29,12 @@ docs/             Product and technical documentation
 pnpm install
 docker compose -f infra/docker-compose.dev.yml up -d   # MySQL + Mailpit
 cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
 pnpm --filter @bovann/shared build
 pnpm db:migrate        # create the t_ tables
 pnpm db:seed           # studio, hours, packages, prices
 pnpm dev:api           # http://localhost:3001/health/ready
-pnpm dev:web           # http://localhost:3000
+pnpm dev:web           # http://localhost:3000 (full booking flow, payments simulated)
 ```
 
 ## Everyday commands

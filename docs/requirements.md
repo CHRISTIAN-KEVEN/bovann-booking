@@ -1,6 +1,6 @@
 # Bovann OCD Live — Requirements
 
-_Last updated 2026-11-08_
+_Last updated 2026-11-09_
 
 ## Context
 
@@ -39,15 +39,13 @@ _Last updated 2026-11-08_
 - Seed packages (proposal, editable by admin): 1 slot 15 000 · 2 slots 27 000 (−10 %) · 4 slots 51 000 (−15 %) · full day 9 slots 108 000 (−20 %)
 - Package start times are offered only where enough consecutive slots are free
 
-## Holds & anti-abuse (confirmed 2026-11-08)
+## Holds (confirmed 2026-11-09: keep it simple)
 
-- Slots are held for **5 minutes**, starting when the customer presses "Payer". The approved proposal lets the admin adjust it between 2 and 15 minutes; the product owner also said 5 minutes should be the maximum, so whether to cap it at 5 is to confirm.
-- Slots are freed immediately if the customer cancels or the payment fails.
-- One active unpaid hold per phone number (a new one replaces the previous one).
-- At most 2 active unpaid holds per client connection.
-- 3 unpaid holds within 24 h (same phone or same connection) → no new hold for 24 h after the last one.
-- Rate limit on "Payer" and an invisible bot check (Cloudflare Turnstile).
-- All limits adjustable by the admin.
+- When the customer presses "Payer", their slots are held for **5 minutes** (configurable per space by the admin; default 5).
+- The slots are freed immediately if the payment fails or the customer cancels, and automatically when the 5 minutes pass.
+- **No penalties:** customers are never flagged or blocked for unpaid attempts and may retry as often as they like. A new attempt with the same phone number replaces their previous unpaid one.
+- Basic protections kept: a request rate limit on "Payer" (5 per minute per connection) and an **optional** Cloudflare Turnstile bot check (off unless configured).
+- _History: anti-abuse penalties approved on 2026-11-08 were removed on 2026-11-09 at the product owner's request (risk of blocking customers who share an operator IP, and unnecessary complexity)._
 
 ## Customers (confirmed 2026-11-08)
 

@@ -1,0 +1,92 @@
+.form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input:not([type='checkbox']),
+.field select,
+.field textarea {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font: 400 16px var(--font-body);
+  color: var(--color-text);
+}
+
+.field textarea {
+  padding: 12px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.field [aria-invalid='true'] {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 1px #b91c1c;
+}
+
+.phoneRow {
+  display: flex;
+  gap: 8px;
+}
+
+.phoneRow select {
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+
+.phoneRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.req {
+  color: var(--color-accent);
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.terms {
+  display: flex !important;
+  gap: 10px;
+  align-items: flex-start;
+  font-weight: 400 !important;
+  line-height: 1.45;
+  color: #4b4d55;
+  cursor: pointer;
+}
+
+.terms input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+}

@@ -1,10 +1,5 @@
 import { evaluateDay, type SpaceRules } from '../../availability/domain/availability';
-import {
-  clientFingerprint,
-  generateAccessToken,
-  generateReference,
-  hashAccessToken,
-} from './identifiers';
+import { generateAccessToken, generateReference, hashAccessToken } from './identifiers';
 import { BookingRuleError, resolveSelection, type CatalogPackage } from './selection';
 
 describe('identifiers', () => {
@@ -21,18 +16,6 @@ describe('identifiers', () => {
     expect(a.token.length).toBeGreaterThanOrEqual(43);
     expect(hashAccessToken(a.token)).toBe(a.hash);
     expect(a.hash).toMatch(/^[0-9a-f]{64}$/);
-  });
-
-  it('fingerprints are stable per IP, differ between IPs and secrets, and hide the IP', () => {
-    const secret = 'x'.repeat(32);
-    expect(clientFingerprint('41.207.10.1', secret)).toBe(clientFingerprint('41.207.10.1', secret));
-    expect(clientFingerprint('41.207.10.1', secret)).not.toBe(
-      clientFingerprint('41.207.10.2', secret),
-    );
-    expect(clientFingerprint('41.207.10.1', secret)).not.toBe(
-      clientFingerprint('41.207.10.1', 'y'.repeat(32)),
-    );
-    expect(clientFingerprint('41.207.10.1', secret)).not.toContain('41.207');
   });
 });
 
