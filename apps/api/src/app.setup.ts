@@ -6,7 +6,13 @@ import { ApiExceptionFilter } from './common/errors';
  * HTTP pipeline shared by production (main.ts) and the API tests, so tests
  * exercise exactly the same prefix, error format and security headers.
  */
-export function configureApp(app: INestApplication, options: { corsOrigins: string[] }): void {
+export function configureApp(
+  app: INestApplication,
+  options: { corsOrigins: string[]; trustProxyHops?: number },
+): void {
+  // Behind the VPS reverse proxy, use the real client IP (rate limits, abuse rules).
+  if (options.trustProxyHops)
+    app.getHttpAdapter().getInstance().set('trust proxy', options.trustProxyHops);
   app.use(helmet());
   app.enableCors({ origin: options.corsOrigins, credentials: true });
   // Business endpoints live under /api/v1; health checks stay at the root for probes.

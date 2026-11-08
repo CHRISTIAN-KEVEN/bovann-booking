@@ -1,4 +1,10 @@
-import type { SessionMode } from './domain';
+import type {
+  BookingStatus,
+  BookingType,
+  PaymentMethod,
+  PaymentStatus,
+  SessionMode,
+} from './domain';
 
 /**
  * Public API contracts (JSON over HTTP). Shared by the API and the web app so
@@ -91,4 +97,73 @@ export interface DayAvailabilityResponse {
   unitPriceXof: number;
   slots: SlotDto[];
   packages: DayPackageDto[];
+}
+
+// ---------------------------------------------------------------- bookings (Phase 3)
+
+export const MOBILE_MONEY_CHANNELS = ['TMONEY', 'FLOOZ'] as const;
+export type MobileMoneyChannel = (typeof MOBILE_MONEY_CHANNELS)[number];
+
+export type BookingSelectionInput =
+  { type: 'SLOTS'; slotStarts: string[] } | { type: 'PACKAGE'; packageCode: string; start: string };
+
+export interface CreateBookingRequest {
+  spaceSlug: string;
+  mode: SessionMode;
+  selection: BookingSelectionInput;
+  customer: {
+    fullName: string;
+    /** E.164, for example "+22890123456". */
+    phone: string;
+    email?: string | null;
+    businessName: string;
+    businessSector: string;
+  };
+  liveDescription?: string | null;
+  acceptTerms: true;
+  payment:
+    | { method: 'MOBILE_MONEY'; channel: MobileMoneyChannel; payerPhone: string }
+    | { method: 'CARD' };
+  /** Cloudflare Turnstile token (bot check). */
+  captchaToken?: string;
+}
+
+export interface BookingDto {
+  reference: string;
+  status: BookingStatus;
+  mode: SessionMode;
+  spaceName: string;
+  /** Local date of the booking. */
+  date: string;
+  startTime: string;
+  endTime: string;
+  slots: { start: string; end: string; startTime: string; endTime: string }[];
+  bookingType: BookingType;
+  packageName: string | null;
+  slotCount: number;
+  price: { listPriceXof: number; discountXof: number; totalXof: number };
+  /** Set while the booking waits for payment. */
+  holdExpiresAt: string | null;
+  customer: { fullName: string; businessName: string };
+  payment: {
+    status: PaymentStatus;
+    method: PaymentMethod;
+    channel: string | null;
+  } | null;
+}
+
+export interface CreateBookingResponse {
+  booking: BookingDto;
+  /**
+   * Secret that lets this browser follow and cancel the booking. Send it back in
+   * the X-Booking-Token header. Shown once; the server stores only its hash.
+   */
+  accessToken: string;
+  payment: {
+    status: PaymentStatus;
+    /** Text to show while the customer approves the payment (e.g. on their phone). */
+    instructions: string | null;
+    /** For card payments: provider page to open. */
+    redirectUrl: string | null;
+  };
 }

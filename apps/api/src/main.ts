@@ -11,7 +11,7 @@ async function bootstrap(): Promise<void> {
   const env = app.get<Env>(ENV);
 
   app.useLogger(app.get(Logger));
-  configureApp(app, { corsOrigins: env.CORS_ORIGINS });
+  configureApp(app, { corsOrigins: env.CORS_ORIGINS, trustProxyHops: env.TRUST_PROXY_HOPS });
 
   await app.listen(env.PORT);
   app.get(Logger).log(`API listening on port ${env.PORT} (${env.NODE_ENV})`);

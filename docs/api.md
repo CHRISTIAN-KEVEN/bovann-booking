@@ -1,6 +1,6 @@
 # API reference
 
-Base URL: `/api/v1` (health checks at the root). JSON only. All business endpoints are public and read-only so far; booking, payment and admin endpoints arrive in Phases 3–5.
+Base URL: `/api/v1` (health checks at the root). JSON only. Customer endpoints are public; admin endpoints arrive in Phase 5, real payment webhooks in Phase 4.
 
 ## Conventions
 
@@ -18,14 +18,23 @@ Every error has the same shape. `code` is stable, for program logic; `message` i
 { "statusCode": 404, "code": "SPACE_NOT_FOUND", "message": "Cet espace est introuvable." }
 ```
 
-| Code                  | HTTP | When                                                          |
-| --------------------- | ---- | ------------------------------------------------------------- |
-| `VALIDATION_ERROR`    | 400  | Missing or malformed parameter (`details` lists each problem) |
-| `MODE_NOT_AVAILABLE`  | 400  | The space doesn't offer this mode                             |
-| `SPACE_NOT_FOUND`     | 404  | Unknown or inactive space                                     |
-| `NOT_FOUND`           | 404  | Unknown route                                                 |
-| `PRICING_UNAVAILABLE` | 503  | The space has no single-slot price configured                 |
-| `INTERNAL_ERROR`      | 500  | Unexpected error (logged server-side, details never exposed)  |
+| Code                                                                       | HTTP      | When                                                               |
+| -------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
+| `VALIDATION_ERROR`                                                         | 400       | Missing or malformed parameter (`details` lists each problem)      |
+| `MODE_NOT_AVAILABLE`                                                       | 400       | The space doesn't offer this mode                                  |
+| `SPACE_NOT_FOUND`                                                          | 404       | Unknown or inactive space                                          |
+| `NOT_FOUND`                                                                | 404       | Unknown route                                                      |
+| `PRICING_UNAVAILABLE`                                                      | 503       | The space has no single-slot price configured                      |
+| `SLOT_NOT_FOUND`, `EMPTY_SELECTION`, `TOO_MANY_SLOTS`, `PACKAGE_NOT_FOUND` | 400       | Invalid selection                                                  |
+| `SLOT_UNAVAILABLE`, `PACKAGE_DOES_NOT_FIT`                                 | 409       | Someone took the slot(s) first: show the day again                 |
+| `TOO_MANY_ACTIVE_HOLDS`                                                    | 429       | Too many unpaid holds from this connection                         |
+| `TOO_MANY_UNPAID_HOLDS`                                                    | 429       | Cooldown after repeated unpaid holds (`details.retryAfterSeconds`) |
+| `TOO_MANY_REQUESTS`                                                        | 429       | Request rate limit                                                 |
+| `CAPTCHA_FAILED` / `CAPTCHA_UNAVAILABLE`                                   | 400 / 503 | Bot check refused or unreachable                                   |
+| `BOOKING_NOT_FOUND`                                                        | 404       | Unknown reference or wrong access token                            |
+| `BOOKING_NOT_CANCELLABLE`                                                  | 409       | Already confirmed                                                  |
+| `PAYMENT_PROVIDER_UNAVAILABLE`                                             | 502       | The provider couldn't start the payment; slots were freed          |
+| `INTERNAL_ERROR`                                                           | 500       | Unexpected error (logged server-side, details never exposed)       |
 
 ## Health
 
@@ -165,3 +174,96 @@ An empty `startOptions` means the package can't be booked that day. The full-day
 6. A package of N slots fits at a start time when N consecutive slots are all available.
 7. Package price: discount = (unit price × N) − package price, never negative.
 8. Price ladder (checked when an admin saves prices, Phase 5): every multi-slot package costs less than its slots bought one by one, and longer packages cost strictly less per slot.
+
+## Bookings (Phase 3a)
+
+### `POST /bookings`: the "Payer" step
+
+Holds the slots for **5 minutes** (per-space setting, 2–15) and starts the payment, in one call.
+
+```json
+{
+  "spaceSlug": "studio-principal-lome",
+  "mode": "IN_PERSON",
+  "selection": { "type": "PACKAGE", "packageCode": "PACK_6H", "start": "2026-11-12T12:30:00.000Z" },
+  "customer": {
+    "fullName": "Afi Mensah",
+    "phone": "+22890123456",
+    "email": null,
+    "businessName": "Boutique Afi Mode",
+    "businessSector": "Mode & beauté"
+  },
+  "liveDescription": "Nouvelle collection",
+  "acceptTerms": true,
+  "payment": { "method": "MOBILE_MONEY", "channel": "TMONEY", "payerPhone": "+22890123456" },
+  "captchaToken": "…"
+}
+```
+
+Single slots instead of a package: `"selection": { "type": "SLOTS", "slotStarts": ["…", "…"] }`, at most 20 slots, all on the same day.
+
+**`201`**
+
+```json
+{
+  "booking": {
+    "reference": "BOV-2611-7KQ4M",
+    "status": "PENDING_PAYMENT",
+    "holdExpiresAt": "2026-11-08T21:05:00.000Z",
+    "…": "…"
+  },
+  "accessToken": "…",
+  "payment": { "status": "PENDING", "instructions": "…", "redirectUrl": null }
+}
+```
+
+`accessToken` is shown **once**. The browser keeps it and sends it as the `X-Booking-Token` header to follow or cancel the booking. The server stores only its hash.
+
+What happens, in one database transaction:
+
+1. The customer is saved: one record per phone number, latest details win, and a previous email is kept if none is given.
+2. The same phone's previous unpaid hold is replaced and its slots freed.
+3. Expired holds sitting on the requested slots are reclaimed.
+4. The booking is created and its slots locked by the unique index. If a slot was taken meanwhile, the answer is `409 SLOT_UNAVAILABLE`.
+5. A payment attempt is recorded.
+
+The payment is then started with the provider, outside the transaction.
+
+### `GET /bookings/:reference` (header `X-Booking-Token`)
+
+The booking as the customer sees it (`BookingDto`): status, slots, local times, price, `holdExpiresAt` while unpaid, payment status. Polled by the payment screen, used by the confirmation screen.
+
+### `POST /bookings/:reference/cancel` (header `X-Booking-Token`)
+
+The customer gives up before paying: slots are freed **immediately**. Idempotent. A confirmed booking answers `409 BOOKING_NOT_CANCELLABLE`.
+
+### Development only: `POST /dev/payments/:reference/succeed` | `/fail`
+
+Decides the outcome of a simulated payment. Answers 404 unless `PAYMENT_PROVIDER=mock` outside production. Replaced by signed provider webhooks in Phase 4.
+
+## Booking lifecycle
+
+| Event                                          | Result                                                                                                   |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Payment succeeds                               | `CONFIRMED`; owner emails (and the customer's, if an email was given) queued **in the same transaction** |
+| Customer cancels                               | `CANCELLED` (`CUSTOMER_CANCELLED`), slots freed at once                                                  |
+| Payment fails                                  | `CANCELLED` (`PAYMENT_FAILED`), slots freed at once                                                      |
+| Same phone holds again                         | previous hold `CANCELLED` (`SUPERSEDED`)                                                                 |
+| 5 minutes pass unpaid                          | slots count as free immediately; the cleanup job (every 30 s) marks it `EXPIRED`                         |
+| Payment arrives after expiry, slots still free | slots taken back, `CONFIRMED`                                                                            |
+| Payment arrives after expiry, slots taken      | stays `EXPIRED`, refund flagged to the owners (`owner_late_payment_refund` email)                        |
+| Provider can't start the payment               | `CANCELLED` (`PAYMENT_INIT_FAILED`), slots freed, **not** counted against the customer                   |
+
+## Anti-abuse rules (approved 2026-11-08; limits in `t_booking_policy`)
+
+| Rule                                                       | Default                                       |
+| ---------------------------------------------------------- | --------------------------------------------- |
+| Hold duration                                              | 5 min (2–15 per space)                        |
+| Active unpaid holds per phone                              | 1: a new hold replaces the previous one       |
+| Active unpaid holds per connection                         | 2                                             |
+| Unpaid holds before cooldown (per phone **or** connection) | 3 within 24 h                                 |
+| Cooldown                                                   | 24 h after the last unpaid hold               |
+| "Payer" requests per connection                            | 5 per minute                                  |
+| Bot check                                                  | Cloudflare Turnstile (required in production) |
+
+"Unpaid hold" means expired, cancelled by the customer, payment failed, or replaced by a new hold. A connection is identified by an HMAC of its IP address; the IP itself is never stored.

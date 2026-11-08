@@ -30,4 +30,16 @@ describe('loadEnv', () => {
   it('refuses an invalid port', () => {
     expect(() => loadEnv({ ...base, PORT: '99999' })).toThrow(/PORT/);
   });
+
+  it('refuses to run production with development secrets, no bot check or the mock payment provider', () => {
+    let message = '';
+    try {
+      loadEnv({ ...base, NODE_ENV: 'production' });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    expect(message).toMatch(/FINGERPRINT_SECRET/);
+    expect(message).toMatch(/TURNSTILE_SECRET_KEY/);
+    expect(message).toMatch(/PAYMENT_PROVIDER/);
+  });
 });

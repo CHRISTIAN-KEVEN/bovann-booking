@@ -65,9 +65,17 @@ export class CatalogRepository {
    * has not expired yet. An expired hold still has occupancy rows until the
    * cleanup job runs (Phase 3), but its slots are shown as available because
    * the next booking attempt will reclaim them.
+   * `ignoreBookingIds`: holds about to be replaced (the same customer's previous
+   * unpaid hold), whose slots the customer may pick again.
    */
-  async occupiedSlotStarts(spaceId: number, from: Date, to: Date, now: Date): Promise<Set<number>> {
-    const rows = await this.db
+  async occupiedSlotStarts(
+    spaceId: number,
+    from: Date,
+    to: Date,
+    now: Date,
+    ignoreBookingIds: readonly number[] = [],
+  ): Promise<Set<number>> {
+    let query = this.db
       .selectFrom('t_slot_occupancies as o')
       .leftJoin('t_bookings as b', 'b.id', 'o.booking_id')
       .select('o.slot_start')
@@ -80,8 +88,16 @@ export class CatalogRepository {
           eb('b.status', '=', 'CONFIRMED'),
           eb.and([eb('b.status', '=', 'PENDING_PAYMENT'), eb('b.hold_expires_at', '>', now)]),
         ]),
-      )
-      .execute();
+      );
+    if (ignoreBookingIds.length > 0) {
+      query = query.where((eb) =>
+        eb.or([
+          eb('o.booking_id', 'is', null),
+          eb('o.booking_id', 'not in', [...ignoreBookingIds]),
+        ]),
+      );
+    }
+    const rows = await query.execute();
     return new Set(rows.map((r) => r.slot_start.getTime()));
   }
 
