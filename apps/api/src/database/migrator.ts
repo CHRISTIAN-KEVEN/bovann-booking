@@ -1,0 +1,32 @@
+import { Migrator, type Kysely, type Migration, type MigrationResultSet } from 'kysely';
+import * as initialSchema from './migrations/2026_11_08_001_initial_schema';
+
+/**
+ * Migrations are registered explicitly (not discovered from the file system),
+ * so the same list works from TypeScript sources and from the compiled build.
+ * Names sort chronologically; never rename or edit a migration once it has run
+ * in staging or production: add a new one instead.
+ */
+const migrations: Record<string, Migration> = {
+  '2026_11_08_001_initial_schema': initialSchema,
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the migrator works on any schema
+export function createMigrator(db: Kysely<any>): Migrator {
+  return new Migrator({
+    db,
+    provider: { getMigrations: async () => migrations },
+    migrationTableName: 't_schema_migrations',
+    migrationLockTableName: 't_schema_migrations_lock',
+  });
+}
+
+/** Throws with a readable message if any migration failed. */
+export function assertMigrationSuccess({ error, results }: MigrationResultSet): void {
+  const failed = results?.find((result) => result.status === 'Error');
+  if (error || failed) {
+    const name = failed ? ` (${failed.migrationName})` : '';
+    const cause = error instanceof Error ? error.message : String(error ?? 'unknown error');
+    throw new Error(`Migration failed${name}: ${cause}`);
+  }
+}

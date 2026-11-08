@@ -1,0 +1,41 @@
+# Local development services. Start with:
+#   docker compose -f infra/docker-compose.dev.yml up -d
+# MySQL:   127.0.0.1:3306 (bovann / bovann_dev), databases "bovann" and "bovann_test"
+# Mailpit: SMTP on 127.0.0.1:1025, web inbox on http://localhost:8025
+#          (catches every email the API sends in development, e.g. owner notifications)
+name: bovann-dev
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_dev_only
+      MYSQL_DATABASE: bovann
+      MYSQL_USER: bovann
+      MYSQL_PASSWORD: bovann_dev
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      - '127.0.0.1:3306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-ubovann', '-pbovann_dev']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+
+volumes:
+  mysql-data:

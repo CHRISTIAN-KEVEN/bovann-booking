@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_ci
+          MYSQL_DATABASE: bovann_test
+          MYSQL_USER: bovann
+          MYSQL_PASSWORD: bovann_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_ci"
+          --health-interval=5s --health-timeout=3s --health-retries=20
+
+    env:
+      DATABASE_URL: mysql://bovann:bovann_ci@127.0.0.1:3306/bovann_test
+      DATABASE_URL_TEST: mysql://bovann:bovann_ci@127.0.0.1:3306/bovann_test
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @bovann/shared build
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Migrations apply, roll back and re-apply cleanly
+        run: |
+          pnpm --filter @bovann/api db:migrate
+          pnpm --filter @bovann/api db:reset
+          pnpm --filter @bovann/api db:migrate
+          pnpm --filter @bovann/api db:seed
+
+      - name: Tests (unit + integration against MySQL)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
