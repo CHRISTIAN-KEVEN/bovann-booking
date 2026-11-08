@@ -55,16 +55,47 @@
 - 37 domain unit tests: time zones (Lomé, Lagos, Paris summer/winter), month and leap years, slot grid, closing time, lead time, horizon, partial and full closures, booked/blocked slots, presque complet / complet / passé, package fit including the exact scenario of the approved design, full day, quotes, price ladder
 - 19 HTTP tests against MySQL with a frozen clock: space details, packages and discounts, month calendar (past days, booked day, expired hold counted as free, admin block, closure), day detail (slot statuses, Pack 6h only at 12:30–18:30, full day rules), validation errors, mode not offered
 
-## Next: Phase 3 — Booking API + customer screens
+## Phase 3a — Booking engine (API) ✅ (2026-11-09)
 
-- Hold flow: create the booking and lock its slots in one transaction (expired holds reclaimed); `409 Créneau indisponible` on a race
-- Expiry job releasing unpaid holds
-- Customer details capture with validation
-- The 6 approved customer screens wired to the API, with loading, empty and error states
-- Booking without real payment until Phase 4 (payment step stubbed behind the gateway interface)
+**Objective:** customers can hold slots and book them safely, with the anti-abuse rules approved on 2026-11-08. Payment is simulated until Phase 4.
+
+### Delivered
+
+- `POST /api/v1/bookings` ("Payer"), `GET /api/v1/bookings/:reference`, `POST /api/v1/bookings/:reference/cancel`, plus the development-only payment simulator (see `docs/api.md`)
+- **Hold for 5 minutes**, started only at "Payer"; slots freed immediately on cancel or payment failure; expired holds count as free right away; a cleanup job marks them every 30 s
+- **Atomic slot lock:** one transaction saves the customer, replaces the same phone's previous hold, reclaims expired holds, creates the booking, locks the slots and records the payment attempt
+- **Anti-abuse rules:**
+  - 1 active hold per phone
+  - 2 per connection
+  - 3 unpaid holds in 24 h → 24 h cooldown, by phone or connection
+  - 5 "Payer" requests per minute
+  - Cloudflare Turnstile (mandatory in production)
+  - Limits stored in `t_booking_policy`
+- **Confirmation:** booking `CONFIRMED` and owner and customer emails queued in the same transaction (sent in Phase 6); late payments re-take the slots if free, otherwise are flagged for refund to the owners
+- **Customer records:** one per phone, latest details win, existing email kept if none given
+- **Payment gateway interface** with the simulated provider; production refuses to start with it
+- **Privacy & security:**
+  - client IPs stored only as an HMAC fingerprint
+  - booking access tokens stored hashed
+  - wrong token = same 404 as an unknown reference
+- **Migration `003`:** hold duration 2–15 min (default 5), `t_booking_policy`, `t_bookings.client_fingerprint` and `access_token_hash`
+
+### Tests (120, all passing: 115 API, 5 shared)
+
+- New: 22 booking HTTP tests against MySQL with a controllable clock (hold, package, 409, 6 simultaneous customers → 1 winner, validation, customer details, supersede, re-pick own slots, token, cancel, expiry before and by the job, confirm + emails queued once, failure, late payment both ways, all anti-abuse rules), 1 rate-limit test, 8 booking unit tests, 1 env test
+- One-off stress run: 20 simultaneous customers on one slot, 5 runs → always exactly one winner, all others a clean 409
+
+### Found and fixed during testing
+
+Under heavy contention, MySQL deadlocks made some losing requests fail with a 500 (never a double booking). The transaction now locks only real rows (the customer record, then specific bookings) and retries deadlock victims with a short random delay.
+
+## Next: Phase 3b — Customer screens
+
+The 6 approved screens wired to the API: mode, month calendar, day (slots / packages), details, payment with countdown and status polling, confirmation. Loading, empty, error and "slot just taken" states; Turnstile widget; responsive, accessible, French.
 
 ## Known issues / technical debt
 
 - TypeScript table types are maintained by hand (see architecture.md §1). Consider generating them with `kysely-codegen` in CI if drift becomes a problem.
 - `ts-jest` 29 runs with Jest 30. Works today; move to ts-jest 30 when it is released.
+- Booking slot end times are derived from the space's current slot duration when displayed. Changing the slot duration must be blocked while future bookings exist (admin, Phase 5).
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.

@@ -39,6 +39,20 @@ _Last updated 2026-11-08_
 - Seed packages (proposal, editable by admin): 1 slot 15 000 · 2 slots 27 000 (−10 %) · 4 slots 51 000 (−15 %) · full day 9 slots 108 000 (−20 %)
 - Package start times are offered only where enough consecutive slots are free
 
+## Holds & anti-abuse (confirmed 2026-11-08)
+
+- Slots are held for **5 minutes**, starting when the customer presses "Payer". The approved proposal lets the admin adjust it between 2 and 15 minutes; the product owner also said 5 minutes should be the maximum, so whether to cap it at 5 is to confirm.
+- Slots are freed immediately if the customer cancels or the payment fails.
+- One active unpaid hold per phone number (a new one replaces the previous one).
+- At most 2 active unpaid holds per client connection.
+- 3 unpaid holds within 24 h (same phone or same connection) → no new hold for 24 h after the last one.
+- Rate limit on "Payer" and an invisible bot check (Cloudflare Turnstile).
+- All limits adjustable by the admin.
+
+## Customers (confirmed 2026-11-08)
+
+- One customer record per phone number. When a returning customer gives different details, the latest details are saved. Past bookings keep their own price and package details.
+
 ## Admin
 
 - One space for now; admin can add more spaces (each with its own calendar, hours, modes, address, owner notification emails)
@@ -59,7 +73,6 @@ _Last updated 2026-11-08_
 
 - Opening hours 08:00–21:30 → 9 slots/day
 - Virtual price = in-studio price unless the admin sets otherwise
-- Slots held 10 min while payment is pending
 - Cancellation / refund policy: not yet defined
 - SMS/WhatsApp and email sending providers: TBD
 

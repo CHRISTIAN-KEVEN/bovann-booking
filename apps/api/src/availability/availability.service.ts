@@ -138,8 +138,36 @@ export class AvailabilityService {
     };
   }
 
+  /**
+   * Everything the booking engine needs to validate a selection on one day.
+   * `ignoreBookingIds`: the customer's own unpaid holds that the new booking replaces.
+   */
+  async getBookableDay(
+    slug: string,
+    date: string,
+    mode: SessionMode,
+    ignoreBookingIds: readonly number[] = [],
+  ): Promise<{
+    space: Space;
+    day: DayAvailability;
+    packages: PackageWithPrice[];
+    unitPriceXof: number;
+  }> {
+    const space = await this.loadSpace(slug);
+    assertModeEnabled(space, mode);
+    const [[day], packages] = await Promise.all([
+      this.evaluateRange(space, [date], ignoreBookingIds),
+      this.repo.packagesWithPrices(space.id, mode, this.clock.now()),
+    ]);
+    return { space, day: day!, packages, unitPriceXof: unitPrice(packages) };
+  }
+
   /** Evaluates consecutive local dates with one query per data source. */
-  private async evaluateRange(space: Space, dates: string[]): Promise<DayAvailability[]> {
+  private async evaluateRange(
+    space: Space,
+    dates: string[],
+    ignoreBookingIds: readonly number[] = [],
+  ): Promise<DayAvailability[]> {
     const now = this.clock.now();
     const rules = toRules(space);
     const from = localToUtc(dates[0]!, 0, space.timezone);
@@ -147,7 +175,7 @@ export class AvailabilityService {
     const [opening, closures, occupied] = await Promise.all([
       this.repo.openingRules(space.id),
       this.repo.closures(space.id, from, to),
-      this.repo.occupiedSlotStarts(space.id, from, to, now),
+      this.repo.occupiedSlotStarts(space.id, from, to, now, ignoreBookingIds),
     ]);
     return dates.map((date) =>
       evaluateDay({ date, opening: opening.get(isoWeekday(date)), rules, now, occupied, closures }),

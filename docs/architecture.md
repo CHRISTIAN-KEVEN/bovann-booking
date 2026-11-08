@@ -1,6 +1,6 @@
 # Architecture & data model
 
-_Approved 2026-11-08 · updated through Phase 2 (see §10 for what changed in Phase 1 and why)_
+_Approved 2026-11-08 · updated through Phase 3a (see §10 for what changed in Phase 1 and why)_
 
 ## 1. Technical decisions
 
@@ -60,7 +60,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | `t_packages`                      | Sellable formulas                                                                                                                 | UNIQUE(space, code); full-day ⇔ slot_count NULL                                                                   |
 | `t_package_prices`                | Versioned prices per mode                                                                                                         | price > 0; **one current price per (package, mode)**                                                              |
 | `t_customers`                     | Booking customers                                                                                                                 | UNIQUE phone (E.164 format checked)                                                                               |
-| `t_bookings`                      | One booking: type SLOTS or PACKAGE, price snapshot, status, hold expiry                                                           | UNIQUE reference; total = list − discount; PACKAGE ⇔ package set; pending ⇒ hold expiry; confirmed ⇒ confirmed_at |
+| `t_bookings`                      | One booking: type SLOTS or PACKAGE, price snapshot, status, hold expiry, client fingerprint (HMAC of IP), access-token hash       | UNIQUE reference; total = list − discount; PACKAGE ⇔ package set; pending ⇒ hold expiry; confirmed ⇒ confirmed_at |
 | `t_booking_slots`                 | **Permanent** list of the slots a booking covers (kept after expiry or cancellation)                                              | PK(booking, slot)                                                                                                 |
 | `t_slot_blocks`                   | Admin blocks (maintenance, private event)                                                                                         | –                                                                                                                 |
 | `t_slot_occupancies`              | **Live lock** on slots                                                                                                            | **UNIQUE(space, slot)**; owned by exactly one booking or block; composite FKs as described in §2                  |
@@ -68,17 +68,19 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | `t_payment_events`                | Raw provider webhooks                                                                                                             | UNIQUE(provider, event id): idempotent processing                                                                 |
 | `t_notifications`                 | Outbox of emails/SMS/WhatsApp                                                                                                     | **UNIQUE(booking, template, recipient): never sent twice**                                                        |
 | `t_admin_users`                   | Admin accounts (OWNER / STAFF)                                                                                                    | UNIQUE email                                                                                                      |
+| `t_booking_policy`                | Single row of anti-abuse limits (active holds per connection, unpaid-hold limit, window, cooldown)                                | one row (CHECK id = 1); each limit range-checked                                                                  |
 | `t_audit_log`                     | Append-only trail of sensitive actions                                                                                            | –                                                                                                                 |
 | `t_schema_migrations` (+ `_lock`) | Migration bookkeeping (Kysely)                                                                                                    | –                                                                                                                 |
 
 ## 5. Booking lifecycle
 
-1. **Hold:** in one transaction, free expired holds on the requested slots, create the `PENDING_PAYMENT` booking and its `t_booking_slots`, insert the occupancies (`hold_expires_at = now + hold_duration_min`, default 10 min).
+1. **Hold** (at "Payer"): in one transaction, save the customer, replace the same phone's previous unpaid hold, reclaim expired holds on the requested slots, create the `PENDING_PAYMENT` booking and its `t_booking_slots`, lock the slots, record the payment attempt (`hold_expires_at = now + hold_duration_min`, default **5 min**, 2–15). Anti-abuse rules apply first (see `api.md`).
 2. **Pay:** initiate the payment with the provider; the customer approves (PIN or card page).
 3. **Confirm:** a verified webhook (or the reconciliation job) marks the payment as succeeded and the booking `CONFIRMED`, idempotently. **In the same transaction** it writes the owner email (and customer confirmation) to `t_notifications`.
 4. **Expire:** the job marks unpaid holds `EXPIRED` and deletes their occupancies. `t_booking_slots` keeps the history.
 5. **Late payment:** re-acquire the slots if still free; otherwise flag the booking for refund and alert the owners.
-6. **Cancel / refund:** policy TBD.
+6. **Customer cancel or payment failure:** `CANCELLED`, slots freed at once.
+7. **Cancel / refund after confirmation:** policy TBD.
 
 ## 6. Seed data (`pnpm db:seed`, idempotent)
 
@@ -94,7 +96,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | 0   | Discovery & design                                                                 | ✅ Done                   |
 | 1   | Foundations: monorepo, MySQL schema, seed, API skeleton + health, web skeleton, CI | ✅ Done (see progress.md) |
 | 2   | Availability & pricing engine                                                      | ✅ Done                   |
-| 3   | Booking API + customer screens                                                     | Next                      |
+| 3   | Booking API (3a) ✅ + customer screens (3b)                                        | 3b next                   |
 | 4   | Payments                                                                           | –                         |
 | 5   | Admin                                                                              | –                         |
 | 6   | Notifications                                                                      | –                         |
@@ -122,3 +124,11 @@ None of these changes alter an agreed requirement; they make the agreed design i
 4. **`hold_duration_min` is a per-space setting** (default 10) instead of a hard-coded value.
 5. **Database access with Kysely + SQL migrations** (rationale in §1).
 6. **Migration bookkeeping tables renamed** to `t_schema_migrations` / `t_schema_migrations_lock` to respect the `t_` prefix rule.
+
+## 11. Changes made in Phase 3a (approved by the product owner on 2026-11-08)
+
+1. **Hold duration 5 minutes** (was 10), adjustable 2–15; the hold starts at "Payer", not when slots are picked.
+2. **Anti-abuse rules** and the `t_booking_policy` table.
+3. **`t_bookings.client_fingerprint`** (HMAC of the IP, never the IP) and **`access_token_hash`**.
+4. **Customer records:** latest details win for a returning phone number.
+5. **Locking strategy:** transactions lock real rows only (customer record, specific bookings) and retry deadlock victims, after a stress test exposed deadlocks with "no rows" range locks.
