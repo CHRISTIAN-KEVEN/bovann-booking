@@ -34,4 +34,33 @@ describe('loadEnv', () => {
   it('refuses to run production with the mock payment provider', () => {
     expect(() => loadEnv({ ...base, NODE_ENV: 'production' })).toThrow(/PAYMENT_PROVIDER/);
   });
+
+  it('requires a host and a sender to send emails by SMTP', () => {
+    expect(() => loadEnv({ ...base, EMAIL_TRANSPORT: 'smtp' })).toThrow(/SMTP_HOST/);
+    expect(() =>
+      loadEnv({ ...base, EMAIL_TRANSPORT: 'smtp', SMTP_HOST: 'smtp.gmail.com' }),
+    ).toThrow(/EMAIL_FROM/);
+    expect(() =>
+      loadEnv({
+        ...base,
+        EMAIL_TRANSPORT: 'smtp',
+        SMTP_HOST: 'smtp.gmail.com',
+        EMAIL_FROM: 'Bovann <a@b.tg>',
+        SMTP_USER: 'a@b.tg',
+      }),
+    ).toThrow(/SMTP_USER and SMTP_PASSWORD/);
+    const env = loadEnv({
+      ...base,
+      EMAIL_TRANSPORT: 'smtp',
+      SMTP_HOST: 'smtp.gmail.com',
+      SMTP_PORT: '465',
+      SMTP_SECURE: 'true',
+      EMAIL_FROM: 'Bovann <a@b.tg>',
+    });
+    expect(env).toMatchObject({ SMTP_PORT: 465, SMTP_SECURE: true });
+  });
+
+  it('refuses to run production without sending emails', () => {
+    expect(() => loadEnv({ ...base, NODE_ENV: 'production' })).toThrow(/EMAIL_TRANSPORT/);
+  });
 });

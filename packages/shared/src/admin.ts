@@ -257,6 +257,8 @@ export interface AdminBookingDetail extends AdminBookingListItem {
   };
   payments: AdminPaymentDto[];
   history: AdminHistoryEntry[];
+  /** Emails about this booking and whether they left (Phase 6). */
+  notifications: AdminNotificationDto[];
   /** What the signed-in admin may do now. */
   can: { cancel: boolean; recordPayment: boolean; markRefunded: boolean };
 }
@@ -450,4 +452,27 @@ export type AdminUserUpdate = Partial<Pick<AdminUserDto, 'fullName' | 'role' | '
 export interface TemporaryPasswordResponse {
   user: AdminUserDto;
   temporaryPassword: string;
+}
+
+// ---------------------------------------------------------------- notifications (Phase 6)
+
+export interface AdminNotificationDto {
+  id: number;
+  template: string;
+  /** French, ready to display ("Nouvelle réservation (gérants)"). */
+  label: string;
+  recipient: string;
+  status: 'PENDING' | 'SENDING' | 'SENT' | 'FAILED';
+  attempts: number;
+  sentAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+}
+
+export interface NotificationSettingsDto {
+  /** False until the server is configured to send emails. */
+  enabled: boolean;
+  from: string | null;
+  pending: number;
+  failed: number;
 }

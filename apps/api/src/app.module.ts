@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AdminModule } from './admin/admin.module';
+import { NotificationModule } from './notification/notification.module';
 import { LoggerModule } from 'nestjs-pino';
 import { AvailabilityModule } from './availability/availability.module';
 import { BookingModule } from './booking/booking.module';
@@ -48,6 +49,7 @@ import { HealthModule } from './health/health.module';
     AvailabilityModule,
     BookingModule,
     AdminModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

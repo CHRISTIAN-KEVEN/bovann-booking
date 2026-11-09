@@ -51,6 +51,7 @@ export default function AdminSettingsPage() {
       {isOwner ? (
         <>
           <Users />
+          <EmailSending />
           <Recipients />
         </>
       ) : (
@@ -481,7 +482,7 @@ function Recipients() {
       <h2 className={styles.cardTitle}>E-mails de notification · {space.name}</h2>
       <p className={styles.note}>
         Ces adresses reçoivent un e-mail à chaque réservation confirmée, avec les coordonnées
-        professionnelles du client. (L’envoi des e-mails sera activé à la phase 6.)
+        professionnelles du client.
       </p>
       {list.error ? (
         <LoadError error={list.error} onRetry={list.reload} />
@@ -565,6 +566,89 @@ function Recipients() {
           {error}
         </div>
       ) : null}
+    </section>
+  );
+}
+
+function EmailSending() {
+  const { me } = useAdmin();
+  const toast = useToast();
+  const settings = useAsync(() => adminApi.notificationSettings(), 'email-settings');
+  const [to, setTo] = useState(me.email);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function test(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await adminApi.sendTestEmail(to.trim() || undefined);
+      toast(
+        `E-mail de test envoyé à ${res.to}. Vérifiez la boîte de réception (et le dossier Spam).`,
+      );
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className={cx(styles.card, styles.cardPad)}>
+      <h2 className={styles.cardTitle}>Envoi des e-mails</h2>
+      {settings.error ? (
+        <LoadError error={settings.error} onRetry={settings.reload} />
+      ) : !settings.data ? (
+        <Loading />
+      ) : !settings.data.enabled ? (
+        <div className={styles.banner}>
+          L’envoi des e-mails n’est pas encore configuré sur le serveur : les e-mails restent en
+          attente et partiront dès que la configuration sera faite.
+        </div>
+      ) : (
+        <>
+          <dl className={styles.dl}>
+            <dt>Expéditeur</dt>
+            <dd>{settings.data.from}</dd>
+            <dt>En attente</dt>
+            <dd>{settings.data.pending}</dd>
+            <dt>En échec</dt>
+            <dd>
+              {settings.data.failed > 0 ? <Badge tone="danger">{settings.data.failed}</Badge> : 0}
+              {settings.data.failed > 0 ? (
+                <span className={styles.cellSub}>
+                  {' '}
+                  · ouvrez la réservation concernée pour voir l’erreur et renvoyer
+                </span>
+              ) : null}
+            </dd>
+          </dl>
+          <form onSubmit={test} className={styles.grid2} style={{ alignItems: 'end' }} noValidate>
+            <Field label="Envoyer un e-mail de test à">
+              {(p) => (
+                <input
+                  {...p}
+                  type="email"
+                  className={styles.input}
+                  value={to}
+                  onChange={(e) => setTo(e.target.value)}
+                />
+              )}
+            </Field>
+            <div>
+              <button type="submit" className={styles.btnSecondary} disabled={busy}>
+                {busy ? 'Envoi…' : 'Envoyer le test'}
+              </button>
+            </div>
+          </form>
+          {error ? (
+            <div className={styles.banner} role="alert">
+              {error}
+            </div>
+          ) : null}
+        </>
+      )}
     </section>
   );
 }

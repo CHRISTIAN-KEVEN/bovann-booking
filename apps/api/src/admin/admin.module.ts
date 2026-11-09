@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AvailabilityModule } from '../availability/availability.module';
 import { BookingModule } from '../booking/booking.module';
+import { NotificationModule } from '../notification/notification.module';
 import { AdminBookingsController } from './admin-bookings.controller';
 import { AdminBookingsService } from './admin-bookings.service';
 import { AdminCatalogService } from './admin-catalog.service';
+import { AdminNotificationsController } from './admin-notifications.controller';
 import { AdminReportsController, AdminUsersController } from './admin-people.controller';
 import { AdminReportsService } from './admin-reports.service';
 import { AdminScheduleService } from './admin-schedule.service';
@@ -17,13 +19,14 @@ import { LoginRateLimiter } from './auth/login-rate-limiter';
 
 /** Everything under /api/v1/admin: sign-in, planning, bookings, catalog, settings, accounts. */
 @Module({
-  imports: [AvailabilityModule, BookingModule],
+  imports: [AvailabilityModule, BookingModule, NotificationModule],
   controllers: [
     AdminAuthController,
     AdminBookingsController,
     AdminSpacesController,
     AdminReportsController,
     AdminUsersController,
+    AdminNotificationsController,
   ],
   providers: [
     AdminAuthService,

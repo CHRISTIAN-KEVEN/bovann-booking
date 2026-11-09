@@ -10,6 +10,12 @@ import { BookingModule } from '../../src/booking/booking.module';
 import { CLOCK, ClockModule } from '../../src/common/clock';
 import { ConfigModule } from '../../src/config/config.module';
 import { DatabaseModule } from '../../src/database/database.module';
+import {
+  DisabledMailer,
+  MAILER,
+  type Mailer,
+  type OutgoingEmail,
+} from '../../src/notification/mailer';
 import type { Database } from '../../src/database/schema';
 import type { TestClock } from './booking-app';
 import { testDatabaseUrl } from './test-db';
@@ -18,12 +24,14 @@ import { testDatabaseUrl } from './test-db';
 export async function adminApp(
   clock: TestClock,
   env: Record<string, string> = {},
+  options: { mailer?: Mailer } = {},
 ): Promise<INestApplication> {
   Object.assign(process.env, {
     DATABASE_URL: testDatabaseUrl(),
     HOLD_EXPIRY_INTERVAL_SEC: '0',
     HOLD_RATE_LIMIT_PER_MIN: '1000',
     ADMIN_LOGIN_RATE_LIMIT_PER_MIN: '1000',
+    NOTIFICATION_INTERVAL_SEC: '0',
     ...env,
   });
   const moduleRef = await Test.createTestingModule({
@@ -31,6 +39,8 @@ export async function adminApp(
   })
     .overrideProvider(CLOCK)
     .useValue(clock)
+    .overrideProvider(MAILER)
+    .useValue(options.mailer ?? new DisabledMailer())
     .compile();
   const app = moduleRef.createNestApplication();
   configureApp(app, { corsOrigins: [], trustProxyHops: 1 });
@@ -94,4 +104,18 @@ export async function signedIn(
   const client = adminClient(app);
   await client.post('/auth/login', { email: user.email, password: user.password }).expect(200);
   return client;
+}
+
+/** Records emails instead of sending them; can be told to fail. */
+export class FakeMailer implements Mailer {
+  readonly enabled = true;
+  readonly from = 'Bovann OCD Live <test@example.test>';
+  sent: OutgoingEmail[] = [];
+  failWith: unknown = null;
+
+  send(email: OutgoingEmail): Promise<void> {
+    if (this.failWith) return Promise.reject(this.failWith);
+    this.sent.push(email);
+    return Promise.resolve();
+  }
 }

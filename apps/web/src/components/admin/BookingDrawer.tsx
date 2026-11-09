@@ -36,6 +36,13 @@ import {
 
 type Mode = 'view' | 'pay' | 'cancel' | 'refund';
 
+const NOTIFICATION_STATUS = {
+  PENDING: { label: 'En attente', tone: 'warning' },
+  SENDING: { label: 'En cours', tone: 'warning' },
+  SENT: { label: 'Envoyé', tone: 'success' },
+  FAILED: { label: 'Échec', tone: 'danger' },
+} as const;
+
 /** Booking detail in a side panel, with the actions the signed-in admin may take. */
 export function BookingDrawer({
   bookingId,
@@ -154,6 +161,19 @@ export function BookingDrawer({
       () => adminApi.markRefunded(booking.id, refundNote.trim() || null),
       'Remboursement enregistré.',
     );
+  }
+
+  async function retryEmail(id: number) {
+    setBusy(true);
+    try {
+      await adminApi.retryNotification(id);
+      toast('E-mail remis dans la file d’envoi.');
+      setReload((r) => r + 1);
+    } catch (err) {
+      toast(errorMessage(err), true);
+    } finally {
+      setBusy(false);
+    }
   }
 
   function saveNote() {
@@ -479,6 +499,46 @@ export function BookingDrawer({
                 {booking.cancelledBy ? ` par ${booking.cancelledBy}` : ''}
                 {booking.cancelledBy && booking.cancelReason ? ` · ${booking.cancelReason}` : ''}
               </p>
+            </section>
+          ) : null}
+
+          {booking.notifications.length > 0 ? (
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>E-mails</h3>
+              <ul className={styles.timeline}>
+                {booking.notifications.map((n) => (
+                  <li key={n.id}>
+                    <span>
+                      {n.label} · {n.recipient}{' '}
+                      <Badge tone={NOTIFICATION_STATUS[n.status].tone}>
+                        {NOTIFICATION_STATUS[n.status].label}
+                      </Badge>
+                    </span>
+                    <span className={styles.cellSub}>
+                      {n.sentAt
+                        ? `Envoyé le ${formatDateTime(n.sentAt)}`
+                        : n.status === 'FAILED'
+                          ? `Échec après ${n.attempts} tentative${n.attempts > 1 ? 's' : ''}`
+                          : n.attempts > 0
+                            ? `Nouvelle tentative prévue (${n.attempts} échec${n.attempts > 1 ? 's' : ''})`
+                            : 'En file d’attente'}
+                      {n.lastError && n.status !== 'SENT' ? ` · ${n.lastError}` : ''}
+                    </span>
+                    {n.status === 'FAILED' ? (
+                      <span>
+                        <button
+                          type="button"
+                          className={cx(styles.btnSecondary, styles.btnSmall)}
+                          onClick={() => retryEmail(n.id)}
+                          disabled={busy}
+                        >
+                          Renvoyer
+                        </button>
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
             </section>
           ) : null}
 

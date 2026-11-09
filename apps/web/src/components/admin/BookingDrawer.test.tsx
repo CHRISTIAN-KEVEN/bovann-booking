@@ -67,6 +67,7 @@ const detail: AdminBookingDetail = {
       actor: 'Paiement',
     },
   ],
+  notifications: [],
   can: { cancel: true, recordPayment: false, markRefunded: false },
 };
 

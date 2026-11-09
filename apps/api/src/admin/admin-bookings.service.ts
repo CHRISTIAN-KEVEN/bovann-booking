@@ -18,6 +18,7 @@ import { fullDayOption, packageStartOptions, quotePackage } from '../availabilit
 import { addDays, localToUtc, utcToLocalDate, utcToLocalTime } from '../availability/domain/time';
 import { inTransaction, isDuplicateOn, releaseSlots } from '../booking/booking-tx';
 import { BookingLifecycleService } from '../booking/booking-lifecycle.service';
+import { NotificationService } from '../notification/notification.service';
 import {
   insertBooking,
   lockSlots,
@@ -81,6 +82,7 @@ export class AdminBookingsService {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly availability: AvailabilityService,
     private readonly lifecycle: BookingLifecycleService,
+    private readonly notifications: NotificationService,
   ) {}
 
   // ------------------------------------------------------------------ reads
@@ -202,7 +204,7 @@ export class AdminBookingsService {
       .executeTakeFirst();
     if (!b) throw notFound('BOOKING_NOT_FOUND', 'Réservation introuvable.');
 
-    const [slots, payments, audit, summaries] = await Promise.all([
+    const [slots, payments, audit, summaries, notifications] = await Promise.all([
       this.db
         .selectFrom('t_booking_slots')
         .select('slot_start')
@@ -238,6 +240,7 @@ export class AdminBookingsService {
         .orderBy('l.id')
         .execute(),
       paymentSummaries(this.db, [bookingId]),
+      this.notifications.forBooking(bookingId),
     ]);
 
     const item = toListItem(b as BookingRow, summaries.get(bookingId) ?? NO_PAYMENTS, now);
@@ -290,6 +293,7 @@ export class AdminBookingsService {
         recordedBy: p.recorded_by,
       })),
       history,
+      notifications,
       can: {
         cancel: isOwner && (b.status === 'CONFIRMED' || liveHold),
         recordPayment: item.paymentState === 'UNPAID',

@@ -222,6 +222,45 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - Figures stacked one per line on phones: two per line now.
 - French punctuation spacing in the admin texts.
 
+## Phase 6 — Emails (in review)
+
+**Objective:** owners hear about every booking by email, with the customer's business details; customers get their confirmation.
+
+**Decision (product owner, 2026-11-09):** free sending, starting with his Gmail address. Applied as Gmail's own servers with an App Password (free, 500/day, passes Gmail's checks); later Brevo (free, 300/day) with Bovann's domain. Only settings change.
+
+### Delivered
+
+- **Outbox worker**
+  - Sends the queued emails every 15 s.
+  - Retries with growing delays for about 8 hours, gives up at once on an address refused for good.
+  - Picks up emails interrupted by a crash; safe with several API instances.
+- **Four French emails** (HTML + plain text, readable on phones):
+  - **New booking, to owners:** session, customer's business details with tap-to-call phone, the live, amount, whether it was paid online or added by the studio, a reminder for virtual sessions, and a link to the admin.
+  - **Confirmation, to customers:** date, times (separate slots listed), package, mode, studio address in studio, amount, reference, contact phone.
+  - **Cancellation by the studio, to customers:** with the refund to come; the internal reason is never sent.
+  - **Payment received too late, to owners:** amount to give back and a link to Paiements.
+- **Admin**
+  - Each booking shows its emails and whether they left, with "Renvoyer" for a failed one.
+  - Paramètres shows the sender and the queue, and sends a test email that displays the provider's answer.
+- **Configuration**
+  - `EMAIL_TRANSPORT`, `SMTP_*`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `PUBLIC_WEB_URL`, `STUDIO_CONTACT_PHONE`, `NOTIFICATION_INTERVAL_SEC`, validated at startup.
+  - Production refuses to start without email sending.
+  - Development uses Mailpit (http://localhost:8025).
+
+### Tests
+
+- **Totals:** 228 automated tests (192 API, 5 shared, 31 web)
+- **12 new integration tests against MySQL:**
+  - owners and customer emailed once after payment; no customer email without an address
+  - temporary failure retried on schedule, then failed, then sent again from "Renvoyer"
+  - address refused for good; daily quota retried; email interrupted by a crash picked up
+  - studio cancellation email with the refund amount and without the internal reason
+  - studio booking emailed to owners, visible in the booking
+  - late payment refund email
+  - settings, test email (role, provider refusal shown), sending not configured
+- **14 new unit tests:** each template, escaping, separate slots, older queued emails, sending error classification, settings validation.
+- **End-to-end over real SMTP (Mailpit):** an online booking paid → 3 emails delivered within 15 s, including to christiankeven326@gmail.com as an owner address. Emails queued earlier in development were delivered too, and the test email from Paramètres arrived. The emails were checked on desktop and phone widths.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.

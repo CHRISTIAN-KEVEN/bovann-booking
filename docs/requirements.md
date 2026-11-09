@@ -31,6 +31,15 @@ _Last updated 2026-11-09_
 - Owner recipient addresses are configured per space by the admin (one or more).
 - Customer confirmation: SMS/WhatsApp (provider TBD), plus email if the customer gave one.
 
+### Email sending (decided 2026-11-09)
+
+- **To start: Gmail.** Emails are sent through Gmail's own servers from the product owner's address (christiankeven326@gmail.com), with a Google App Password. Free, up to 500 emails a day, and delivered as genuine Gmail mail.
+- **Later: a service with Bovann's own domain.** Brevo is free up to 300 emails a day; addresses such as reservations@bovann.tg need SPF and DKIM DNS records. Switching is a settings change only.
+- **Not chosen:** sending as a @gmail.com address through a third-party service (Brevo, SendGrid…). Gmail's anti-spoofing rules (DMARC) send such mail to spam or reject it.
+- **Emails sent:**
+  - to owners: new confirmed booking (online or studio) with the customer's business details; payment received too late, refund to make
+  - to customers, if they gave an email: booking confirmed; booking cancelled by the studio, with the refund amount (the studio's internal reason is never sent)
+
 ## Slots, packages & seed values
 
 - Slot = **1h30** (seed and default)

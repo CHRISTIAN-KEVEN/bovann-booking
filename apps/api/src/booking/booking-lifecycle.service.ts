@@ -1,10 +1,9 @@
 import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
-import { SESSION_MODE_LABELS_FR } from '@bovann/shared';
 import type { Kysely, Transaction } from 'kysely';
-import { utcToLocalDate, utcToLocalTime } from '../availability/domain/time';
 import { CLOCK, type Clock } from '../common/clock';
 import { ApiError } from '../common/errors';
 import { DB } from '../database/database.module';
+import { buildNotificationPayload } from '../notification/payload';
 import type { Database } from '../database/schema';
 import { inTransaction, releaseSlots } from './booking-tx';
 
@@ -18,7 +17,7 @@ export type ConfirmOutcome = 'CONFIRMED' | 'ALREADY_CONFIRMED' | 'LATE_PAYMENT_R
  *        │ ├─ payment fails ───────────▶ CANCELLED   (slots freed immediately)
  *        │ └─ hold expires (5 min) ────▶ EXPIRED     (slots freed by the expiry job)
  *   EXPIRED ──paid late, slots still free──▶ CONFIRMED
- *   EXPIRED/CANCELLED ──paid late, slots taken──▶ unchanged + refund flagged to owners
+ *   EXPIRED/CANCELLED ──paid late, slots taken──▶ unchanged, refund DUE, owners emailed
  *
  * Every transition is idempotent: replaying a provider notification is harmless.
  */
@@ -286,7 +285,7 @@ export class BookingLifecycleService {
     bookingId: number,
     template: 'owner_booking_confirmed' | 'owner_late_payment_refund',
   ): Promise<void> {
-    const payload = await notificationPayload(trx, bookingId);
+    const payload = await buildNotificationPayload(trx, bookingId);
     const recipients = await trx
       .selectFrom('t_space_owner_recipients')
       .select('email')
@@ -319,7 +318,7 @@ export class BookingLifecycleService {
     bookingId: number,
     template: 'customer_booking_confirmed' | 'customer_booking_cancelled',
   ): Promise<void> {
-    const payload = await notificationPayload(trx, bookingId);
+    const payload = await buildNotificationPayload(trx, bookingId);
     if (!payload.customer.email) return;
     await trx
       .insertInto('t_notifications')
@@ -333,55 +332,6 @@ export class BookingLifecycleService {
       .onDuplicateKeyUpdate((eb) => ({ id: eb.ref('t_notifications.id') }))
       .execute();
   }
-}
-
-/** Snapshot of everything an email needs, frozen at confirmation time. */
-async function notificationPayload(trx: Transaction<Database>, bookingId: number) {
-  const row = await trx
-    .selectFrom('t_bookings as b')
-    .innerJoin('t_customers as c', 'c.id', 'b.customer_id')
-    .innerJoin('t_spaces as s', 's.id', 'b.space_id')
-    .select([
-      'b.reference',
-      'b.mode',
-      'b.starts_at',
-      'b.ends_at',
-      'b.package_name',
-      'b.slot_count',
-      'b.total_xof',
-      'b.live_description',
-      's.id as space_id',
-      's.name as space_name',
-      's.timezone',
-      'c.full_name',
-      'c.phone_e164',
-      'c.email',
-      'c.business_name',
-      'c.business_sector',
-    ])
-    .where('b.id', '=', bookingId)
-    .executeTakeFirstOrThrow();
-  return {
-    reference: row.reference,
-    spaceId: row.space_id,
-    spaceName: row.space_name,
-    mode: row.mode,
-    modeLabel: SESSION_MODE_LABELS_FR[row.mode],
-    date: utcToLocalDate(row.starts_at, row.timezone),
-    startTime: utcToLocalTime(row.starts_at, row.timezone),
-    endTime: utcToLocalTime(row.ends_at, row.timezone),
-    packageName: row.package_name,
-    slotCount: row.slot_count,
-    totalXof: row.total_xof,
-    liveDescription: row.live_description,
-    customer: {
-      fullName: row.full_name,
-      phone: row.phone_e164,
-      email: row.email,
-      businessName: row.business_name,
-      businessSector: row.business_sector,
-    },
-  };
 }
 
 async function audit(

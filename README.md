@@ -56,3 +56,20 @@ pnpm dev:web           # http://localhost:3000 (full booking flow, payments simu
 - Critical business rules are enforced by the database (constraints), not only in code.
 - Never edit a migration that has run outside your machine: add a new one.
 - Every change goes through a pull request with green CI.
+
+## Sending real emails (Gmail, free)
+
+1. On the Google account, turn on 2-Step Verification, then create an **App Password** (Google Account → Security → App passwords).
+2. In `apps/api/.env`:
+   ```
+   EMAIL_TRANSPORT=smtp
+   SMTP_HOST=smtp.gmail.com
+   SMTP_PORT=465
+   SMTP_SECURE=true
+   SMTP_USER=your.address@gmail.com
+   SMTP_PASSWORD=the-16-character-app-password
+   EMAIL_FROM="Bovann OCD Live <your.address@gmail.com>"
+   ```
+3. Restart the API, then in the admin open **Paramètres → Envoi des e-mails → Envoyer le test**.
+
+Gmail allows about 500 emails a day. When Bovann has its own domain, switch to Brevo (free, 300/day): change only these settings.

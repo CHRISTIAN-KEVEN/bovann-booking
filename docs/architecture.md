@@ -1,6 +1,6 @@
 # Architecture & data model
 
-_Approved 2026-11-08 · updated through Phase 5a (see §10 for what changed in Phase 1 and why)_
+_Approved 2026-11-08 · updated through Phase 6 (see §10 for what changed in Phase 1 and why)_
 
 ## 1. Technical decisions
 
@@ -100,7 +100,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | 3   | Booking API (3a) + customer screens (3b)                                           | ✅ Done                   |
 | 4   | Payments                                                                           | Waiting for provider      |
 | 5   | Admin: API (5a) + screens (5b)                                                     | In review                 |
-| 6   | Notifications                                                                      | –                         |
+| 6   | Notifications (email)                                                              | In review                 |
 | 7   | Hardening                                                                          | –                         |
 | 8   | Deployment                                                                         | –                         |
 
@@ -171,3 +171,22 @@ None of these changes alter an agreed requirement; they make the agreed design i
    - Dialogs use the native `<dialog>` element, so focus is trapped and Escape closes.
    - The screens never decide what is allowed: they hide what the role can't do, and the API enforces it.
 10. **Hosting note for Phase 8:** serve the website and the API from the same site (e.g. `reservation.bovann.tg` with the API under `/api`, or `api.` on the same domain), so the session cookie stays first-party.
+
+## 14. Phase 6 (emails), decisions of 2026-11-09
+
+1. **Outbox, delivered by a worker.**
+   - Every email is written to `t_notifications` in the same transaction as the booking change it reports (confirmation, cancellation, late payment), so none can be lost or sent for a change that was rolled back. Each email row can exist only once per booking, template and recipient.
+   - `NotificationWorker` sends what is due every 15 s (`NOTIFICATION_INTERVAL_SEC`). It claims rows with `FOR UPDATE SKIP LOCKED`, so it is safe with several API instances.
+2. **Retries.**
+   - A failure is retried after 1, 2, 5, 15, 30, 60, 120 and 240 minutes (about 8 h); then the email is `FAILED`.
+   - An address refused for good (SMTP 550/551/553, bad envelope) fails at once. Quota and temporary errors (4xx, 5.4.x) are retried.
+   - An email left `SENDING` by a crash is picked up again after 10 minutes. While `SENDING`, `next_attempt_at` holds the claim time.
+   - The admin shows each booking's emails and their state, with "Renvoyer" for a failed one.
+3. **Plain SMTP (nodemailer), behind a small `Mailer` interface.**
+   - Gmail now, Brevo or another provider later, Mailpit in development: only settings change.
+   - With `EMAIL_TRANSPORT=disabled` (tests, or no provider yet) emails stay queued and are sent once configured.
+   - Production refuses to start without sending configured, because owners must hear about every booking.
+4. **The payload is frozen.** The email content is captured when the email is queued, in the same transaction. Fields added in Phase 6 are optional, so older queued emails still render.
+5. **Templates** are French, with an HTML body (tables and inline styles, which every mail client supports) and a plain-text body. Every value from the database is HTML-escaped. Logs never contain recipients, only the email's id, template and the provider's error.
+6. **Test email:** an administrator can send a test from Paramètres; the provider's error, if any, is shown as is (for example "535 Username and Password not accepted").
+7. **SMS / WhatsApp** use the same outbox (`channel` column) once a provider is chosen.
