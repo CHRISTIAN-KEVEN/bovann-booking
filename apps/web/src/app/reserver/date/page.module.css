@@ -222,3 +222,20 @@
   font-size: 15px;
   color: var(--color-text);
 }
+
+@media (min-width: 1024px) {
+  .calendar {
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .weekdays,
+  .grid {
+    gap: 6px;
+  }
+
+  .day {
+    height: 64px;
+    font-size: 17px;
+  }
+}

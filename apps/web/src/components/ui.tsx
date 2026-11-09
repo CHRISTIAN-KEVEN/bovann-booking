@@ -1,15 +1,30 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
+import { ReservationRecap } from './ReservationRecap';
 import { SiteHeader } from './SiteHeader';
 import styles from './ui.module.css';
 
-/** Phone-width column used by every customer screen (centred card on desktop). */
-export function Screen({ children, title }: { children: ReactNode; title?: string }) {
+/**
+ * Page shell for every customer screen. Phones: one column with the action bar at the bottom.
+ * Desktop (>= 1024px): `flow` puts the step content on the left and the action bar, as a
+ * "Votre réservation" panel, on the right; `single` is one centred column (confirmation).
+ */
+export function Screen({
+  children,
+  title,
+  layout = 'flow',
+}: {
+  children: ReactNode;
+  title?: string;
+  layout?: 'flow' | 'single';
+}) {
   return (
     <div className={styles.page}>
-      <div className={styles.screen}>
-        <SiteHeader />
+      <SiteHeader />
+      <div
+        className={`${styles.screen} ${layout === 'flow' ? styles.screenFlow : styles.screenSingle}`}
+      >
         {title ? <h1 className={styles.srOnly}>{title}</h1> : null}
         {children}
       </div>
@@ -65,12 +80,28 @@ export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactN
   );
 }
 
-/** Sticky action bar at the bottom of each step. */
-export function BottomBar({ children, summary }: { children: ReactNode; summary?: ReactNode }) {
+/**
+ * Sticky action bar at the bottom of each step on phones; on desktop, the side panel.
+ * `step` adds the desktop-only recap of the earlier choices; `locked` hides its edit links.
+ */
+export function BottomBar({
+  children,
+  summary,
+  step,
+  locked,
+}: {
+  children: ReactNode;
+  summary?: ReactNode;
+  step?: number;
+  locked?: boolean;
+}) {
   return (
     <footer className={styles.bottomBar}>
-      {summary ? <div className={styles.bottomSummary}>{summary}</div> : null}
-      <div className={summary ? styles.bottomActionInline : styles.bottomAction}>{children}</div>
+      {step ? <ReservationRecap step={step} locked={locked} /> : null}
+      <div className={styles.bottomRow}>
+        {summary ? <div className={styles.bottomSummary}>{summary}</div> : null}
+        <div className={summary ? styles.bottomActionInline : styles.bottomAction}>{children}</div>
+      </div>
     </footer>
   );
 }

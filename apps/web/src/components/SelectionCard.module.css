@@ -30,3 +30,10 @@
   display: flex;
   align-items: center;
 }
+
+/* Desktop: the side panel already recaps the selection, with its own edit link. */
+@media (min-width: 1024px) {
+  .card {
+    display: none;
+  }
+}

@@ -258,7 +258,7 @@ function DetailsForm() {
             {err('acceptTerms')}
           </div>
         </Body>
-        <BottomBar>
+        <BottomBar step={4}>
           <button type="submit" className={buttonClass}>
             Passer au paiement
           </button>

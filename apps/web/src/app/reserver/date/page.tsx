@@ -238,7 +238,7 @@ export default function DatePage() {
           </Alert>
         ) : null}
       </Body>
-      <BottomBar>
+      <BottomBar step={2}>
         <button type="button" className={buttonClass} onClick={next} disabled={!selectedDay}>
           Voir les créneaux
         </button>

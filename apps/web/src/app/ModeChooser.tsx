@@ -1,44 +1,48 @@
 'use client';
 
-import type { SessionMode, SpaceDto } from '@bovann/shared';
+import { formatXof, type SessionMode, type SpaceDto } from '@bovann/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AfricaMap } from '@/components/AfricaMap';
 import { useFlow } from '@/components/FlowProvider';
 import { Icon } from '@/components/icons';
-import { Alert, BottomBar, Screen, buttonClass } from '@/components/ui';
+import { SiteHeader } from '@/components/SiteHeader';
+import { Alert } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
+import { formatDuration } from '@/lib/dates';
 import styles from './ModeChooser.module.css';
 
 const OPTIONS: { mode: SessionMode; title: string; text: string; icon: 'video' | 'monitor' }[] = [
   {
     mode: 'IN_PERSON',
     title: 'En studio',
-    text: 'Venez dans notre studio équipé à Lomé.',
+    text: 'Vous venez à Lomé : régie, plateau et éclairage professionnels.',
     icon: 'video',
   },
   {
     mode: 'VIRTUAL',
     title: 'Virtuel',
-    text: 'Vous participez à distance ; notre équipe gère le live depuis le studio, avec un assistant sur place.',
+    text: 'Vous restez dans votre boutique : notre équipe et une assistante animent le live au studio.',
     icon: 'monitor',
   },
 ];
 
+/** Screen 1: the brand stage and the choice of mode. One tap on a mode opens the calendar. */
 export function ModeChooser() {
   const router = useRouter();
-  const { flow, ready, update } = useFlow();
+  const { update } = useFlow();
   const [space, setSpace] = useState<SpaceDto | null>(null);
+  const [fromXof, setFromXof] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<SessionMode | undefined>(undefined);
-
-  useEffect(() => {
-    if (ready && flow.mode) setMode(flow.mode);
-  }, [ready, flow.mode]);
 
   useEffect(() => {
     api
       .space()
-      .then(setSpace)
+      .then(async (s) => {
+        setSpace(s);
+        const catalogs = await Promise.all(s.modes.map((m) => api.packages(m)));
+        setFromXof(Math.min(...catalogs.map((c) => c.unitPriceXof)));
+      })
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.message : 'Une erreur est survenue.'),
       );
@@ -46,79 +50,78 @@ export function ModeChooser() {
 
   const offered = OPTIONS.filter((o) => !space || space.modes.includes(o.mode));
 
-  function next() {
-    if (!mode) return;
+  function choose(mode: SessionMode) {
     update({ mode });
     router.push('/reserver/date');
   }
 
+  const facts = [
+    space ? `Lives de ${formatDuration(space.slotDurationMin)}` : null,
+    fromXof ? `dès ${formatXof(fromXof)}` : null,
+    'Réservation en 2 minutes',
+    'Mobile Money ou carte',
+  ].filter(Boolean);
+
   return (
-    <Screen>
-      <section className={styles.hero}>
-        <span className={styles.badge}>
-          <span className={styles.badgeDot} aria-hidden="true" />
-          STUDIO LIVE · LOMÉ
-        </span>
-        <h1 className={styles.title}>Réservez votre session live</h1>
-        <p className={styles.lead}>
-          Choisissez une date, un créneau de 1h30 ou un forfait, et payez en ligne par Mobile Money
-          ou carte.
-        </p>
-      </section>
+    <div className={styles.landing}>
+      <SiteHeader transparent />
+      <main className={styles.stage}>
+        <div className={styles.copy}>
+          <p className={styles.kicker}>Studio de lives · Lomé, Togo</p>
+          <h1 className={styles.title}>
+            Votre produit en direct devant <span className={styles.accent}>toute l’Afrique.</span>
+          </h1>
+          <p className={styles.lead}>
+            Une régie, un studio, une audience. Venez vendre depuis notre studio à Lomé, ou restez
+            dans votre boutique et nous vous faisons passer en live.
+          </p>
 
-      <main className={styles.main}>
-        {error ? (
-          <Alert tone="error" title="Service indisponible">
-            {error}
-          </Alert>
-        ) : null}
+          {error ? (
+            <Alert tone="error" title="Service indisponible">
+              {error}
+            </Alert>
+          ) : null}
 
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>Comment souhaitez-vous faire votre live&nbsp;?</legend>
-          {offered.map((o) => {
-            const selected = mode === o.mode;
-            return (
-              <label
-                key={o.mode}
-                className={`${styles.option} ${selected ? styles.optionSelected : ''}`}
-              >
-                <span
-                  className={`${styles.optionIcon} ${selected ? styles.optionIconSelected : ''}`}
+          <section aria-labelledby="mode-heading" className={styles.choose}>
+            <h2 id="mode-heading" className={styles.chooseTitle}>
+              Choisissez votre format&nbsp;:
+            </h2>
+            <div className={styles.cards}>
+              {offered.map((o) => (
+                <button
+                  key={o.mode}
+                  type="button"
+                  className={styles.card}
+                  onClick={() => choose(o.mode)}
                 >
-                  <Icon name={o.icon} size={22} />
-                </span>
-                <span className={styles.optionText}>
-                  <span className={styles.optionTitle}>{o.title}</span>
-                  <span className={styles.optionDesc}>{o.text}</span>
-                  {o.mode === 'IN_PERSON' && space ? (
-                    <span className={styles.optionMeta}>
-                      <Icon name="pin" size={14} />
-                      {space.address ?? space.name}
+                  <span className={styles.cardTop}>
+                    <span className={styles.cardIcon}>
+                      <Icon name={o.icon} size={22} />
                     </span>
-                  ) : null}
-                </span>
-                <input
-                  type="radio"
-                  name="mode"
-                  value={o.mode}
-                  checked={selected}
-                  onChange={() => setMode(o.mode)}
-                  className={styles.radio}
-                />
-              </label>
-            );
-          })}
-        </fieldset>
-        <p className={styles.note}>
-          Les deux modes utilisent le même studio et le même calendrier.
-        </p>
-      </main>
+                    <Icon name="arrowUpRight" size={20} className={styles.cardArrow} />
+                  </span>
+                  <span className={styles.cardTitle}>{o.title}</span>
+                  <span className={styles.cardText}>{o.text}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-      <BottomBar>
-        <button type="button" className={buttonClass} onClick={next} disabled={!mode}>
-          Continuer
-        </button>
-      </BottomBar>
-    </Screen>
+          <p className={styles.facts}>
+            {facts.map((f, i) => (
+              <span key={f}>
+                {i > 0 ? <span aria-hidden="true"> · </span> : null}
+                {f}
+              </span>
+            ))}
+          </p>
+        </div>
+
+        <div className={styles.visual}>
+          <AfricaMap />
+          <p className={styles.caption}>Le studio est à Lomé · Votre public est partout</p>
+        </div>
+      </main>
+    </div>
   );
 }

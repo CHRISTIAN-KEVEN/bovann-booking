@@ -261,6 +261,34 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - **14 new unit tests:** each template, escaping, separate slots, older queued emails, sending error classification, settings validation.
 - **End-to-end over real SMTP (Mailpit):** an online booking paid → 3 emails delivered within 15 s, including to christiankeven326@gmail.com as an owner address. Emails queued earlier in development were delivered too, and the test email from Paramètres arrived. The emails were checked on desktop and phone widths.
 
+## Customer site redesign: phone and desktop (in review)
+
+**Objective:** the customer site was a phone-width column, even on a computer. It now works on both, in the OCD Live brand, with the same simple flow (requested by the product owner on 2026-11-09, with the studio sign, a landing mock-up and a mobile booking reference).
+
+### Delivered
+
+- **Brand:** OCD Live wordmark (drawn after the studio sign, to replace with the official vector file), "par Bovann", Poppins for headings, brand orange `#f26b1d` for highlights. Buttons keep the darker orange so white text stays readable (WCAG AA).
+- **Home page:** dark stage with a glowing map of Africa (Natural Earth outline, studio in Lomé, dotted links to 11 cities), headline "Votre produit en direct devant toute l’Afrique.", the two modes as cards, and a line with the slot length and the lowest price taken from the catalog.
+- **One tap less:** choosing a mode now opens the calendar directly (no separate "Continuer").
+- **Desktop (≥ 1024 px):**
+  - booking steps use the width: content on the left, a sticky "Votre réservation" panel on the right with the earlier choices, "Modifier" links, the total and the main button
+  - bigger calendar days, slots in two columns, so a whole day fits on one screen
+  - the confirmation is one centred column
+- **Phones:** the booking steps are unchanged apart from the new header; the map becomes a faint backdrop so the two mode cards stay near the top.
+- **Tablets:** one centred column (680 px).
+
+### Tests
+
+- 5 new web tests: one-tap mode choice saved in the flow, price line (lowest price across modes), only the modes the studio offers, recap panel content per step and without edit links once payment started. Totals: 233 (192 API, 5 shared, 36 web).
+- Full booking in a real Chrome at 390, 820 and 1440 px wide: no browser errors, no horizontal scrolling.
+
+### Open choices for the product owner
+
+- Official logo file (SVG or high-resolution PNG) to replace the drawn wordmark.
+- Labels "En studio / Virtuel" are kept (used in emails and the admin); "Au studio / À distance" may read more clearly to customers.
+- The site speaks with "vous"; the landing mock-up uses "tu".
+- Not added, to keep things simple: dark/light switch, launch countdown, currency switch.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.
