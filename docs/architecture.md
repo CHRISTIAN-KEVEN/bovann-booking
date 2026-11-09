@@ -81,7 +81,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 4. **Expire:** the job marks unpaid holds `EXPIRED` and deletes their occupancies. `t_booking_slots` keeps the history.
 5. **Late payment:** re-acquire the slots if still free; otherwise flag the booking for refund and alert the owners.
 6. **Customer cancel or payment failure:** `CANCELLED`, slots freed at once.
-7. **Cancel after confirmation (studio, Phase 5):** `CANCELLED`, slots freed at once; if money was received, `refund_status = DUE` with the amount to give back. Once the studio has refunded by hand: `refund_status = DONE`, booking `REFUNDED`. Customer-facing cancellation policy still TBD.
+7. **Cancel after confirmation (studio, Phase 5):** `CANCELLED`, slots freed at once; if money was received, `refund_status = DUE` with the amount to give back. Once the studio has refunded by hand: `refund_status = DONE`, booking `REFUNDED`. Customers cancel by contacting the studio (48 h rule, §15); the studio then cancels the booking this way.
 8. **Studio booking (Phase 5):** created `CONFIRMED` directly (`source = ADMIN`, `created_by_admin_id`), same slot locks as online bookings, with a `manual` payment record when paid.
 
 ## 6. Seed data (`pnpm db:seed`, idempotent)
@@ -111,7 +111,6 @@ Public endpoints, error format and availability rules: see `api.md`.
 
 ## 9. Open questions
 
-- Customer-facing cancellation and refund policy
 - SMS/WhatsApp provider; transactional email provider (needs a sending domain with SPF/DKIM)
 - Exact opening hours
 

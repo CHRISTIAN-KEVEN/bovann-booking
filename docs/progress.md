@@ -350,8 +350,7 @@ Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's ch
 - Booking slot end times are derived from the space's current slot duration when displayed. The admin does not allow changing the slot duration (Phase 5); if it is ever needed, it must be refused while future bookings exist.
 - The end-to-end browser tests (customer flow and admin) were run manually (Puppeteer + Chrome). Automate them with Playwright in CI during Phase 7 (hardening).
 - The customer site shows one space (`NEXT_PUBLIC_SPACE_SLUG`). The admin can create more spaces, but customers can only book a second space once the site offers a space choice (small change, to schedule when a second studio opens).
-- No terms and conditions page yet: the checkbox text refers to the studio's booking and cancellation conditions, which are still to be written (cancellation policy open question).
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.
 - Admin sign-in limits per connection are kept in memory: fine for one API instance; move them to the database or Redis if the API ever runs on several machines.
-- Customer-facing cancellation policy still open: the studio can cancel and refund by hand, customers can only abandon before paying.
+- Customers cancel by contacting the studio (48 h rule); there is no self-service cancellation after payment. Possible later, inside Mes réservations.
 - A studio cancellation of an online payment in progress only marks it cancelled on our side; with a real provider (Phase 4) the payment must also be cancelled or refunded at the provider.
