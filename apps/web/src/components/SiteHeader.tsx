@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Icon } from './icons';
 import { Logo } from './Logo';
 import styles from './SiteHeader.module.css';
 
@@ -11,10 +12,16 @@ export function SiteHeader({ transparent = false }: { transparent?: boolean }) {
           <Logo height={44} className={styles.logo} />
           <span className={styles.by}>par Bovann</span>
         </Link>
-        <span className={styles.place}>
-          <span className={styles.liveDot} aria-hidden="true" />
-          Studio · Lomé, Togo
-        </span>
+        <div className={styles.right}>
+          <span className={styles.place}>
+            <span className={styles.liveDot} aria-hidden="true" />
+            Studio · Lomé, Togo
+          </span>
+          <Link href="/mes-reservations" className={styles.mine}>
+            <Icon name="bookings" size={18} />
+            Mes réservations
+          </Link>
+        </div>
       </div>
     </header>
   );

@@ -62,6 +62,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | `t_package_prices`                | Versioned prices per mode                                                                                                         | price > 0; **one current price per (package, mode)**                                                              |
 | `t_customers`                     | Booking customers                                                                                                                 | UNIQUE phone (E.164 format checked)                                                                               |
 | `t_bookings`                      | One booking: type SLOTS or PACKAGE, price snapshot, status, hold expiry, access-token hash                                        | UNIQUE reference; total = list − discount; PACKAGE ⇔ package set; pending ⇒ hold expiry; confirmed ⇒ confirmed_at |
+| `t_booking_access_tokens`         | Extra booking access tokens from "Mes réservations" lookups (one per device)                                                      | UNIQUE token hash                                                                                                 |
 | `t_booking_slots`                 | **Permanent** list of the slots a booking covers (kept after expiry or cancellation)                                              | PK(booking, slot)                                                                                                 |
 | `t_slot_blocks`                   | Admin blocks (maintenance, private event)                                                                                         | –                                                                                                                 |
 | `t_slot_occupancies`              | **Live lock** on slots                                                                                                            | **UNIQUE(space, slot)**; owned by exactly one booking or block; composite FKs as described in §2                  |
@@ -80,7 +81,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 4. **Expire:** the job marks unpaid holds `EXPIRED` and deletes their occupancies. `t_booking_slots` keeps the history.
 5. **Late payment:** re-acquire the slots if still free; otherwise flag the booking for refund and alert the owners.
 6. **Customer cancel or payment failure:** `CANCELLED`, slots freed at once.
-7. **Cancel after confirmation (studio, Phase 5):** `CANCELLED`, slots freed at once; if money was received, `refund_status = DUE` with the amount to give back. Once the studio has refunded by hand: `refund_status = DONE`, booking `REFUNDED`. Customer-facing cancellation policy still TBD.
+7. **Cancel after confirmation (studio, Phase 5):** `CANCELLED`, slots freed at once; if money was received, `refund_status = DUE` with the amount to give back. Once the studio has refunded by hand: `refund_status = DONE`, booking `REFUNDED`. Customers cancel by contacting the studio (48 h rule, §15); the studio then cancels the booking this way.
 8. **Studio booking (Phase 5):** created `CONFIRMED` directly (`source = ADMIN`, `created_by_admin_id`), same slot locks as online bookings, with a `manual` payment record when paid.
 
 ## 6. Seed data (`pnpm db:seed`, idempotent)
@@ -110,7 +111,6 @@ Public endpoints, error format and availability rules: see `api.md`.
 
 ## 9. Open questions
 
-- Customer-facing cancellation and refund policy
 - SMS/WhatsApp provider; transactional email provider (needs a sending domain with SPF/DKIM)
 - Exact opening hours
 
@@ -190,3 +190,12 @@ None of these changes alter an agreed requirement; they make the agreed design i
 5. **Templates** are French, with an HTML body (tables and inline styles, which every mail client supports) and a plain-text body. Every value from the database is HTML-escaped. Logs never contain recipients, only the email's id, template and the provider's error.
 6. **Test email:** an administrator can send a test from Paramètres; the provider's error, if any, is shown as is (for example "535 Username and Password not accepted").
 7. **SMS / WhatsApp** use the same outbox (`channel` column) once a provider is chosen.
+
+## 15. Customer site: conditions, loaders, "Mes réservations" (2026-11-09)
+
+1. **No customer accounts** (product-owner decision). "Mes réservations" lists the bookings whose access tokens this browser holds, and finds any other booking with its reference and phone number (`POST /bookings/lookup`).
+   - Each lookup issues a new token for that device, stored hashed in `t_booking_access_tokens` (migration `006`). The device that booked keeps its own token in `t_bookings.access_token_hash`.
+   - Guessing is impractical: a random 5-character code in the reference, the phone number must match, a uniform 404 and a rate limit.
+   - Later, with an SMS/WhatsApp provider: a code sent to the phone can list every booking for that number, which works like an account without a password.
+2. **Conditions page** (`/conditions`), linked from the details checkbox and from the footer on every page. Customer cancellation rule decided on 2026-11-09: contact the studio at least 48 h before for a full refund or a new date; later, no refund. To be reviewed by a lawyer before launch.
+3. **Loaders** shaped like the content (calendar grid, slots, booking card), and buttons that call the server show a spinner and are disabled while they run.

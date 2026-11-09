@@ -45,6 +45,14 @@ export interface AdminUsersTable {
   updated_at: UpdatedAt;
 }
 
+/** Extra booking access tokens issued by "Mes réservations" lookups (one per device). */
+export interface BookingAccessTokensTable {
+  id: Generated<number>;
+  booking_id: number;
+  token_hash: string;
+  created_at: CreatedAt;
+}
+
 export interface AdminSessionsTable {
   id: Generated<number>;
   admin_user_id: number;
@@ -275,6 +283,7 @@ export interface Database {
   t_package_prices: PackagePricesTable;
   t_customers: CustomersTable;
   t_bookings: BookingsTable;
+  t_booking_access_tokens: BookingAccessTokensTable;
   t_booking_slots: BookingSlotsTable;
   t_slot_blocks: SlotBlocksTable;
   t_slot_occupancies: SlotOccupanciesTable;

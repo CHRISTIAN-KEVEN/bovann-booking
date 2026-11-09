@@ -289,6 +289,56 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - The site speaks with "vous"; the landing mock-up uses "tu".
 - Not added, to keep things simple: dark/light switch, launch countdown, currency switch.
 
+## Customer site: conditions, loaders, Mes réservations (in review)
+
+**Requested by the product owner on 2026-11-09.** Decisions: no accounts ("Mes réservations" instead); cancellation rule of 48 h.
+
+### Delivered
+
+- **Conditions de réservation et d’annulation** (`/conditions`):
+  - service, booking, payment, cancellation by the customer (48 h rule), cancellation by the studio, personal data, contact
+  - linked from the details checkbox (opens in a new tab, the form is kept) and from a footer on every page
+  - the studio phone comes from `NEXT_PUBLIC_STUDIO_CONTACT_PHONE`
+- **Loaders:**
+  - calendar-shaped skeleton while a month loads
+  - slot skeletons in the same layout as the slots
+  - booking-card skeleton on the confirmation page and in Mes réservations
+  - placeholder for the price line on the home page
+  - spinners on "Payer", "Annuler" and the demo payment buttons, which are also disabled while they work
+- **Mes réservations** (`/mes-reservations`, link in the header and footer):
+  - bookings made on this device, upcoming first, then past or cancelled
+  - find a booking with its reference and phone number; it is then remembered on this device
+  - a confirmation link opened on another device offers "Retrouver ma réservation" with the reference filled in
+  - the customer confirmation email has a "Voir ma réservation" button and states the 48 h rule
+- **API:** `POST /bookings/lookup`, migration `006` (`t_booking_access_tokens`), `LOOKUP_RATE_LIMIT_PER_MIN` (10).
+
+### Tests
+
+- **API:** 5 new integration tests:
+  - lookup works, with lower-case reference and spaced phone
+  - a new token per device, and the first device keeps access
+  - same 404 for a wrong phone and an unknown reference
+  - validation
+  - a token does not open another booking
+  - the rate limit is separate from "Payer"
+- **Email template:** the confirmation links to Mes réservations and states the 48 h rule.
+- **Web:** 4 new tests:
+  - device list order, and dead tokens forgotten
+  - empty state
+  - lookup success, remembered on the device
+  - field checks and server error
+- **Totals:** 242 automated tests (197 API, 5 shared, 40 web).
+- **In a real Chrome at 390 and 1440 px:**
+  - loaders captured with a slowed API
+  - booking on one browser, listed in Mes réservations
+  - confirmation link opened in a fresh browser, wrong number refused, right number opens the booking
+  - no browser errors, no horizontal scrolling
+
+### To do before launch
+
+- Lawyer review of the conditions; set the studio phone.
+- Record which version of the conditions each booking accepted (a `terms_version` column), if the lawyer recommends it.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.
@@ -300,8 +350,7 @@ Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's ch
 - Booking slot end times are derived from the space's current slot duration when displayed. The admin does not allow changing the slot duration (Phase 5); if it is ever needed, it must be refused while future bookings exist.
 - The end-to-end browser tests (customer flow and admin) were run manually (Puppeteer + Chrome). Automate them with Playwright in CI during Phase 7 (hardening).
 - The customer site shows one space (`NEXT_PUBLIC_SPACE_SLUG`). The admin can create more spaces, but customers can only book a second space once the site offers a space choice (small change, to schedule when a second studio opens).
-- No terms and conditions page yet: the checkbox text refers to the studio's booking and cancellation conditions, which are still to be written (cancellation policy open question).
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.
 - Admin sign-in limits per connection are kept in memory: fine for one API instance; move them to the database or Redis if the API ever runs on several machines.
-- Customer-facing cancellation policy still open: the studio can cancel and refund by hand, customers can only abandon before paying.
+- Customers cancel by contacting the studio (48 h rule); there is no self-service cancellation after payment. Possible later, inside Mes réservations.
 - A studio cancellation of an online payment in progress only marks it cancelled on our side; with a real provider (Phase 4) the payment must also be cancelled or refunded at the provider.

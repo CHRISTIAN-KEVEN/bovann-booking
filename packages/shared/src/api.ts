@@ -172,3 +172,15 @@ export interface CreateBookingResponse {
     redirectUrl: string | null;
   };
 }
+
+/** "Mes réservations": find a booking from another device. `phone` in E.164. */
+export interface BookingLookupRequest {
+  reference: string;
+  phone: string;
+}
+
+export interface BookingLookupResponse {
+  booking: BookingDto;
+  /** A new access token for this device (the device that booked keeps its own). */
+  accessToken: string;
+}

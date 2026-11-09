@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 import { ReservationRecap } from './ReservationRecap';
+import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
 import styles from './ui.module.css';
 
@@ -28,6 +29,7 @@ export function Screen({
         {title ? <h1 className={styles.srOnly}>{title}</h1> : null}
         {children}
       </div>
+      <SiteFooter />
     </div>
   );
 }
@@ -156,6 +158,21 @@ export function Skeleton({ height = 52, count = 1 }: { height?: number; count?: 
         <div key={i} className={styles.skeleton} style={{ height }} />
       ))}
     </div>
+  );
+}
+
+/** Small spinner inside a button while its request runs (inherits the text colour). */
+export function ButtonSpinner() {
+  return <span className={styles.buttonSpinner} aria-hidden="true" />;
+}
+
+/** Placeholder block with the loading shimmer, sized by the caller's class. */
+export function SkeletonBlock({ className, dark = false }: { className?: string; dark?: boolean }) {
+  return (
+    <span
+      className={`${styles.skeleton} ${dark ? styles.skeletonDark : ''} ${className ?? ''}`}
+      aria-hidden="true"
+    />
   );
 }
 

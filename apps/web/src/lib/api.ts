@@ -1,5 +1,6 @@
 import type {
   BookingDto,
+  BookingLookupResponse,
   CreateBookingRequest,
   CreateBookingResponse,
   DayAvailabilityResponse,
@@ -72,6 +73,12 @@ export const api = {
     apiFetch<DayAvailabilityResponse>(`/spaces/${SPACE_SLUG}/availability/${date}?mode=${mode}`),
   createBooking: (request: CreateBookingRequest) =>
     apiFetch<CreateBookingResponse>('/bookings', { method: 'POST', body: JSON.stringify(request) }),
+  /** "Mes réservations": find a booking with its reference and phone (E.164). */
+  lookupBooking: (reference: string, phone: string) =>
+    apiFetch<BookingLookupResponse>('/bookings/lookup', {
+      method: 'POST',
+      body: JSON.stringify({ reference, phone }),
+    }),
   booking: (reference: string, token: string) =>
     apiFetch<BookingDto>(`/bookings/${reference}`, { token }),
   cancelBooking: (reference: string, token: string) =>

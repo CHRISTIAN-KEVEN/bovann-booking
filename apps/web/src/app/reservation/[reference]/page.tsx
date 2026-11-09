@@ -12,7 +12,8 @@ import {
   Body,
   BottomBar,
   Screen,
-  Spinner,
+  SkeletonBlock,
+  buttonClass,
   buttonDarkClass,
   buttonSecondaryClass,
 } from '@/components/ui';
@@ -37,7 +38,7 @@ export default function BookingPage() {
     const token =
       flow.booking?.reference === reference ? flow.booking.accessToken : tokenFor(reference);
     if (!token) {
-      setError('Ouvrez cette page depuis le téléphone ou l’ordinateur utilisé pour réserver.');
+      setError('Cette réservation n’est pas enregistrée sur cet appareil.');
       return;
     }
     api
@@ -74,6 +75,12 @@ export default function BookingPage() {
           <Alert tone="error" title="Réservation introuvable">
             {error}
           </Alert>
+          <Link
+            href={`/mes-reservations?ref=${encodeURIComponent(reference)}`}
+            className={buttonClass}
+          >
+            Retrouver ma réservation
+          </Link>
           <Link href="/" className={buttonSecondaryClass}>
             Retour à l’accueil
           </Link>
@@ -86,7 +93,17 @@ export default function BookingPage() {
     return (
       <Screen layout="single">
         <Body>
-          <Spinner label="Chargement de votre réservation…" />
+          <div
+            className={styles.loading}
+            role="status"
+            aria-label="Chargement de votre réservation…"
+          >
+            <SkeletonBlock className={styles.skCircle} />
+            <SkeletonBlock className={styles.skTitle} />
+            <SkeletonBlock className={styles.skLine} />
+            <SkeletonBlock className={styles.skCard} />
+            <SkeletonBlock className={styles.skButton} />
+          </div>
         </Body>
       </Screen>
     );

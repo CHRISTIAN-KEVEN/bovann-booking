@@ -31,6 +31,7 @@ export async function bookingApp(
     DATABASE_URL: testDatabaseUrl(),
     HOLD_EXPIRY_INTERVAL_SEC: '0',
     HOLD_RATE_LIMIT_PER_MIN: '1000',
+    LOOKUP_RATE_LIMIT_PER_MIN: '1000',
     ...env,
   });
   const moduleRef = await Test.createTestingModule({
