@@ -171,9 +171,56 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - **4 new database integrity tests:** studio booking without its author, refund without amount or date, "Remboursée" without a done refund, unique session token. One of them caught a CHECK that let a missing refund amount through; it was fixed before review.
 - **4 password unit tests.**
 
-## Next: Phase 5b — Admin screens
+## Phase 5b — Admin screens (in review)
 
-Screens following the approved designs (Réservations, Forfaits & prix, Espaces & horaires), plus sign-in, Calendrier, Clients, Paiements and Paramètres (accounts, notification emails), and the studio booking form.
+**Objective:** the studio runs its calendar from the browser, following the approved designs (Réservations, Forfaits & prix, Espaces & horaires).
+
+### Delivered (French, `/admin`, desktop first and usable on a phone)
+
+- **Sign-in**, forced choice of a personal password after a temporary one, sign-out. Returns to the page that asked for sign-in. The admin area is excluded from search engines.
+- **Réservations:**
+  - the 4 figures from the design, plus a "refunds to handle" banner
+  - day planning (booked / waiting for payment / blocked / free); click a booking to open it, a free slot to book or block it, a blocked slot to unblock it
+  - list with tabs (all, confirmed, payment in progress, to collect, to refund, cancelled, abandoned), search, period filter and pages
+- **Booking panel:** session, client (tap-to-call), payments, history, internal note.
+  - Actions follow the role: record a payment (everyone); cancel with the amount to refund, and mark refunded (administrator).
+- **Studio booking form:**
+  - date, mode, single slots or a package with its start time
+  - client found by phone number (details pre-filled)
+  - catalog price, or a negotiated price / free
+  - paid now (method, operator) or to collect later
+  - if the slot was taken meanwhile, a clear message and refreshed availability
+- **Block slots** with a reason (suggested reasons).
+- **Calendrier:** week view of every slot, same actions as the day planning.
+- **Forfaits & prix** (design): base price per mode, package table with discount badges, editor with the live "client saves X (−Y %)" calculation and the ladder rule. Server refusals are shown as they come.
+- **Espaces & horaires** (design):
+  - space cards and a new space
+  - settings: modes, notice, horizon, hold 2–15 min, "presque complet"
+  - weekly hours with slot counts
+  - closures (whole days or hours)
+  - conflicts list the bookings in the way
+- **Clients:** search, totals, client panel with their bookings.
+- **Paiements:** refunds to handle, then all payments filtered by state.
+- **Paramètres:**
+  - my account and password
+  - users: create (temporary password shown once, with copy), change role, reset password, deactivate or reactivate
+  - owner notification emails: add, pause, remove
+- The team (Équipe) sees no administrator-only action; the API refuses them anyway.
+
+### Tests
+
+- **Totals:** 202 automated tests (166 API, 5 shared, 31 web)
+- **New web tests (12):** admin API client (cookie, CSRF header only on changes, ended session sends the admin to sign-in except on a failed sign-in, clean queries), display helpers (phone, statuses, payment labels, French amounts, studio-local dates), sign-in page (validation, server message, return to the requested page or to the password change), booking panel (cancel a paid booking: reason required, amount paid proposed, request sent, refund action shown)
+- **End-to-end in a real Chrome against the running API** (one-off):
+  - sign-in (wrong then right password), studio booking, cancellation with refund to handle, every page at desktop and phone width
+  - administrator creates a team member, who signs in with the temporary password, must choose a new one, and then sees no administrator-only actions
+  - no browser errors besides the expected 401 before sign-in, and no horizontal scrolling
+
+### Found and fixed during the visual check
+
+- Time fields showed "08:00 AM" in browsers set to English: replaced by 24-hour pickers.
+- Figures stacked one per line on phones: two per line now.
+- French punctuation spacing in the admin texts.
 
 ## Then: Phase 4 — Payments
 
@@ -184,7 +231,8 @@ Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's ch
 - TypeScript table types are maintained by hand (see architecture.md §1). Consider generating them with `kysely-codegen` in CI if drift becomes a problem.
 - `ts-jest` 29 runs with Jest 30. Works today; move to ts-jest 30 when it is released.
 - Booking slot end times are derived from the space's current slot duration when displayed. The admin does not allow changing the slot duration (Phase 5); if it is ever needed, it must be refused while future bookings exist.
-- The end-to-end browser test was run manually (Puppeteer + Chrome). Automate it with Playwright in CI during Phase 7 (hardening).
+- The end-to-end browser tests (customer flow and admin) were run manually (Puppeteer + Chrome). Automate them with Playwright in CI during Phase 7 (hardening).
+- The customer site shows one space (`NEXT_PUBLIC_SPACE_SLUG`). The admin can create more spaces, but customers can only book a second space once the site offers a space choice (small change, to schedule when a second studio opens).
 - No terms and conditions page yet: the checkbox text refers to the studio's booking and cancellation conditions, which are still to be written (cancellation policy open question).
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.
 - Admin sign-in limits per connection are kept in memory: fine for one API instance; move them to the database or Redis if the API ever runs on several machines.
