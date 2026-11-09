@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { CountrySelect } from '@/components/CountrySelect';
 import { useFlow } from '@/components/FlowProvider';
 import { SelectionCard } from '@/components/SelectionCard';
 import {
@@ -15,7 +16,6 @@ import {
   buttonClass,
 } from '@/components/ui';
 import {
-  COUNTRY_CODES,
   SECTORS,
   composePhone,
   splitPhone,
@@ -129,23 +129,14 @@ function DetailsForm() {
               Téléphone (WhatsApp) <span className={styles.req}>*</span>
             </label>
             <div className={styles.phoneRow}>
-              <select
-                aria-label="Indicatif du pays"
+              <CountrySelect
                 value={countryCode}
-                onChange={(e) => {
-                  setCountryCode(e.target.value);
+                onChange={(code) => {
+                  setCountryCode(code);
                   if (submitted)
-                    setErrors(
-                      validateDetails({ ...form, phone: composePhone(e.target.value, localPhone) }),
-                    );
+                    setErrors(validateDetails({ ...form, phone: composePhone(code, localPhone) }));
                 }}
-              >
-                {COUNTRY_CODES.map((c) => (
-                  <option key={c.code} value={c.code}>
-                    {c.code}
-                  </option>
-                ))}
-              </select>
+              />
               <input
                 id="field-phone"
                 type="tel"

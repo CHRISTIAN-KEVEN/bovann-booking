@@ -1181,3 +1181,8 @@
     font-size: 22px;
   }
 }
+
+/* Phone country picker in admin forms: same height as the inputs. */
+.countrySelect {
+  min-height: 44px;
+}

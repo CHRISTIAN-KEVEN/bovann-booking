@@ -5,6 +5,7 @@ import { BOOKING_STATUS_LABELS_FR, SESSION_MODE_LABELS_FR, formatXof } from '@bo
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
+import { CountrySelect } from '@/components/CountrySelect';
 import { Icon } from '@/components/icons';
 import {
   Alert,
@@ -200,17 +201,7 @@ export function MyBookings() {
             <div className={styles.field}>
               <label htmlFor="lookup-phone">Téléphone</label>
               <div className={styles.phoneRow}>
-                <select
-                  aria-label="Indicatif du pays"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                >
-                  {COUNTRY_CODES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code}
-                    </option>
-                  ))}
-                </select>
+                <CountrySelect value={countryCode} onChange={setCountryCode} />
                 <input
                   id="lookup-phone"
                   type="tel"

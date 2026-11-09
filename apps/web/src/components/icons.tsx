@@ -16,6 +16,7 @@ const paths = {
   ),
   back: <path d="M15 18l-6-6 6-6" />,
   next: <path d="M9 18l6-6-6-6" />,
+  chevronDown: <path d="M6 9l6 6 6-6" />,
   arrowUpRight: <path d="M7 17L17 7M8 7h9v9" />,
   pin: (
     <>
