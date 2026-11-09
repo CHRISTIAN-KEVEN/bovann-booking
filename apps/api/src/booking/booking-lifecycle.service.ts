@@ -307,6 +307,8 @@ export class BookingLifecycleService {
           template,
           recipient: r.email,
           payload: JSON.stringify(payload),
+          // Due now by the app clock: the sender compares with the same clock, not the DB's.
+          next_attempt_at: this.clock.now(),
         })),
       )
       .onDuplicateKeyUpdate((eb) => ({ id: eb.ref('t_notifications.id') }))
@@ -328,6 +330,7 @@ export class BookingLifecycleService {
         template,
         recipient: payload.customer.email,
         payload: JSON.stringify(payload),
+        next_attempt_at: this.clock.now(),
       })
       .onDuplicateKeyUpdate((eb) => ({ id: eb.ref('t_notifications.id') }))
       .execute();
