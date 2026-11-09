@@ -16,7 +16,11 @@ import type {
  */
 
 export const SPACE_SLUG = process.env.NEXT_PUBLIC_SPACE_SLUG ?? 'studio-principal-lome';
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+/**
+ * API address. Empty by default: the browser calls `/api/...` on the website's own address and
+ * the website forwards it (see next.config.ts), which works on localhost, a tunnel or a domain.
+ */
+const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? '').replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(
