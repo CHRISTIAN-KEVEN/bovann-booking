@@ -268,13 +268,13 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 ### Delivered
 
 - **Brand:** OCD Live wordmark (drawn after the studio sign, to replace with the official vector file), "par Bovann", Poppins for headings, brand orange `#f26b1d` for highlights. Buttons keep the darker orange so white text stays readable (WCAG AA).
-- **Home page:** dark stage with a glowing map of Africa (Natural Earth outline, studio in Lomé, dotted links to 11 cities), headline "Votre produit en direct devant toute l’Afrique.", the two modes as cards, and a line with the slot length and the lowest price taken from the catalog.
+- **Home page:** headline, the two modes, and the prices taken from the catalog. _Redone on 2026-11-09 (see below): the first version followed the reference mock-up too closely._
 - **One tap less:** choosing a mode now opens the calendar directly (no separate "Continuer").
 - **Desktop (≥ 1024 px):**
   - booking steps use the width: content on the left, a sticky "Votre réservation" panel on the right with the earlier choices, "Modifier" links, the total and the main button
   - bigger calendar days, slots in two columns, so a whole day fits on one screen
   - the confirmation is one centred column
-- **Phones:** the booking steps are unchanged apart from the new header; the map becomes a faint backdrop so the two mode cards stay near the top.
+- **Phones:** the booking steps are unchanged apart from the new header.
 - **Tablets:** one centred column (680 px).
 
 ### Tests
@@ -338,6 +338,18 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 
 - Lawyer review of the conditions; set the studio phone.
 - Record which version of the conditions each booking accepted (a `terms_version` column), if the lawyer recommends it.
+
+## Original home page (in review)
+
+**Product owner, 2026-11-09:** the home page copied the reference mock-up (dark stage, glowing Africa map with dotted links, the same headline and cards). It was to be inspiration only. Redone as our own design, same flow:
+
+- Light, warm page under the dark brand header.
+- Headline "Passez en direct. On s’occupe du plateau." and our own text.
+- Visual: a phone showing a live sale in progress ("EN DIRECT", viewers, comments, "Commander") in front of a studio ring light, with the booked slot card. Drawn in CSS, decorative, hidden from screen readers.
+- Mode choice as two rows, each with its own starting price from the catalog (skeleton while it loads). One tap still opens the calendar.
+- "Comment ça marche" in three steps: choose a slot, pay online, go live.
+- The Africa map and its data file are removed.
+- Tests updated (price per mode). Checked in Chrome at 390, 820 and 1440 px: no errors, no horizontal scrolling.
 
 ## Then: Phase 4 — Payments
 

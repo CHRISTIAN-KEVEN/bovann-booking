@@ -1,0 +1,351 @@
+.scene {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  aspect-ratio: 1 / 1.08;
+  margin: 0 auto;
+}
+
+/* Studio ring light behind the phone. */
+.ring {
+  position: absolute;
+  inset: 4% 2% 10% 8%;
+  border-radius: 50%;
+  border: 18px solid #fff4ea;
+  box-shadow:
+    0 0 0 2px rgba(242, 107, 29, 0.35),
+    0 0 60px 10px rgba(242, 107, 29, 0.28),
+    inset 0 0 40px rgba(242, 107, 29, 0.25);
+}
+
+.phone {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  width: 54%;
+  aspect-ratio: 9 / 18;
+  transform: translateX(-50%) rotate(-4deg);
+  padding: 8px;
+  border-radius: 34px;
+  background: var(--color-ink);
+  box-shadow: 0 30px 60px rgba(20, 21, 27, 0.28);
+}
+
+.screen {
+  position: relative;
+  height: 100%;
+  border-radius: 27px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(170deg, #3a2a22 0%, #6b3b22 45%, #c2410c 100%);
+  color: #fff;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 10px 0;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.onAir {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #e5332a;
+  letter-spacing: 0.5px;
+}
+
+.onAirDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: blink 1.4s ease-in-out infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.viewers {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Abstract live set: host, clothes rack, product tag. */
+.set {
+  position: relative;
+  flex: 1;
+}
+
+.host {
+  position: absolute;
+  left: 18%;
+  bottom: 0;
+  width: 46%;
+  height: 78%;
+}
+
+.head {
+  position: absolute;
+  left: 50%;
+  bottom: 58%;
+  width: 42%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: #8a4b2a;
+}
+
+.body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 62%;
+  border-radius: 48% 48% 0 0;
+  background: linear-gradient(160deg, #f26b1d, #ffb347);
+}
+
+.rack {
+  position: absolute;
+  right: 8%;
+  top: 22%;
+  display: flex;
+  gap: 4px;
+}
+
+.rack span {
+  width: 12px;
+  height: 46px;
+  border-radius: 4px 4px 6px 6px;
+  background: #fde1c8;
+}
+
+.rack span:nth-child(2) {
+  background: #2f6f5e;
+}
+
+.rack span:nth-child(3) {
+  background: #f9c74f;
+}
+
+.productTag {
+  position: absolute;
+  right: 8%;
+  bottom: 12%;
+  display: flex;
+  flex-direction: column;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: #fff;
+  color: var(--color-ink);
+  font-size: 9px;
+  line-height: 1.3;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.productTag span {
+  color: var(--color-brand-strong);
+  font-weight: 700;
+}
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.45), transparent);
+}
+
+.comments p {
+  margin: 0;
+  align-self: flex-start;
+  max-width: 92%;
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.32);
+  font-size: 8.5px;
+  line-height: 1.35;
+  animation: rise 6s ease-in-out infinite;
+}
+
+.comments p:nth-child(2) {
+  animation-delay: -2s;
+}
+
+.comments p:nth-child(3) {
+  animation-delay: -4s;
+}
+
+@keyframes rise {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-2px);
+    opacity: 0.85;
+  }
+}
+
+.comments b {
+  margin-right: 4px;
+  color: #ffd2b0;
+}
+
+.bar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px 14px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.input {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.buy {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-brand-strong);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+/* Floating hearts, as viewers react. */
+.hearts {
+  position: absolute;
+  right: 18%;
+  top: 34%;
+  width: 30px;
+  height: 120px;
+}
+
+.hearts span {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  width: 14px;
+  height: 14px;
+  background: #e5332a;
+  transform: rotate(45deg);
+  animation: float 3.6s ease-in infinite;
+  opacity: 0;
+}
+
+.hearts span::before,
+.hearts span::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.hearts span::before {
+  left: -7px;
+}
+
+.hearts span::after {
+  top: -7px;
+}
+
+.hearts span:nth-child(2) {
+  left: 0;
+  background: var(--color-brand);
+  animation-delay: 1.2s;
+}
+
+.hearts span:nth-child(3) {
+  left: 14px;
+  background: #ff8fa3;
+  animation-delay: 2.4s;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(0) rotate(45deg) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-110px) rotate(45deg) scale(1);
+    opacity: 0;
+  }
+}
+
+/* The booked slot that made the live happen. */
+.ticket {
+  position: absolute;
+  left: -2%;
+  bottom: 1%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(20, 21, 27, 0.16);
+  transform: rotate(-2deg);
+}
+
+.ticketIcon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-success-soft);
+  color: var(--color-success);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ticketText {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ticketText strong {
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+/* Below desktop the scene is narrower: the slot card sits under the phone, clear of its buttons. */
+@media (max-width: 1023px) {
+  .scene {
+    margin-bottom: 36px;
+  }
+
+  .ticket {
+    bottom: -9%;
+  }
+}

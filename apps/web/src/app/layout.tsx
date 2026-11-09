@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: '%s · OCD Live',
   },
   description:
-    'Votre produit en direct devant toute l’Afrique. Réservez votre live au studio OCD Live de Bovann à Lomé, en studio ou à distance. Lives de 1h30, paiement Mobile Money.',
+    'Passez en direct, on s’occupe du plateau. Réservez votre live shopping au studio OCD Live de Bovann à Lomé, en studio ou en virtuel. Paiement Mobile Money ou carte.',
 };
 
 export const viewport: Viewport = {
