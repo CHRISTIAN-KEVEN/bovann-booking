@@ -50,6 +50,17 @@ pnpm dev:web           # http://localhost:3000 (full booking flow, payments simu
 | `pnpm db:seed`                                                                 | Re-apply reference data (safe to run repeatedly)                                        |
 | `pnpm build`                                                                   | Production builds of all packages                                                       |
 
+## Sharing the site from your computer (ngrok)
+
+The website forwards `/api/*` to the API, so one tunnel to the website is enough:
+
+1. In `apps/web/.env.local`, leave `NEXT_PUBLIC_API_URL` empty (or delete the line).
+2. In `apps/api/.env`, set `TRUST_PROXY_HOPS=1`, so each visitor gets their own rate limits.
+3. Optional: set `PUBLIC_WEB_URL` in `apps/api/.env` to the ngrok address, so links in emails point to it.
+4. Restart both, then run `ngrok http 3000` and share the `https://….ngrok-free.app` address.
+
+Next.js only lets other addresses use its development server if they are listed in `allowedDevOrigins`; ngrok addresses are allowed by default (`DEV_ALLOWED_ORIGINS` in `apps/web/.env.local` to change it).
+
 ## Conventions
 
 - All database tables are prefixed `t_`; times are stored in UTC; amounts are whole XOF.
