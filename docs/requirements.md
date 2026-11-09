@@ -86,6 +86,19 @@ _Last updated 2026-11-09_
   - The customer is emailed if they gave an address (sent in Phase 6).
 - **Late payment** for slots someone else has taken also lands in "refunds to handle".
 
+## Customer cancellation (decided 2026-11-09)
+
+- At least 48 hours before the live: the customer contacts the studio and chooses a full refund or a new date (subject to availability).
+- Less than 48 hours before, or not showing up: no refund.
+- A studio cancellation is always refunded in full, or moved to a new date if the customer prefers.
+- Published on the conditions page (`/conditions`), linked from the booking form. To be reviewed by a lawyer before launch.
+
+## Mes réservations (decided 2026-11-09)
+
+- No customer accounts or passwords. "Mes réservations" shows the bookings made on that device and finds any other booking with its reference and phone number.
+- The customer confirmation email links to it.
+- Later, with an SMS/WhatsApp provider: a code sent to the phone lists every booking for that number.
+
 ## Technical decisions (confirmed)
 
 - Next.js + NestJS (TypeScript), **MySQL 8**, Docker Compose on a VPS
@@ -101,7 +114,6 @@ _Last updated 2026-11-09_
 
 - Opening hours 08:00–21:30 → 9 slots/day
 - Virtual price = in-studio price unless the admin sets otherwise
-- Cancellation / refund policy for customers: not yet defined (the studio can cancel and refund by hand since Phase 5)
 - SMS/WhatsApp and email sending providers: TBD
 
 ## Design

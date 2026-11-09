@@ -6,8 +6,9 @@ import { useEffect, useState } from 'react';
 import { AfricaMap } from '@/components/AfricaMap';
 import { useFlow } from '@/components/FlowProvider';
 import { Icon } from '@/components/icons';
+import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import { Alert } from '@/components/ui';
+import { Alert, SkeletonBlock } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { formatDuration } from '@/lib/dates';
 import styles from './ModeChooser.module.css';
@@ -107,14 +108,18 @@ export function ModeChooser() {
             </div>
           </section>
 
-          <p className={styles.facts}>
-            {facts.map((f, i) => (
-              <span key={f}>
-                {i > 0 ? <span aria-hidden="true"> · </span> : null}
-                {f}
-              </span>
-            ))}
-          </p>
+          {fromXof || error ? (
+            <p className={styles.facts}>
+              {facts.map((f, i) => (
+                <span key={f}>
+                  {i > 0 ? <span aria-hidden="true"> · </span> : null}
+                  {f}
+                </span>
+              ))}
+            </p>
+          ) : (
+            <SkeletonBlock dark className={styles.factsSkeleton} />
+          )}
         </div>
 
         <div className={styles.visual}>
@@ -122,6 +127,7 @@ export function ModeChooser() {
           <p className={styles.caption}>Le studio est à Lomé · Votre public est partout</p>
         </div>
       </main>
+      <SiteFooter dark />
     </div>
   );
 }

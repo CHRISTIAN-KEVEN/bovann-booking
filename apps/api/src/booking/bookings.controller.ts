@@ -10,11 +10,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   MOBILE_MONEY_CHANNELS,
   SESSION_MODES,
   type BookingDto,
+  type BookingLookupResponse,
   type CreateBookingRequest,
   type CreateBookingResponse,
 } from '@bovann/shared';
@@ -100,6 +101,14 @@ const createBookingSchema = z.object({
 
 const referenceSchema = z.string().regex(/^BOV-\d{4}-[0-9A-Z]{5}$/, 'Référence invalide.');
 
+const lookupSchema = z.object({
+  reference: z
+    .string({ message: 'La référence est obligatoire.' })
+    .transform((v) => v.trim().toUpperCase())
+    .pipe(referenceSchema),
+  phone,
+});
+
 /**
  * Customer booking endpoints. The controller only validates and delegates;
  * rules live in the services. "Payer" is rate limited per client connection.
@@ -116,10 +125,21 @@ export class BookingsController {
   /** "Payer": hold the slots for a few minutes and start the payment. */
   @Post()
   @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ lookups: true })
   async create(@Body() body: unknown, @Req() req: Request): Promise<CreateBookingResponse> {
     const input = parseOrThrow(createBookingSchema, body) as CreateBookingRequest;
     await this.turnstile.assertHuman(input.captchaToken, req.ip);
     return this.holds.create(input);
+  }
+
+  /** "Mes réservations": find a booking from another device with its reference and phone. */
+  @Post('lookup')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @SkipThrottle({ holds: true })
+  async lookup(@Body() body: unknown): Promise<BookingLookupResponse> {
+    const input = parseOrThrow(lookupSchema, body);
+    return this.query.lookup(input.reference, input.phone);
   }
 
   /** Follow a booking (payment screen polling, confirmation screen). */

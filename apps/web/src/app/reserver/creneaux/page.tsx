@@ -12,7 +12,7 @@ import {
   BottomBar,
   PageTitle,
   Screen,
-  Skeleton,
+  SkeletonBlock,
   StepHeader,
   buttonClass,
   buttonSecondaryClass,
@@ -155,7 +155,17 @@ function SlotsChooser() {
           </Alert>
         ) : null}
 
-        {!day && !error ? <Skeleton height={52} count={6} /> : null}
+        {!day && !error ? (
+          <div
+            className={`${styles.list} ${styles.slotGrid}`}
+            role="status"
+            aria-label="Chargement des créneaux…"
+          >
+            {Array.from({ length: 6 }, (_, i) => (
+              <SkeletonBlock key={i} className={styles.slotSkeleton} />
+            ))}
+          </div>
+        ) : null}
 
         {day && day.availableCount === 0 ? (
           <Alert tone="info" title="Plus aucun créneau ce jour-là">

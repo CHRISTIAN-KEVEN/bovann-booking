@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { useFlow } from '@/components/FlowProvider';
@@ -253,7 +254,13 @@ function DetailsForm() {
                 aria-invalid={Boolean(errors.acceptTerms)}
                 aria-describedby={describedBy('acceptTerms')}
               />
-              <span>J’accepte les conditions de réservation et d’annulation du studio.</span>
+              <span>
+                J’accepte les{' '}
+                <Link href="/conditions" target="_blank" rel="noopener">
+                  conditions de réservation et d’annulation
+                </Link>{' '}
+                du studio.
+              </span>
             </label>
             {err('acceptTerms')}
           </div>

@@ -235,6 +235,14 @@ The booking as the customer sees it (`BookingDto`): status, slots, local times, 
 
 The customer gives up before paying: slots are freed **immediately**. Idempotent. A confirmed booking answers `409 BOOKING_NOT_CANCELLABLE`.
 
+### `POST /bookings/lookup`: "Mes réservations"
+
+Finds a booking from another device, without an account. Body: `{reference, phone}` (reference in any case, phone in E.164; spaces are ignored).
+
+- **`200`** `{booking: BookingDto, accessToken}`. The token is new and belongs to this device; the device that booked keeps its own. Only the hash is stored (`t_booking_access_tokens`).
+- **`404 BOOKING_NOT_FOUND`**: the same answer for an unknown reference and a wrong phone.
+- **`429`**: 10 lookups per minute per connection (`LOOKUP_RATE_LIMIT_PER_MIN`), counted separately from "Payer".
+
 ### Development only: `POST /dev/payments/:reference/succeed` | `/fail`
 
 Decides the outcome of a simulated payment. Answers 404 unless `PAYMENT_PROVIDER=mock` outside production. Replaced by signed provider webhooks in Phase 4.

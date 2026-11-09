@@ -100,6 +100,11 @@
   cursor: default;
 }
 
+.daySkeleton {
+  height: var(--touch-target);
+  border-radius: 10px;
+}
+
 .dot {
   width: 5px;
   height: 5px;
@@ -234,7 +239,8 @@
     gap: 6px;
   }
 
-  .day {
+  .day,
+  .daySkeleton {
     height: 64px;
     font-size: 17px;
   }

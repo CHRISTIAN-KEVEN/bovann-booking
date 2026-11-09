@@ -4,6 +4,7 @@ import * as fewSlotsThreshold from './migrations/2026_11_08_002_space_few_slots_
 import * as bookingHolds from './migrations/2026_11_09_003_booking_holds_and_abuse_policy';
 import * as removeAbuseRules from './migrations/2026_11_09_004_remove_abuse_rules';
 import * as admin from './migrations/2026_11_09_005_admin';
+import * as bookingAccessTokens from './migrations/2026_11_09_006_booking_access_tokens';
 
 /**
  * Migrations are registered explicitly (not discovered from the file system),
@@ -17,6 +18,7 @@ const migrations: Record<string, Migration> = {
   '2026_11_09_003_booking_holds_and_abuse_policy': bookingHolds,
   '2026_11_09_004_remove_abuse_rules': removeAbuseRules,
   '2026_11_09_005_admin': admin,
+  '2026_11_09_006_booking_access_tokens': bookingAccessTokens,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the migrator works on any schema

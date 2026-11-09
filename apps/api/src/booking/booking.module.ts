@@ -20,6 +20,7 @@ import { TurnstileService } from './turnstile.service';
       inject: [ENV],
       useFactory: (env: Env) => [
         { name: 'holds', ttl: 60_000, limit: env.HOLD_RATE_LIMIT_PER_MIN },
+        { name: 'lookups', ttl: 60_000, limit: env.LOOKUP_RATE_LIMIT_PER_MIN },
       ],
     }),
   ],

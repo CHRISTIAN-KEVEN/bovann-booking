@@ -93,6 +93,12 @@ describe('email templates', () => {
     expect(email.text).toContain('jeudi 12 novembre 2026');
     expect(email.text).toContain('+228 90 00 00 00');
     expect(email.text).not.toContain('afi@example.tg'); // their own details aren't repeated
+    // A way back to the booking from any device, and the cancellation rule.
+    expect(email.html).toContain(
+      'https://reservation.bovann.tg/mes-reservations?ref=BOV-2611-7KQ4M',
+    );
+    expect(email.text).toMatch(/au moins 48\sheures avant/);
+    expect(email.text).toContain('https://reservation.bovann.tg/conditions');
   });
 
   it('tells the customer about a cancellation and the refund to come', () => {

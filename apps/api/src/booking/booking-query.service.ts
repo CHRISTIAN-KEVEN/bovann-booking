@@ -6,7 +6,7 @@ import { CLOCK, type Clock } from '../common/clock';
 import { notFound } from '../common/errors';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
-import { hashAccessToken } from './domain/identifiers';
+import { generateAccessToken, hashAccessToken } from './domain/identifiers';
 
 /** Read side of bookings: builds the customer-facing DTO. */
 @Injectable()
@@ -21,16 +21,58 @@ export class BookingQueryService {
    * 404 as an unknown reference, so references can't be probed.
    */
   async idByReferenceAndToken(reference: string, token: string | undefined): Promise<number> {
-    const row = token
+    const hash = token ? hashAccessToken(token) : undefined;
+    const row = hash
       ? await this.db
-          .selectFrom('t_bookings')
-          .select('id')
-          .where('reference', '=', reference)
-          .where('access_token_hash', '=', hashAccessToken(token))
+          .selectFrom('t_bookings as b')
+          .select('b.id')
+          .where('b.reference', '=', reference)
+          .where((eb) =>
+            eb.or([
+              eb('b.access_token_hash', '=', hash),
+              eb.exists(
+                eb
+                  .selectFrom('t_booking_access_tokens as t')
+                  .select('t.id')
+                  .whereRef('t.booking_id', '=', 'b.id')
+                  .where('t.token_hash', '=', hash),
+              ),
+            ]),
+          )
           .executeTakeFirst()
       : undefined;
     if (!row) throw notFound('BOOKING_NOT_FOUND', 'Réservation introuvable.');
     return row.id;
+  }
+
+  /**
+   * "Mes réservations": finds a booking from its reference and the customer's phone number, and
+   * issues a new access token for this device. A mismatch gets the same 404 as an unknown
+   * reference; the route is rate limited, and references are random, so guessing is impractical.
+   */
+  async lookup(
+    reference: string,
+    phone: string,
+  ): Promise<{ booking: BookingDto; accessToken: string }> {
+    const row = await this.db
+      .selectFrom('t_bookings as b')
+      .innerJoin('t_customers as c', 'c.id', 'b.customer_id')
+      .select('b.id')
+      .where('b.reference', '=', reference)
+      .where('c.phone_e164', '=', phone)
+      .executeTakeFirst();
+    if (!row) {
+      throw notFound(
+        'BOOKING_NOT_FOUND',
+        'Aucune réservation ne correspond à cette référence et à ce numéro.',
+      );
+    }
+    const access = generateAccessToken();
+    await this.db
+      .insertInto('t_booking_access_tokens')
+      .values({ booking_id: row.id, token_hash: access.hash })
+      .execute();
+    return { booking: await this.byId(row.id), accessToken: access.token };
   }
 
   async byId(bookingId: number): Promise<BookingDto> {

@@ -35,6 +35,8 @@ const envSchema = z
     HOLD_EXPIRY_INTERVAL_SEC: z.coerce.number().int().min(0).max(3600).default(30),
     /** "Payer" attempts allowed per client connection per minute. */
     HOLD_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(5),
+    /** "Mes réservations" lookups (reference + phone) per minute per connection. */
+    LOOKUP_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),
     /** Admin sign-in attempts allowed per client connection per minute (on top of account lockout). */
     ADMIN_LOGIN_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),
     /**

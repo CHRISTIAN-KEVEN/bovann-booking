@@ -13,7 +13,7 @@ import {
   BottomBar,
   PageTitle,
   Screen,
-  Skeleton,
+  SkeletonBlock,
   StepHeader,
   buttonClass,
   buttonSecondaryClass,
@@ -193,7 +193,11 @@ export default function DatePage() {
               })}
             </div>
           ) : (
-            <Skeleton height={44} count={5} />
+            <div className={styles.grid} role="status" aria-label="Chargement des disponibilités…">
+              {Array.from({ length: 35 }, (_, i) => (
+                <SkeletonBlock key={i} className={styles.daySkeleton} />
+              ))}
+            </div>
           )}
 
           <div className={styles.legend}>

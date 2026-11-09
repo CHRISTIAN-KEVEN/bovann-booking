@@ -285,10 +285,15 @@ export function renderEmail(
           { heading: 'Votre séance', rows: sessionRows(p, true) },
           { heading: 'Paiement', rows: [['Montant', amountOf(p.totalXof)]] },
         ],
-        note:
+        note: `${
           p.mode === 'VIRTUAL'
             ? 'Séance virtuelle : l’équipe du studio vous contactera avant la séance pour organiser la connexion.'
-            : 'Merci d’arriver quelques minutes avant le début de votre séance.',
+            : 'Merci d’arriver quelques minutes avant le début de votre séance.'
+        } Pour annuler ou changer de date, contactez le studio au moins 48${NB}heures avant (conditions${NB}: ${ctx.webUrl}/conditions).`,
+        button: {
+          label: 'Voir ma réservation',
+          href: `${ctx.webUrl}/mes-reservations?ref=${encodeURIComponent(p.reference)}`,
+        },
         footer: customerFooter(ctx),
       });
 

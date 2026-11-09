@@ -69,8 +69,30 @@
   box-shadow: 0 0 0 3px rgba(255, 77, 46, 0.25);
 }
 
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--touch-target);
+  padding: 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  text-decoration: none;
+}
+
+.mine:hover {
+  color: var(--color-brand);
+}
+
 /* Phones: the logo carries the brand; the place pill would crowd it. */
-@media (max-width: 479px) {
+@media (max-width: 767px) {
   .place {
     display: none;
   }

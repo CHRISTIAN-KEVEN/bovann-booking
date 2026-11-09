@@ -13,6 +13,7 @@ import {
   Body,
   BottomBar,
   Screen,
+  ButtonSpinner,
   Spinner,
   StepHeader,
   buttonClass,
@@ -45,6 +46,8 @@ function Payment() {
   const summary = flow.summary!;
   const defaultPayer = splitPhone(details.phone);
 
+  const [cancelling, setCancelling] = useState(false);
+  const [simulating, setSimulating] = useState<'succeed' | 'fail' | null>(null);
   const [phase, setPhase] = useState<Phase>(
     flow.booking ? { kind: 'submitting' } : { kind: 'form' },
   );
@@ -171,6 +174,7 @@ function Payment() {
   }
 
   async function cancel() {
+    setCancelling(true);
     if (flow.booking) {
       await api
         .cancelBooking(flow.booking.reference, flow.booking.accessToken)
@@ -187,7 +191,9 @@ function Payment() {
 
   async function simulate(outcome: 'succeed' | 'fail') {
     if (!waiting) return;
+    setSimulating(outcome);
     await api.simulatePayment(waiting.booking.reference, outcome).catch(() => undefined);
+    setSimulating(null);
   }
 
   // ------------------------------------------------------------ waiting
@@ -230,14 +236,18 @@ function Payment() {
                   type="button"
                   className={buttonSecondaryClass}
                   onClick={() => simulate('succeed')}
+                  disabled={simulating !== null}
                 >
+                  {simulating === 'succeed' ? <ButtonSpinner /> : null}
                   Simuler un paiement réussi
                 </button>
                 <button
                   type="button"
                   className={buttonSecondaryClass}
                   onClick={() => simulate('fail')}
+                  disabled={simulating !== null}
                 >
+                  {simulating === 'fail' ? <ButtonSpinner /> : null}
                   Simuler un échec
                 </button>
               </div>
@@ -245,8 +255,14 @@ function Payment() {
           ) : null}
         </Body>
         <BottomBar step={5} locked>
-          <button type="button" className={buttonSecondaryClass} onClick={cancel}>
-            Annuler et libérer les créneaux
+          <button
+            type="button"
+            className={buttonSecondaryClass}
+            onClick={cancel}
+            disabled={cancelling}
+          >
+            {cancelling ? <ButtonSpinner /> : null}
+            {cancelling ? 'Annulation…' : 'Annuler et libérer les créneaux'}
           </button>
         </BottomBar>
       </Screen>
@@ -416,9 +432,14 @@ function Payment() {
           onClick={pay}
           disabled={phase.kind === 'submitting' || !payerValid || !captchaReady}
         >
-          {phase.kind === 'submitting'
-            ? 'Réservation en cours…'
-            : `Payer ${formatXof(summary.totalXof)}`}
+          {phase.kind === 'submitting' ? (
+            <>
+              <ButtonSpinner />
+              Réservation en cours…
+            </>
+          ) : (
+            `Payer ${formatXof(summary.totalXof)}`
+          )}
         </button>
       </BottomBar>
     </Screen>

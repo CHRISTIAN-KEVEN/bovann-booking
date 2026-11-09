@@ -159,6 +159,13 @@
   font-weight: 600;
 }
 
+.factsSkeleton {
+  width: min(100%, 380px);
+  height: 20px;
+  margin-top: 4px;
+  border-radius: 6px;
+}
+
 /* Phones and tablets: the map sits faintly behind the headline. */
 .visual {
   position: absolute;

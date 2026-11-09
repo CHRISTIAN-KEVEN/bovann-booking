@@ -1,0 +1,191 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.subheading {
+  margin: 8px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.intro {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+.card:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.cardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardDate {
+  font-weight: 700;
+}
+
+.cardMeta {
+  font-size: 14px;
+  color: #4b4d55;
+}
+
+.cardRef {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ok {
+  background: var(--color-success-soft);
+  color: #14532d;
+}
+
+.wait {
+  background: var(--color-accent-soft);
+  color: #7c2d12;
+}
+
+.off {
+  background: var(--color-muted-surface);
+  color: #4b4d55;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.cardSkeleton {
+  height: 84px;
+  border-radius: var(--radius-lg);
+}
+
+.empty {
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--color-border-strong);
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.empty p {
+  margin: 0 0 8px;
+}
+
+.emptyLink {
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field input,
+.field select {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+  font: 400 16px var(--font-body);
+  color: var(--color-text);
+}
+
+.field [aria-invalid='true'] {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 1px #b91c1c;
+}
+
+.phoneRow {
+  display: flex;
+  gap: 8px;
+}
+
+.phoneRow select {
+  flex-shrink: 0;
+  padding: 0 10px;
+}
+
+.phoneRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.error {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+/* Phones: the status stays top right; the whole card is the link, so no arrow. */
+@media (max-width: 479px) {
+  .card {
+    align-items: flex-start;
+  }
+
+  .chevron {
+    display: none;
+  }
+}
