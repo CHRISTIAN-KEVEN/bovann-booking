@@ -20,18 +20,30 @@
   --color-accent-soft: #fff7ed;
   --color-accent-border: #fed7aa;
   --color-live: #f97316;
+  /* OCD Live brand orange: logo, glows and highlights on dark. White text on it fails AA,
+     so buttons and white-on-orange labels use --color-brand-strong. */
+  --color-brand: #f26b1d;
+  --color-brand-strong: #c2410c;
 
   --color-success: #15803d;
   --color-success-soft: #ecfdf3;
   --color-success-border: #bbf7d0;
 
   --font-body: 'Inter Variable', system-ui, sans-serif;
-  --font-display: 'Space Grotesk', 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Poppins', 'Inter Variable', system-ui, sans-serif;
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --touch-target: 44px;
+  --page-max: 1160px;
+  --page-gutter: 20px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 32px;
+  }
 }
 
 *,

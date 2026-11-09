@@ -164,7 +164,7 @@ function SlotsChooser() {
         ) : null}
 
         {day && tab === 'SLOTS' ? (
-          <fieldset className={styles.list}>
+          <fieldset className={`${styles.list} ${styles.slotGrid}`}>
             <legend className={styles.srOnly}>Créneaux disponibles</legend>
             {day.slots.map((s) => {
               const available = s.status === 'AVAILABLE';
@@ -304,6 +304,7 @@ function SlotsChooser() {
       </Body>
 
       <BottomBar
+        step={3}
         summary={
           summary ? (
             <>

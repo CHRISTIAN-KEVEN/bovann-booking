@@ -244,7 +244,7 @@ function Payment() {
             </div>
           ) : null}
         </Body>
-        <BottomBar>
+        <BottomBar step={5} locked>
           <button type="button" className={buttonSecondaryClass} onClick={cancel}>
             Annuler et libérer les créneaux
           </button>
@@ -409,7 +409,7 @@ function Payment() {
           du paiement.
         </p>
       </Body>
-      <BottomBar>
+      <BottomBar step={5}>
         <button
           type="button"
           className={buttonClass}

@@ -1,16 +1,37 @@
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
   background: var(--color-ink);
   color: var(--color-text-on-ink);
 }
 
-.brand {
+.transparent {
+  background: transparent;
+}
+
+.logo {
+  height: 40px;
+  width: auto;
+}
+
+@media (min-width: 768px) {
+  .logo {
+    height: 48px;
+  }
+}
+
+.inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: 12px var(--page-gutter);
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
   min-height: var(--touch-target);
   color: inherit;
   text-decoration: none;
@@ -20,16 +41,37 @@
   color: inherit;
 }
 
-.liveDot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-live);
+.by {
+  padding-bottom: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-on-ink-muted);
 }
 
-.name {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: -0.2px;
+.place {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #34353e;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--color-text-on-ink-muted);
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d2e;
+  box-shadow: 0 0 0 3px rgba(255, 77, 46, 0.25);
+}
+
+/* Phones: the logo carries the brand; the place pill would crowd it. */
+@media (max-width: 479px) {
+  .place {
+    display: none;
+  }
 }

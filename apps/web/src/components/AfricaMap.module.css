@@ -1,0 +1,78 @@
+.map {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.land {
+  fill: #18181d;
+  stroke: var(--color-brand);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 10px rgba(242, 107, 29, 0.75))
+    drop-shadow(0 0 34px rgba(242, 107, 29, 0.35));
+}
+
+.arc {
+  fill: none;
+  stroke: var(--color-brand);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1 7;
+  opacity: 0.75;
+  animation: flow 6s linear infinite;
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -80;
+  }
+}
+
+.city {
+  fill: var(--color-brand);
+}
+
+.studio {
+  fill: #ff4d2e;
+  stroke: #fff;
+  stroke-width: 2.5;
+}
+
+.pulse {
+  fill: none;
+  stroke: #ff4d2e;
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse 2.2s ease-out infinite;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3.6);
+    opacity: 0;
+  }
+}
+
+.labelBg {
+  fill: var(--color-brand-strong);
+}
+
+.label {
+  fill: #fff;
+  font: 700 12px var(--font-body);
+  letter-spacing: 1px;
+}
+
+/* Below desktop the map is a faint backdrop: no arcs or label competing with the headline. */
+@media (max-width: 1023px) {
+  .extras {
+    display: none;
+  }
+}

@@ -69,7 +69,7 @@ export default function BookingPage() {
 
   if (error) {
     return (
-      <Screen>
+      <Screen layout="single">
         <Body>
           <Alert tone="error" title="Réservation introuvable">
             {error}
@@ -84,7 +84,7 @@ export default function BookingPage() {
 
   if (!booking) {
     return (
-      <Screen>
+      <Screen layout="single">
         <Body>
           <Spinner label="Chargement de votre réservation…" />
         </Body>
@@ -94,7 +94,7 @@ export default function BookingPage() {
 
   const confirmed = booking.status === 'CONFIRMED';
   return (
-    <Screen>
+    <Screen layout="single">
       <Body>
         <div className={styles.head}>
           {confirmed ? (

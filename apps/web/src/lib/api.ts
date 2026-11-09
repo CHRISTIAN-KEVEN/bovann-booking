@@ -4,6 +4,7 @@ import type {
   CreateBookingResponse,
   DayAvailabilityResponse,
   MonthAvailabilityResponse,
+  PackagesResponse,
   SessionMode,
   SpaceDto,
 } from '@bovann/shared';
@@ -63,6 +64,8 @@ export async function apiFetch<T>(
 
 export const api = {
   space: () => apiFetch<SpaceDto>(`/spaces/${SPACE_SLUG}`),
+  packages: (mode: SessionMode) =>
+    apiFetch<PackagesResponse>(`/spaces/${SPACE_SLUG}/packages?mode=${mode}`),
   month: (month: string) =>
     apiFetch<MonthAvailabilityResponse>(`/spaces/${SPACE_SLUG}/availability?month=${month}`),
   day: (date: string, mode: SessionMode) =>
