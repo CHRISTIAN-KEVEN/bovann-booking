@@ -45,11 +45,66 @@ const envSchema = z
       .enum(['true', 'false'])
       .optional()
       .transform((v) => (v === undefined ? undefined : v === 'true')),
+    /**
+     * How emails leave: `smtp` (Gmail, Brevo, Mailpit in development…) or
+     * `disabled` (emails stay queued, nothing is sent: tests, or no provider yet).
+     */
+    EMAIL_TRANSPORT: z.enum(['smtp', 'disabled']).default('disabled'),
+    SMTP_HOST: z.string().min(1).optional(),
+    /** 587 with STARTTLS (default) or 465 with SMTP_SECURE=true. */
+    SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+    SMTP_SECURE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    SMTP_USER: z.string().min(1).optional(),
+    /** For Gmail: an App Password (16 characters), never the account password. */
+    SMTP_PASSWORD: z.string().min(1).optional(),
+    /** Sender shown to recipients, e.g. "Bovann OCD Live <reservations@example.com>". */
+    EMAIL_FROM: z.string().min(3).optional(),
+    /** Where replies go (optional; defaults to the sender). */
+    EMAIL_REPLY_TO: z.string().email().optional(),
+    /** Public address of the website, for links in emails (e.g. https://reservation.bovann.tg). */
+    PUBLIC_WEB_URL: z.string().url().default('http://localhost:3000'),
+    /** Phone number shown to customers in their emails (optional). */
+    STUDIO_CONTACT_PHONE: z.string().min(3).optional(),
+    /** How often queued emails are sent, in seconds (0 = worker off). */
+    NOTIFICATION_INTERVAL_SEC: z.coerce.number().int().min(0).max(3600).default(15),
     /** Payment provider adapter. "mock" simulates payments (never allowed in production). */
     PAYMENT_PROVIDER: z.enum(['mock']).default('mock'),
   })
   .superRefine((env, ctx) => {
+    if (env.EMAIL_TRANSPORT === 'smtp') {
+      if (!env.SMTP_HOST) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['SMTP_HOST'],
+          message: 'required when EMAIL_TRANSPORT=smtp',
+        });
+      }
+      if (!env.EMAIL_FROM) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['EMAIL_FROM'],
+          message: 'required when EMAIL_TRANSPORT=smtp',
+        });
+      }
+      if (Boolean(env.SMTP_USER) !== Boolean(env.SMTP_PASSWORD)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['SMTP_PASSWORD'],
+          message: 'SMTP_USER and SMTP_PASSWORD go together',
+        });
+      }
+    }
     if (env.NODE_ENV !== 'production') return;
+    if (env.EMAIL_TRANSPORT !== 'smtp') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EMAIL_TRANSPORT'],
+        message: 'production must send emails (owners are notified of every booking)',
+      });
+    }
     if (env.PAYMENT_PROVIDER === 'mock') {
       ctx.addIssue({
         code: 'custom',

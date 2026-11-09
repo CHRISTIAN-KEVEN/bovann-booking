@@ -23,6 +23,7 @@ import {
   type ClosureCreate,
   type ClosureDto,
   type CustomerLookupDto,
+  type NotificationSettingsDto,
   type OpeningHoursDayDto,
   type OpeningHoursUpdate,
   type OwnerRecipientDto,
@@ -157,6 +158,12 @@ export const adminApi = {
     adminFetch<{ customer: CustomerLookupDto | null }>(`/customers/lookup${query({ phone })}`),
   payments: (params: { status?: PaymentStatus; spaceId?: number; page?: number }) =>
     adminFetch<AdminPaymentListResponse>(`/payments${query({ ...params, pageSize: 25 })}`),
+
+  // emails
+  notificationSettings: () => adminFetch<NotificationSettingsDto>('/notifications/settings'),
+  sendTestEmail: (to?: string) =>
+    adminFetch<{ to: string }>('/notifications/test', send('POST', to ? { to } : {})),
+  retryNotification: (id: number) => adminFetch<void>(`/notifications/${id}/retry`, send('POST')),
 
   // users
   users: () => adminFetch<AdminUserDto[]>('/users'),

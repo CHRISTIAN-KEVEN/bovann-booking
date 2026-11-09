@@ -344,3 +344,13 @@ All admin routes are under `/api/v1/admin`. Request and response shapes are in `
 | `GET /users`, `POST /users`         | OWNER | Create: `{email, fullName, role}` → `{user, temporaryPassword}` (shown once). 409 `EMAIL_TAKEN`                                                       |
 | `PATCH /users/:id`                  | OWNER | `{fullName?, role?, isActive?}`. You can't demote or deactivate yourself; there is always one active administrator. Deactivation signs the person out |
 | `POST /users/:id/reset-password`    | OWNER | New temporary password; signs the person out                                                                                                          |
+
+### Emails (Phase 6)
+
+| Method & path                   | Who   | Notes                                                                                                                                 |
+| ------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /notifications/settings`   | any   | `{enabled, from, pending, failed}`                                                                                                    |
+| `POST /notifications/test`      | OWNER | `{to?}` (defaults to the signed-in admin): sends a test now. 409 `EMAIL_DISABLED`; 502 `EMAIL_SEND_FAILED` with the provider's answer |
+| `POST /notifications/:id/retry` | any   | Puts a failed email back in the queue. 409 if already sent                                                                            |
+
+`GET /bookings/:id` now includes `notifications`: each email about the booking with its state (`PENDING`, `SENDING`, `SENT`, `FAILED`), attempts and last error.
