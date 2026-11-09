@@ -37,6 +37,7 @@ pnpm --filter @bovann/api admin:create -- --email you@example.com --name "Your N
                        # first administrator; prints a temporary password
 pnpm dev:api           # http://localhost:3001/health/ready
 pnpm dev:web           # http://localhost:3000 (full booking flow, payments simulated)
+                       # admin: http://localhost:3000/admin
 ```
 
 ## Everyday commands

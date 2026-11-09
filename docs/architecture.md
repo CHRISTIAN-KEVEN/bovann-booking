@@ -39,7 +39,8 @@ MySQL specifics we work around:
 ## 3. Components
 
 ```
-apps/web        Next.js: customer flow (Phase 3b: /, /reserver/*, /reservation/[ref]) + /admin (Phase 5)
+apps/web        Next.js: customer flow (Phase 3b: /, /reserver/*, /reservation/[ref]) +
+                admin (Phase 5b: /admin/connexion, /admin/mot-de-passe, /admin/(app)/*)
 apps/api        NestJS: config, database, health (Phase 1) · availability + catalog (Phase 2) ·
                 booking, payment, customer, admin-auth, notification (Phases 3–6)
 packages/shared Domain enums, French labels, money helpers shared by API and web
@@ -98,7 +99,7 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | 2   | Availability & pricing engine                                                      | ✅ Done                   |
 | 3   | Booking API (3a) + customer screens (3b)                                           | ✅ Done                   |
 | 4   | Payments                                                                           | Waiting for provider      |
-| 5   | Admin: API (5a) + screens (5b)                                                     | In progress               |
+| 5   | Admin: API (5a) + screens (5b)                                                     | In review                 |
 | 6   | Notifications                                                                      | –                         |
 | 7   | Hardening                                                                          | –                         |
 | 8   | Deployment                                                                         | –                         |
@@ -164,4 +165,9 @@ None of these changes alter an agreed requirement; they make the agreed design i
    - on `t_admin_users`: lockout fields and `must_change_password`
    - on `t_bookings`: `source`, `created_by_admin_id`, `cancelled_by_admin_id`, `admin_note`, and refund fields (`refund_status`, `refund_amount_xof`, `refunded_at`, `refunded_by_admin_id`, `refund_note`) with CHECK constraints
    - `t_payments.method` gains `CASH`, `BANK_TRANSFER` and `OTHER`, plus `recorded_by_admin_id` and `note`
-9. **Hosting note for Phase 8:** serve the website and the API from the same site (e.g. `reservation.bovann.tg` with the API under `/api`, or `api.` on the same domain), so the session cookie stays first-party.
+9. **Admin web app (5b).**
+   - Client components under `/admin`. The `(app)` route group wraps every signed-in page in `AdminShell`: it checks the session, redirects to sign-in or to the password change, loads the spaces (selection remembered in the browser), and holds the menu.
+   - API calls go through `lib/admin-api.ts`, which sends credentials and the CSRF header; any 401 sends the admin back to sign-in.
+   - Dialogs use the native `<dialog>` element, so focus is trapped and Escape closes.
+   - The screens never decide what is allowed: they hide what the role can't do, and the API enforces it.
+10. **Hosting note for Phase 8:** serve the website and the API from the same site (e.g. `reservation.bovann.tg` with the API under `/api`, or `api.` on the same domain), so the session cookie stays first-party.
