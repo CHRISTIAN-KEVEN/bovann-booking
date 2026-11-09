@@ -1,0 +1,49 @@
+.wrap {
+  position: relative;
+  flex-shrink: 0;
+  display: inline-flex;
+  min-height: 48px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.wrap:focus-within {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.display {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 12px;
+  font: 400 16px var(--font-body);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.flag {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.chevron {
+  color: var(--color-text-muted);
+}
+
+/* The real select covers the compact view: tapping anywhere opens the native list. */
+.wrap .select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  /* 16px stops iOS from zooming in when the list opens. */
+  font-size: 16px;
+}

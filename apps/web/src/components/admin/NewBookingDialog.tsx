@@ -10,6 +10,7 @@ import {
   type SessionMode,
 } from '@bovann/shared';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { CountrySelect } from '@/components/CountrySelect';
 import { adminApi } from '@/lib/admin-api';
 import {
   formatAmountInput,
@@ -17,7 +18,7 @@ import {
   SESSION_MODE_LABELS_FR,
   todayIn,
 } from '@/lib/admin-format';
-import { COUNTRY_CODES, composePhone, isValidE164, SECTORS } from '@/lib/details';
+import { composePhone, isValidE164, SECTORS } from '@/lib/details';
 import { useAdmin } from './AdminShell';
 import {
   AmountInput,
@@ -388,19 +389,11 @@ export function NewBookingDialog({
             Téléphone
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
-            <select
-              aria-label="Indicatif"
-              className={styles.select}
-              style={{ width: 140, flexShrink: 0 }}
+            <CountrySelect
               value={countryCode}
-              onChange={(e) => setCountryCode(e.target.value)}
-            >
-              {COUNTRY_CODES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+              onChange={setCountryCode}
+              className={styles.countrySelect}
+            />
             <input
               id="nb-phone"
               className={cx(styles.input, errors.phone && styles.inputInvalid)}

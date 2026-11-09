@@ -4,6 +4,7 @@ import type { BookingDto, CreateBookingRequest, MobileMoneyChannel } from '@bova
 import { formatXof } from '@bovann/shared';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CountrySelect } from '@/components/CountrySelect';
 import { useFlow } from '@/components/FlowProvider';
 import { Icon } from '@/components/icons';
 import { SelectionCard } from '@/components/SelectionCard';
@@ -20,7 +21,7 @@ import {
   buttonSecondaryClass,
 } from '@/components/ui';
 import { api, ApiError, PAYMENT_SIMULATION, SPACE_SLUG } from '@/lib/api';
-import { COUNTRY_CODES, composePhone, isValidE164, splitPhone } from '@/lib/details';
+import { composePhone, isValidE164, splitPhone } from '@/lib/details';
 import { rememberToken } from '@/lib/tokens';
 import { useStepGuard } from '@/lib/useStepGuard';
 import styles from './page.module.css';
@@ -370,17 +371,7 @@ function Payment() {
                   Numéro Mobile Money
                 </label>
                 <div className={styles.phoneRow}>
-                  <select
-                    aria-label="Indicatif du pays"
-                    value={payerCode}
-                    onChange={(e) => setPayerCode(e.target.value)}
-                  >
-                    {COUNTRY_CODES.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.code}
-                      </option>
-                    ))}
-                  </select>
+                  <CountrySelect value={payerCode} onChange={setPayerCode} />
                   <input
                     id="payer-phone"
                     type="tel"

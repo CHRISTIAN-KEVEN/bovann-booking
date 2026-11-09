@@ -5,20 +5,29 @@ import type { CustomerDetails } from './flow';
  * (French messages, same rules as the API so errors show before submitting).
  */
 
+/** Countries offered for phone numbers: name (French), ISO code for the flag, dialling code. */
 export const COUNTRY_CODES = [
-  { code: '+228', label: 'Togo (+228)' },
-  { code: '+229', label: 'Bénin (+229)' },
-  { code: '+233', label: 'Ghana (+233)' },
-  { code: '+225', label: 'Côte d’Ivoire (+225)' },
-  { code: '+226', label: 'Burkina Faso (+226)' },
-  { code: '+227', label: 'Niger (+227)' },
-  { code: '+221', label: 'Sénégal (+221)' },
-  { code: '+223', label: 'Mali (+223)' },
-  { code: '+234', label: 'Nigeria (+234)' },
-  { code: '+237', label: 'Cameroun (+237)' },
-  { code: '+33', label: 'France (+33)' },
-  { code: '+1', label: 'États-Unis / Canada (+1)' },
+  { code: '+228', iso: 'TG', name: 'Togo' },
+  { code: '+229', iso: 'BJ', name: 'Bénin' },
+  { code: '+233', iso: 'GH', name: 'Ghana' },
+  { code: '+225', iso: 'CI', name: 'Côte d’Ivoire' },
+  { code: '+226', iso: 'BF', name: 'Burkina Faso' },
+  { code: '+227', iso: 'NE', name: 'Niger' },
+  { code: '+221', iso: 'SN', name: 'Sénégal' },
+  { code: '+223', iso: 'ML', name: 'Mali' },
+  { code: '+234', iso: 'NG', name: 'Nigeria' },
+  { code: '+237', iso: 'CM', name: 'Cameroun' },
+  { code: '+33', iso: 'FR', name: 'France' },
+  { code: '+1', iso: 'US', name: 'États-Unis / Canada' },
 ] as const;
+
+/**
+ * Flag emoji from an ISO 3166 code ("TG" → 🇹🇬). Phones and Macs show the flag; Windows shows
+ * the two letters instead, which still reads fine.
+ */
+export function flagOf(iso: string): string {
+  return String.fromCodePoint(...[...iso.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
 
 export const SECTORS = [
   'Mode & beauté',
