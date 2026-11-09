@@ -6,7 +6,6 @@ import type { Env } from '../config/env';
 import { DevPaymentsController } from '../payment/dev-payments.controller';
 import { MockPaymentGateway } from '../payment/mock-payment.gateway';
 import { PAYMENT_GATEWAY } from '../payment/payment-gateway';
-import { AbusePolicyService } from './abuse-policy.service';
 import { BookingHoldService } from './booking-hold.service';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { BookingQueryService } from './booking-query.service';
@@ -29,7 +28,6 @@ import { TurnstileService } from './turnstile.service';
     BookingHoldService,
     BookingLifecycleService,
     BookingQueryService,
-    AbusePolicyService,
     TurnstileService,
     HoldExpiryWorker,
     // Phase 4 selects the real provider adapter from PAYMENT_PROVIDER.

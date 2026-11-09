@@ -1,0 +1,133 @@
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { Icon, type IconName } from './icons';
+import { SiteHeader } from './SiteHeader';
+import styles from './ui.module.css';
+
+/** Phone-width column used by every customer screen (centred card on desktop). */
+export function Screen({ children, title }: { children: ReactNode; title?: string }) {
+  return (
+    <div className={styles.page}>
+      <div className={styles.screen}>
+        <SiteHeader />
+        {title ? <h1 className={styles.srOnly}>{title}</h1> : null}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function StepHeader({
+  step,
+  label,
+  backHref,
+}: {
+  step: number;
+  label: string;
+  backHref: string;
+}) {
+  return (
+    <div className={styles.stepHeader}>
+      <div className={styles.stepRow}>
+        <Link href={backHref} className={styles.backLink} aria-label="Retour à l’étape précédente">
+          <Icon name="back" size={22} />
+        </Link>
+        <span className={styles.stepLabel}>
+          Étape {step} sur 5 · {label}
+        </span>
+      </div>
+      <div
+        className={styles.progress}
+        role="progressbar"
+        aria-label="Progression de la réservation"
+        aria-valuemin={1}
+        aria-valuemax={5}
+        aria-valuenow={step}
+      >
+        <div className={styles.progressFill} style={{ width: `${step * 20}%` }} />
+      </div>
+    </div>
+  );
+}
+
+export function Body({ children, scroll = false }: { children: ReactNode; scroll?: boolean }) {
+  return (
+    <main className={scroll ? `${styles.body} ${styles.bodyScroll}` : styles.body}>{children}</main>
+  );
+}
+
+export function PageTitle({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
+  return (
+    <div className={styles.titleBlock}>
+      <h1 className={styles.title}>{children}</h1>
+      {sub ? <p className={styles.subtitle}>{sub}</p> : null}
+    </div>
+  );
+}
+
+/** Sticky action bar at the bottom of each step. */
+export function BottomBar({ children, summary }: { children: ReactNode; summary?: ReactNode }) {
+  return (
+    <footer className={styles.bottomBar}>
+      {summary ? <div className={styles.bottomSummary}>{summary}</div> : null}
+      <div className={summary ? styles.bottomActionInline : styles.bottomAction}>{children}</div>
+    </footer>
+  );
+}
+
+type Tone = 'info' | 'success' | 'warning' | 'error';
+const TONE_ICON: Record<Tone, IconName> = {
+  info: 'alert',
+  success: 'check',
+  warning: 'alert',
+  error: 'alert',
+};
+
+export function Alert({
+  tone = 'info',
+  title,
+  children,
+  action,
+}: {
+  tone?: Tone;
+  title?: string;
+  children?: ReactNode;
+  action?: ReactNode;
+}) {
+  return (
+    <div
+      className={`${styles.alert} ${styles[`alert_${tone}`]}`}
+      role={tone === 'error' ? 'alert' : 'status'}
+    >
+      <Icon name={TONE_ICON[tone]} size={18} className={styles.alertIcon} />
+      <div className={styles.alertContent}>
+        {title ? <strong>{title}</strong> : null}
+        {children ? <span>{children}</span> : null}
+        {action}
+      </div>
+    </div>
+  );
+}
+
+export function Spinner({ label = 'Chargement…' }: { label?: string }) {
+  return (
+    <div className={styles.spinnerWrap} role="status">
+      <span className={styles.spinner} aria-hidden="true" />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+export function Skeleton({ height = 52, count = 1 }: { height?: number; count?: number }) {
+  return (
+    <div className={styles.skeletonList} aria-hidden="true">
+      {Array.from({ length: count }, (_, i) => (
+        <div key={i} className={styles.skeleton} style={{ height }} />
+      ))}
+    </div>
+  );
+}
+
+export const buttonClass = styles.button;
+export const buttonSecondaryClass = styles.buttonSecondary;
+export const buttonDarkClass = styles.buttonDark;

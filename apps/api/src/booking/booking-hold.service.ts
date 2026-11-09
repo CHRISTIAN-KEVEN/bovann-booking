@@ -9,7 +9,6 @@ import { ApiError, notFound } from '../common/errors';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
 import { PAYMENT_GATEWAY, type PaymentGateway } from '../payment/payment-gateway';
-import { AbusePolicyService } from './abuse-policy.service';
 import { inTransaction, isDuplicateOn, releaseSlots } from './booking-tx';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { BookingQueryService } from './booking-query.service';
@@ -20,15 +19,9 @@ import {
 } from './domain/identifiers';
 import { BookingRuleError, resolveSelection, slotUnavailable } from './domain/selection';
 
-export interface ClientContext {
-  ip: string | undefined;
-  fingerprint: string | null;
-}
-
 /**
  * Creates a booking hold when the customer presses "Payer":
- * validates the selection against live availability, applies the anti-abuse
- * rules, then in ONE transaction saves the customer, replaces their previous
+ * validates the selection against live availability, then in ONE transaction saves the customer, replaces their previous
  * unpaid hold, reclaims expired holds on the requested slots, creates the
  * booking and locks its slots (the UNIQUE index makes a race impossible),
  * and records the payment attempt. The payment is started right after commit.
@@ -43,19 +36,16 @@ export class BookingHoldService {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
     private readonly availability: AvailabilityService,
     private readonly catalog: CatalogRepository,
-    private readonly abuse: AbusePolicyService,
     private readonly lifecycle: BookingLifecycleService,
     private readonly query: BookingQueryService,
   ) {}
 
-  async create(input: CreateBookingRequest, client: ClientContext): Promise<CreateBookingResponse> {
+  async create(input: CreateBookingRequest): Promise<CreateBookingResponse> {
     const now = this.clock.now();
     const phone = input.customer.phone;
 
     const space = await this.catalog.findActiveSpace(input.spaceSlug);
     if (!space) throw notFound('SPACE_NOT_FOUND', 'Cet espace est introuvable.');
-
-    await this.abuse.assertMayHold({ phone, fingerprint: client.fingerprint, now });
 
     const firstStart =
       input.selection.type === 'SLOTS' ? input.selection.slotStarts[0]! : input.selection.start;
@@ -212,7 +202,6 @@ export class BookingHoldService {
                 status: 'PENDING_PAYMENT',
                 hold_expires_at: holdExpiresAt,
                 live_description: input.liveDescription ?? null,
-                client_fingerprint: client.fingerprint,
                 access_token_hash: access.hash,
               })
               .executeTakeFirstOrThrow();

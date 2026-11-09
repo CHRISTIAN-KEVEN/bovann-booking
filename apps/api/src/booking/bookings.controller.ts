@@ -5,7 +5,6 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
-  Inject,
   Param,
   Post,
   Req,
@@ -22,12 +21,9 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 import { badRequest, parseOrThrow } from '../common/errors';
-import { ENV } from '../config/config.module';
-import type { Env } from '../config/env';
 import { BookingHoldService } from './booking-hold.service';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { BookingQueryService } from './booking-query.service';
-import { clientFingerprint } from './domain/identifiers';
 import { TurnstileService } from './turnstile.service';
 
 const phone = z
@@ -106,12 +102,11 @@ const referenceSchema = z.string().regex(/^BOV-\d{4}-[0-9A-Z]{5}$/, 'Référence
 
 /**
  * Customer booking endpoints. The controller only validates and delegates;
- * rules live in the services. Creating a hold is rate limited per client.
+ * rules live in the services. "Payer" is rate limited per client connection.
  */
 @Controller('bookings')
 export class BookingsController {
   constructor(
-    @Inject(ENV) private readonly env: Env,
     private readonly holds: BookingHoldService,
     private readonly lifecycle: BookingLifecycleService,
     private readonly query: BookingQueryService,
@@ -124,8 +119,7 @@ export class BookingsController {
   async create(@Body() body: unknown, @Req() req: Request): Promise<CreateBookingResponse> {
     const input = parseOrThrow(createBookingSchema, body) as CreateBookingRequest;
     await this.turnstile.assertHuman(input.captchaToken, req.ip);
-    const fingerprint = req.ip ? clientFingerprint(req.ip, this.env.FINGERPRINT_SECRET) : null;
-    return this.holds.create(input, { ip: req.ip, fingerprint });
+    return this.holds.create(input);
   }
 
   /** Follow a booking (payment screen polling, confirmation screen). */

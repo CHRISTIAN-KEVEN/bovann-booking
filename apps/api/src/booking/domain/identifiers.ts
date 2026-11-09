@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, randomInt } from 'node:crypto';
+import { createHash, randomBytes, randomInt } from 'node:crypto';
 
 /** Crockford base32 without I, L, O, U: no characters customers can confuse when reading aloud. */
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
@@ -26,15 +26,6 @@ export function generateAccessToken(): { token: string; hash: string } {
 
 export function hashAccessToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
-}
-
-/**
- * Anonymous, stable identifier of a client connection: HMAC-SHA256 of the IP
- * address with a server secret. The IP itself is never stored, and the value
- * can't be reversed or compared across installations.
- */
-export function clientFingerprint(ip: string, secret: string): string {
-  return createHmac('sha256', secret).update(ip.trim().toLowerCase()).digest('hex');
 }
 
 /** Idempotency key sent to the payment provider for one payment attempt. */

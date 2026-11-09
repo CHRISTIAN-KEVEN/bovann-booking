@@ -2,6 +2,7 @@ import { Migrator, type Kysely, type Migration, type MigrationResultSet } from '
 import * as initialSchema from './migrations/2026_11_08_001_initial_schema';
 import * as fewSlotsThreshold from './migrations/2026_11_08_002_space_few_slots_threshold';
 import * as bookingHolds from './migrations/2026_11_09_003_booking_holds_and_abuse_policy';
+import * as removeAbuseRules from './migrations/2026_11_09_004_remove_abuse_rules';
 
 /**
  * Migrations are registered explicitly (not discovered from the file system),
@@ -13,6 +14,7 @@ const migrations: Record<string, Migration> = {
   '2026_11_08_001_initial_schema': initialSchema,
   '2026_11_08_002_space_few_slots_threshold': fewSlotsThreshold,
   '2026_11_09_003_booking_holds_and_abuse_policy': bookingHolds,
+  '2026_11_09_004_remove_abuse_rules': removeAbuseRules,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the migrator works on any schema

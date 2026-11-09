@@ -61,6 +61,11 @@ a:hover {
   color: var(--color-accent-hover);
 }
 
+/* Browsers give fieldsets min-width: min-content, which makes wide content overflow. */
+fieldset {
+  min-width: 0;
+}
+
 :focus-visible {
   outline: 3px solid var(--color-accent);
   outline-offset: 2px;

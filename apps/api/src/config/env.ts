@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-const DEV_FINGERPRINT_SECRET = 'dev-only-fingerprint-secret-not-for-production';
-
 /**
  * Every setting the API reads from the environment, validated once at startup.
  * The process refuses to start with a missing or malformed value, so
@@ -28,12 +26,10 @@ const envSchema = z
       ),
     /**
      * Number of reverse proxies in front of the API (Caddy/Nginx on the VPS = 1),
-     * so the real client IP is used for rate limits and abuse rules.
+     * so the real client IP is used for the request rate limit.
      */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
-    /** Key for the anonymous client fingerprint (HMAC of the IP). ≥ 32 characters. */
-    FINGERPRINT_SECRET: z.string().min(32).default(DEV_FINGERPRINT_SECRET),
-    /** Cloudflare Turnstile secret. Unset = bot check disabled (development and tests only). */
+    /** Cloudflare Turnstile secret. Optional: unset = bot check disabled. */
     TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
     /** How often unpaid holds past their expiry are released (0 = disabled, for tests). */
     HOLD_EXPIRY_INTERVAL_SEC: z.coerce.number().int().min(0).max(3600).default(30),
@@ -44,20 +40,6 @@ const envSchema = z
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return;
-    if (env.FINGERPRINT_SECRET === DEV_FINGERPRINT_SECRET) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['FINGERPRINT_SECRET'],
-        message: 'must be set to a secret value in production',
-      });
-    }
-    if (!env.TURNSTILE_SECRET_KEY) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['TURNSTILE_SECRET_KEY'],
-        message: 'is required in production (bot protection)',
-      });
-    }
     if (env.PAYMENT_PROVIDER === 'mock') {
       ctx.addIssue({
         code: 'custom',

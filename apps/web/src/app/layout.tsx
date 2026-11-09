@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import '@fontsource-variable/inter';
 import '@fontsource/space-grotesk/500.css';
 import '@fontsource/space-grotesk/700.css';
+import { FlowProvider } from '@/components/FlowProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -23,7 +24,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        <FlowProvider>{children}</FlowProvider>
+      </body>
     </html>
   );
 }

@@ -18,23 +18,21 @@ Every error has the same shape. `code` is stable, for program logic; `message` i
 { "statusCode": 404, "code": "SPACE_NOT_FOUND", "message": "Cet espace est introuvable." }
 ```
 
-| Code                                                                       | HTTP      | When                                                               |
-| -------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------ |
-| `VALIDATION_ERROR`                                                         | 400       | Missing or malformed parameter (`details` lists each problem)      |
-| `MODE_NOT_AVAILABLE`                                                       | 400       | The space doesn't offer this mode                                  |
-| `SPACE_NOT_FOUND`                                                          | 404       | Unknown or inactive space                                          |
-| `NOT_FOUND`                                                                | 404       | Unknown route                                                      |
-| `PRICING_UNAVAILABLE`                                                      | 503       | The space has no single-slot price configured                      |
-| `SLOT_NOT_FOUND`, `EMPTY_SELECTION`, `TOO_MANY_SLOTS`, `PACKAGE_NOT_FOUND` | 400       | Invalid selection                                                  |
-| `SLOT_UNAVAILABLE`, `PACKAGE_DOES_NOT_FIT`                                 | 409       | Someone took the slot(s) first: show the day again                 |
-| `TOO_MANY_ACTIVE_HOLDS`                                                    | 429       | Too many unpaid holds from this connection                         |
-| `TOO_MANY_UNPAID_HOLDS`                                                    | 429       | Cooldown after repeated unpaid holds (`details.retryAfterSeconds`) |
-| `TOO_MANY_REQUESTS`                                                        | 429       | Request rate limit                                                 |
-| `CAPTCHA_FAILED` / `CAPTCHA_UNAVAILABLE`                                   | 400 / 503 | Bot check refused or unreachable                                   |
-| `BOOKING_NOT_FOUND`                                                        | 404       | Unknown reference or wrong access token                            |
-| `BOOKING_NOT_CANCELLABLE`                                                  | 409       | Already confirmed                                                  |
-| `PAYMENT_PROVIDER_UNAVAILABLE`                                             | 502       | The provider couldn't start the payment; slots were freed          |
-| `INTERNAL_ERROR`                                                           | 500       | Unexpected error (logged server-side, details never exposed)       |
+| Code                                                                       | HTTP      | When                                                          |
+| -------------------------------------------------------------------------- | --------- | ------------------------------------------------------------- |
+| `VALIDATION_ERROR`                                                         | 400       | Missing or malformed parameter (`details` lists each problem) |
+| `MODE_NOT_AVAILABLE`                                                       | 400       | The space doesn't offer this mode                             |
+| `SPACE_NOT_FOUND`                                                          | 404       | Unknown or inactive space                                     |
+| `NOT_FOUND`                                                                | 404       | Unknown route                                                 |
+| `PRICING_UNAVAILABLE`                                                      | 503       | The space has no single-slot price configured                 |
+| `SLOT_NOT_FOUND`, `EMPTY_SELECTION`, `TOO_MANY_SLOTS`, `PACKAGE_NOT_FOUND` | 400       | Invalid selection                                             |
+| `SLOT_UNAVAILABLE`, `PACKAGE_DOES_NOT_FIT`                                 | 409       | Someone took the slot(s) first: show the day again            |
+| `TOO_MANY_REQUESTS`                                                        | 429       | Request rate limit                                            |
+| `CAPTCHA_FAILED` / `CAPTCHA_UNAVAILABLE`                                   | 400 / 503 | Bot check refused or unreachable                              |
+| `BOOKING_NOT_FOUND`                                                        | 404       | Unknown reference or wrong access token                       |
+| `BOOKING_NOT_CANCELLABLE`                                                  | 409       | Already confirmed                                             |
+| `PAYMENT_PROVIDER_UNAVAILABLE`                                             | 502       | The provider couldn't start the payment; slots were freed     |
+| `INTERNAL_ERROR`                                                           | 500       | Unexpected error (logged server-side, details never exposed)  |
 
 ## Health
 
@@ -231,7 +229,7 @@ The payment is then started with the provider, outside the transaction.
 
 ### `GET /bookings/:reference` (header `X-Booking-Token`)
 
-The booking as the customer sees it (`BookingDto`): status, slots, local times, price, `holdExpiresAt` while unpaid, payment status. Polled by the payment screen, used by the confirmation screen.
+The booking as the customer sees it (`BookingDto`): status, slots, local times, price, `holdExpiresAt` and `holdSecondsLeft` while unpaid (count down from `holdSecondsLeft`: it is computed by the server, so customer device clocks don't matter), payment status. Polled by the payment screen, used by the confirmation screen.
 
 ### `POST /bookings/:reference/cancel` (header `X-Booking-Token`)
 
@@ -252,18 +250,15 @@ Decides the outcome of a simulated payment. Answers 404 unless `PAYMENT_PROVIDER
 | 5 minutes pass unpaid                          | slots count as free immediately; the cleanup job (every 30 s) marks it `EXPIRED`                         |
 | Payment arrives after expiry, slots still free | slots taken back, `CONFIRMED`                                                                            |
 | Payment arrives after expiry, slots taken      | stays `EXPIRED`, refund flagged to the owners (`owner_late_payment_refund` email)                        |
-| Provider can't start the payment               | `CANCELLED` (`PAYMENT_INIT_FAILED`), slots freed, **not** counted against the customer                   |
+| Provider can't start the payment               | `CANCELLED` (`PAYMENT_INIT_FAILED`), slots freed                                                         |
 
-## Anti-abuse rules (approved 2026-11-08; limits in `t_booking_policy`)
+## Protections (decision of 2026-11-09)
 
-| Rule                                                       | Default                                       |
-| ---------------------------------------------------------- | --------------------------------------------- |
-| Hold duration                                              | 5 min (2–15 per space)                        |
-| Active unpaid holds per phone                              | 1: a new hold replaces the previous one       |
-| Active unpaid holds per connection                         | 2                                             |
-| Unpaid holds before cooldown (per phone **or** connection) | 3 within 24 h                                 |
-| Cooldown                                                   | 24 h after the last unpaid hold               |
-| "Payer" requests per connection                            | 5 per minute                                  |
-| Bot check                                                  | Cloudflare Turnstile (required in production) |
+No penalties: customers may retry freely. Kept:
 
-"Unpaid hold" means expired, cancelled by the customer, payment failed, or replaced by a new hold. A connection is identified by an HMAC of its IP address; the IP itself is never stored.
+| Protection                      | Default                                                                           |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| Hold duration                   | 5 min (per space, configurable)                                                   |
+| Unpaid holds per phone          | 1 at a time: a new attempt replaces the previous one                              |
+| "Payer" requests per connection | 5 per minute (`HOLD_RATE_LIMIT_PER_MIN`)                                          |
+| Bot check                       | Cloudflare Turnstile, **optional** (active only if `TURNSTILE_SECRET_KEY` is set) |
