@@ -1,6 +1,6 @@
 # Architecture & data model
 
-_Approved 2026-11-08 · updated through Phase 3b (see §10 for what changed in Phase 1 and why)_
+_Approved 2026-11-08 · updated through Phase 5a (see §10 for what changed in Phase 1 and why)_
 
 ## 1. Technical decisions
 
@@ -79,7 +79,8 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 4. **Expire:** the job marks unpaid holds `EXPIRED` and deletes their occupancies. `t_booking_slots` keeps the history.
 5. **Late payment:** re-acquire the slots if still free; otherwise flag the booking for refund and alert the owners.
 6. **Customer cancel or payment failure:** `CANCELLED`, slots freed at once.
-7. **Cancel / refund after confirmation:** policy TBD.
+7. **Cancel after confirmation (studio, Phase 5):** `CANCELLED`, slots freed at once; if money was received, `refund_status = DUE` with the amount to give back. Once the studio has refunded by hand: `refund_status = DONE`, booking `REFUNDED`. Customer-facing cancellation policy still TBD.
+8. **Studio booking (Phase 5):** created `CONFIRMED` directly (`source = ADMIN`, `created_by_admin_id`), same slot locks as online bookings, with a `manual` payment record when paid.
 
 ## 6. Seed data (`pnpm db:seed`, idempotent)
 
@@ -96,8 +97,8 @@ Times are stored in UTC (`DATETIME(3)`; the connection forces `time_zone = '+00:
 | 1   | Foundations: monorepo, MySQL schema, seed, API skeleton + health, web skeleton, CI | ✅ Done (see progress.md) |
 | 2   | Availability & pricing engine                                                      | ✅ Done                   |
 | 3   | Booking API (3a) + customer screens (3b)                                           | ✅ Done                   |
-| 4   | Payments                                                                           | Next                      |
-| 5   | Admin                                                                              | –                         |
+| 4   | Payments                                                                           | Waiting for provider      |
+| 5   | Admin: API (5a) + screens (5b)                                                     | In progress               |
 | 6   | Notifications                                                                      | –                         |
 | 7   | Hardening                                                                          | –                         |
 | 8   | Deployment                                                                         | –                         |
@@ -108,10 +109,9 @@ Public endpoints, error format and availability rules: see `api.md`.
 
 ## 9. Open questions
 
-- Cancellation and refund policy
+- Customer-facing cancellation and refund policy
 - SMS/WhatsApp provider; transactional email provider (needs a sending domain with SPF/DKIM)
 - Exact opening hours
-- Admin roles: is OWNER vs STAFF enough?
 
 ## 10. Changes made during Phase 1 (vs. the version approved on 2026-11-08)
 
@@ -137,3 +137,31 @@ None of these changes alter an agreed requirement; they make the agreed design i
 1. **Anti-abuse penalties removed** at the product owner's request (2026-11-09). Migration `004` drops `t_booking_policy` and `t_bookings.client_fingerprint`. Kept: 5-minute hold (configurable), immediate release on failure or cancel, one unpaid hold per phone (a retry replaces it), request rate limit, optional Turnstile.
 2. **`holdSecondsLeft`** added to the booking DTO: the payment countdown uses the server's clock, not the customer's device.
 3. **Web app structure:** client components per step; progress kept in `sessionStorage` (survives reloads, never outlives the tab); booking access tokens kept in `localStorage` so the confirmation page can be reopened from the same browser.
+
+## 13. Phase 5 (admin), decisions of 2026-11-09
+
+1. **Sessions in the database, not self-contained tokens (JWT).**
+   - `t_admin_sessions` stores the SHA-256 of a random 256-bit token. The browser holds the token in an `httpOnly`, `SameSite=Lax` cookie (`Secure` in production).
+   - Why: logout, deactivating an account, a password change or reset take effect immediately. A JWT would stay valid until it expires.
+   - Sessions end after 12 h without activity and in any case after 7 days.
+2. **Passwords.**
+   - Hashed with Argon2id at OWASP parameters; the parameters are stored in each hash, so they can be raised later.
+   - At least 10 characters.
+   - The account locks for 15 minutes after 5 wrong passwords in a row.
+   - Sign-in attempts are limited to 10 per minute per connection (`ADMIN_LOGIN_RATE_LIMIT_PER_MIN`).
+   - An unknown email takes as long to refuse as a wrong password.
+3. **CSRF protection.**
+   - Every state-changing admin request must carry the `X-Bovann-Admin` header. Browsers only let another site send custom headers if CORS allows that site, and CORS allows only our own web origins.
+   - The cookie is also `SameSite=Lax`.
+4. **Roles** are enforced per endpoint by `AdminAuthGuard` with `@Roles('OWNER')`; the default is any signed-in admin. There is always at least one active administrator: the owner rows are locked while roles change.
+5. **Shared write steps.** Online and studio bookings use the same write steps (`booking-writes.ts`): upsert the customer, reclaim expired holds, insert with a unique reference, lock the slots. So the rule "a slot is held by one booking or block" has one implementation.
+6. **Settings changes never silently break a confirmed booking.**
+   - New opening hours or a closure that would exclude an active booking are refused (409), with the list of affected bookings. The studio cancels or moves them first.
+   - The slot duration can't be edited for now; it stays 1h30.
+7. **Prices are versioned.** A change closes the current `t_package_prices` row and opens a new one, effective immediately. Every save is checked against the price ladder: each package must be cheaper per slot than any shorter one, and cheaper than buying its slots one by one.
+8. **Migration `005`:**
+   - `t_admin_sessions`
+   - on `t_admin_users`: lockout fields and `must_change_password`
+   - on `t_bookings`: `source`, `created_by_admin_id`, `cancelled_by_admin_id`, `admin_note`, and refund fields (`refund_status`, `refund_amount_xof`, `refunded_at`, `refunded_by_admin_id`, `refund_note`) with CHECK constraints
+   - `t_payments.method` gains `CASH`, `BANK_TRANSFER` and `OTHER`, plus `recorded_by_admin_id` and `note`
+9. **Hosting note for Phase 8:** serve the website and the API from the same site (e.g. `reservation.bovann.tg` with the API under `/api`, or `api.` on the same domain), so the session cookie stays first-party.

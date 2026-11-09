@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminModule } from './admin/admin.module';
 import { LoggerModule } from 'nestjs-pino';
 import { AvailabilityModule } from './availability/availability.module';
 import { BookingModule } from './booking/booking.module';
@@ -46,6 +47,7 @@ import { HealthModule } from './health/health.module';
     HealthModule,
     AvailabilityModule,
     BookingModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

@@ -385,6 +385,9 @@ describe('payment outcome (simulated provider)', () => {
 
     const row = await bookingRow(late.booking.reference);
     expect(row.status).toBe('EXPIRED');
+    // It shows up in the admin's "refunds to handle".
+    expect(row.refund_status).toBe('DUE');
+    expect(row.refund_amount_xof).toBe(15000);
     const flagged = await db
       .selectFrom('t_notifications')
       .select('template')

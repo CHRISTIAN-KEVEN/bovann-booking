@@ -1,12 +1,14 @@
 import type { ColumnType, Generated, Insertable, Selectable, Updateable } from 'kysely';
 import type {
   AdminRole,
+  BookingSource,
   BookingStatus,
   BookingType,
   NotificationChannel,
   NotificationStatus,
   PaymentMethod,
   PaymentStatus,
+  RefundStatus,
   SessionMode,
 } from '@bovann/shared';
 
@@ -34,9 +36,25 @@ export interface AdminUsersTable {
   password_hash: string;
   role: Generated<AdminRole>;
   is_active: Generated<boolean>;
+  must_change_password: Generated<boolean>;
+  failed_login_count: Generated<number>;
+  locked_until: Date | null;
+  password_changed_at: Date | null;
   last_login_at: Date | null;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
+}
+
+export interface AdminSessionsTable {
+  id: Generated<number>;
+  admin_user_id: number;
+  token_hash: string;
+  created_at: CreatedAt;
+  last_seen_at: Date;
+  expires_at: Date;
+  revoked_at: Date | null;
+  ip: string | null;
+  user_agent: string | null;
 }
 
 export interface SpacesTable {
@@ -142,11 +160,20 @@ export interface BookingsTable {
   total_xof: number;
   currency: Generated<string>;
   status: Generated<BookingStatus>;
+  source: Generated<BookingSource>;
+  created_by_admin_id: number | null;
   hold_expires_at: Date | null;
   confirmed_at: Date | null;
   cancelled_at: Date | null;
   cancel_reason: string | null;
+  cancelled_by_admin_id: number | null;
+  refund_status: Generated<RefundStatus>;
+  refund_amount_xof: number | null;
+  refunded_at: Date | null;
+  refunded_by_admin_id: number | null;
+  refund_note: string | null;
   live_description: string | null;
+  admin_note: string | null;
   /** SHA-256 of the secret token the customer uses to follow this booking. */
   access_token_hash: string | null;
   version: Generated<number>;
@@ -192,6 +219,8 @@ export interface PaymentsTable {
   failure_reason: string | null;
   last_payload: Json | null;
   succeeded_at: Date | null;
+  recorded_by_admin_id: number | null;
+  note: string | null;
   created_at: CreatedAt;
   updated_at: UpdatedAt;
 }
@@ -237,6 +266,7 @@ export interface AuditLogTable {
 
 export interface Database {
   t_admin_users: AdminUsersTable;
+  t_admin_sessions: AdminSessionsTable;
   t_spaces: SpacesTable;
   t_space_owner_recipients: SpaceOwnerRecipientsTable;
   t_opening_hours: OpeningHoursTable;

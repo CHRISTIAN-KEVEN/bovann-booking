@@ -18,8 +18,18 @@ export const BOOKING_STATUSES = [
 ] as const;
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
-export const PAYMENT_METHODS = ['MOBILE_MONEY', 'CARD'] as const;
+export const PAYMENT_METHODS = ['MOBILE_MONEY', 'CARD', 'CASH', 'BANK_TRANSFER', 'OTHER'] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+/** Methods a customer can choose online; the others are recorded by the studio. */
+export const ONLINE_PAYMENT_METHODS = ['MOBILE_MONEY', 'CARD'] as const;
+export type OnlinePaymentMethod = (typeof ONLINE_PAYMENT_METHODS)[number];
+
+export const BOOKING_SOURCES = ['ONLINE', 'ADMIN'] as const;
+export type BookingSource = (typeof BOOKING_SOURCES)[number];
+
+export const REFUND_STATUSES = ['NONE', 'DUE', 'DONE'] as const;
+export type RefundStatus = (typeof REFUND_STATUSES)[number];
 
 export const PAYMENT_STATUSES = [
   'INITIATED',
@@ -44,6 +54,19 @@ export type AdminRole = (typeof ADMIN_ROLES)[number];
 export const SESSION_MODE_LABELS_FR: Record<SessionMode, string> = {
   IN_PERSON: 'En studio',
   VIRTUAL: 'Virtuel',
+};
+
+export const PAYMENT_METHOD_LABELS_FR: Record<PaymentMethod, string> = {
+  MOBILE_MONEY: 'Mobile Money',
+  CARD: 'Carte bancaire',
+  CASH: 'Espèces',
+  BANK_TRANSFER: 'Virement',
+  OTHER: 'Autre',
+};
+
+export const ADMIN_ROLE_LABELS_FR: Record<AdminRole, string> = {
+  OWNER: 'Administrateur',
+  STAFF: 'Équipe',
 };
 
 export const BOOKING_STATUS_LABELS_FR: Record<BookingStatus, string> = {

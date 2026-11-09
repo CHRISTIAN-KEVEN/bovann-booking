@@ -35,6 +35,16 @@ const envSchema = z
     HOLD_EXPIRY_INTERVAL_SEC: z.coerce.number().int().min(0).max(3600).default(30),
     /** "Payer" attempts allowed per client connection per minute. */
     HOLD_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(5),
+    /** Admin sign-in attempts allowed per client connection per minute (on top of account lockout). */
+    ADMIN_LOGIN_RATE_LIMIT_PER_MIN: z.coerce.number().int().min(1).max(1000).default(10),
+    /**
+     * Send the admin session cookie only over HTTPS. Defaults to on in production;
+     * turn off only for a local production build served over plain HTTP.
+     */
+    ADMIN_COOKIE_SECURE: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === 'true')),
     /** Payment provider adapter. "mock" simulates payments (never allowed in production). */
     PAYMENT_PROVIDER: z.enum(['mock']).default('mock'),
   })

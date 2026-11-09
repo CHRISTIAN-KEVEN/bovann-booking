@@ -120,7 +120,62 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - French punctuation spacing
 - Missing site icon
 
-## Next: Phase 4 — Payments
+## Phase 5a — Admin API (in review)
+
+**Objective:** everything the studio needs to run its calendar, behind a sign-in. Screens come in 5b.
+
+**Decisions applied (product owner, 2026-11-09):**
+
+- Two roles: Administrateur / Équipe.
+- Email and password sign-in.
+- Studio bookings with the payment noted.
+- Cancellation marks the refund "to handle".
+
+### Delivered
+
+- **Sign-in and accounts**
+  - Argon2id passwords.
+  - Database sessions in an httpOnly cookie: 12 h without activity, 7 days at most.
+  - Account lockout after 5 wrong passwords (15 min), and a per-connection sign-in limit.
+  - CSRF header on every change.
+  - Temporary passwords that must be changed.
+  - Accounts can be created, deactivated (signed out at once), have their role changed or their password reset; there is always one active administrator.
+  - Setup command: `pnpm --filter @bovann/api admin:create -- --email … --name "…"`.
+- **Bookings**
+  - List with tabs (all, confirmed, waiting for payment, cancelled, to collect, refunds to handle, abandoned checkouts), search by name, business, phone or reference, date filter and pages.
+  - Detail with slots, payments and full history.
+  - Studio bookings: confirmed at once, same slot locks as online, paid, unpaid or free, negotiated price allowed. No minimum notice, and the slot in progress is bookable.
+  - Record a payment later. Internal note.
+  - Cancellation by an administrator with "refund to handle", then mark it refunded.
+  - Late online payments for slots already taken also land in "refunds to handle".
+- **Planning:** day and week schedule (booked / waiting / blocked / closed / free), slot blocks with reason, dashboard figures (today, week occupancy, collected this month net of refunds, to collect, refunds due).
+- **Settings**
+  - Spaces: create, edit, modes, notice, horizon, hold 2–15 min.
+  - Opening hours and closures, refused with the list of affected bookings when they would exclude one.
+  - Owner notification emails.
+- **Packages and prices:** create, edit, withdraw from a mode, deactivate; versioned prices; the price ladder is enforced.
+- **Clients and payments** lists.
+- **Migration `005`:** sessions, lockout, booking source, refund tracking, studio payment methods; integrity rules as CHECK constraints.
+- **Refactor:** the online booking engine and studio bookings now share the same write steps (`booking-writes.ts`).
+
+### Tests (166 API, all passing; 190 in the repo)
+
+- **46 new admin integration tests against MySQL**, including:
+  - sign-in, lockout and its expiry, rate limit, CSRF, idle and absolute session expiry, roles, deactivation, temporary passwords, password change signing out other devices, last administrator
+  - studio bookings (package, negotiated, free, inside the hour, no double booking either way, expired hold reclaimed), customer lookup, day options
+  - payment recording, cancel and refund flow with history, stopping an online payment in progress
+  - list search and tabs, schedule states, blocks, dashboard figures
+  - hours and closure conflicts, new slot grid, hold duration bounds, new space, notification emails
+  - price ladder, price versioning seen by customers, new package in one mode
+  - clients and payments pages
+- **4 new database integrity tests:** studio booking without its author, refund without amount or date, "Remboursée" without a done refund, unique session token. One of them caught a CHECK that let a missing refund amount through; it was fixed before review.
+- **4 password unit tests.**
+
+## Next: Phase 5b — Admin screens
+
+Screens following the approved designs (Réservations, Forfaits & prix, Espaces & horaires), plus sign-in, Calendrier, Clients, Paiements and Paramètres (accounts, notification emails), and the studio booking form.
+
+## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.
 
@@ -128,7 +183,10 @@ Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's ch
 
 - TypeScript table types are maintained by hand (see architecture.md §1). Consider generating them with `kysely-codegen` in CI if drift becomes a problem.
 - `ts-jest` 29 runs with Jest 30. Works today; move to ts-jest 30 when it is released.
-- Booking slot end times are derived from the space's current slot duration when displayed. Changing the slot duration must be blocked while future bookings exist (admin, Phase 5).
+- Booking slot end times are derived from the space's current slot duration when displayed. The admin does not allow changing the slot duration (Phase 5); if it is ever needed, it must be refused while future bookings exist.
 - The end-to-end browser test was run manually (Puppeteer + Chrome). Automate it with Playwright in CI during Phase 7 (hardening).
 - No terms and conditions page yet: the checkbox text refers to the studio's booking and cancellation conditions, which are still to be written (cancellation policy open question).
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.
+- Admin sign-in limits per connection are kept in memory: fine for one API instance; move them to the database or Redis if the API ever runs on several machines.
+- Customer-facing cancellation policy still open: the studio can cancel and refund by hand, customers can only abandon before paying.
+- A studio cancellation of an online payment in progress only marks it cancelled on our side; with a real provider (Phase 4) the payment must also be cancelled or refunded at the provider.
