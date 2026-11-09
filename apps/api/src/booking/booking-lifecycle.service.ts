@@ -167,6 +167,18 @@ export class BookingLifecycleService {
       }
 
       if (!canConfirm) {
+        // The money must go back: it appears in the admin's "refunds to handle".
+        const paid = await trx
+          .selectFrom('t_payments')
+          .select('amount_xof')
+          .where('id', '=', paymentId)
+          .executeTakeFirstOrThrow();
+        await trx
+          .updateTable('t_bookings')
+          .set({ refund_status: 'DUE', refund_amount_xof: paid.amount_xof })
+          .where('id', '=', booking.id)
+          .where('refund_status', '=', 'NONE')
+          .execute();
         await audit(trx, 'PROVIDER', null, 'LATE_PAYMENT_REFUND_REQUIRED', booking.id);
         await this.queueOwnerNotifications(trx, booking.id, 'owner_late_payment_refund');
         this.logger.warn(
@@ -181,8 +193,7 @@ export class BookingLifecycleService {
         .where('id', '=', booking.id)
         .execute();
       await audit(trx, 'PROVIDER', null, 'BOOKING_CONFIRMED', booking.id);
-      await this.queueOwnerNotifications(trx, booking.id, 'owner_booking_confirmed');
-      await this.queueCustomerConfirmation(trx, booking.id);
+      await this.queueConfirmationNotifications(trx, booking.id);
       return 'CONFIRMED';
     });
   }
@@ -248,6 +259,27 @@ export class BookingLifecycleService {
     });
   }
 
+  /**
+   * Owner and customer confirmation emails, written to the outbox in the
+   * caller's transaction (Phase 6's worker sends them). Used for online and
+   * studio bookings alike.
+   */
+  async queueConfirmationNotifications(
+    trx: Transaction<Database>,
+    bookingId: number,
+  ): Promise<void> {
+    await this.queueOwnerNotifications(trx, bookingId, 'owner_booking_confirmed');
+    await this.queueCustomerEmail(trx, bookingId, 'customer_booking_confirmed');
+  }
+
+  /** Tells the customer (if they gave an email) that the studio cancelled their booking. */
+  async queueCancellationNotification(
+    trx: Transaction<Database>,
+    bookingId: number,
+  ): Promise<void> {
+    await this.queueCustomerEmail(trx, bookingId, 'customer_booking_cancelled');
+  }
+
   /** Writes the owner emails to the outbox; Phase 6's worker sends them. */
   private async queueOwnerNotifications(
     trx: Transaction<Database>,
@@ -282,9 +314,10 @@ export class BookingLifecycleService {
       .execute();
   }
 
-  private async queueCustomerConfirmation(
+  private async queueCustomerEmail(
     trx: Transaction<Database>,
     bookingId: number,
+    template: 'customer_booking_confirmed' | 'customer_booking_cancelled',
   ): Promise<void> {
     const payload = await notificationPayload(trx, bookingId);
     if (!payload.customer.email) return;
@@ -293,7 +326,7 @@ export class BookingLifecycleService {
       .values({
         booking_id: bookingId,
         channel: 'EMAIL',
-        template: 'customer_booking_confirmed',
+        template,
         recipient: payload.customer.email,
         payload: JSON.stringify(payload),
       })

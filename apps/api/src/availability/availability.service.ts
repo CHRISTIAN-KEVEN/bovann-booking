@@ -162,14 +162,36 @@ export class AvailabilityService {
     return { space, day: day!, packages, unitPriceXof: unitPrice(packages) };
   }
 
+  /**
+   * A day as the studio sees it for a booking it takes itself (phone, walk-in):
+   * no minimum notice and no booking horizon, and the slot in progress can
+   * still be booked; closures, opening hours and taken slots still apply.
+   */
+  async getAdminBookableDay(
+    space: Space,
+    date: string,
+    mode: SessionMode,
+  ): Promise<{ day: DayAvailability; packages: PackageWithPrice[]; unitPriceXof: number }> {
+    assertModeEnabled(space, mode);
+    const [[day], packages] = await Promise.all([
+      this.evaluateRange(space, [date], [], {
+        minLeadMin: -space.slot_duration_min,
+        horizonDays: 3650,
+      }),
+      this.repo.packagesWithPrices(space.id, mode, this.clock.now()),
+    ]);
+    return { day: day!, packages, unitPriceXof: unitPrice(packages) };
+  }
+
   /** Evaluates consecutive local dates with one query per data source. */
   private async evaluateRange(
     space: Space,
     dates: string[],
     ignoreBookingIds: readonly number[] = [],
+    ruleOverrides: Partial<SpaceRules> = {},
   ): Promise<DayAvailability[]> {
     const now = this.clock.now();
-    const rules = toRules(space);
+    const rules = { ...toRules(space), ...ruleOverrides };
     const from = localToUtc(dates[0]!, 0, space.timezone);
     const to = localToUtc(addDays(dates[dates.length - 1]!, 1), 0, space.timezone);
     const [opening, closures, occupied] = await Promise.all([
@@ -189,7 +211,7 @@ export class AvailabilityService {
   }
 }
 
-function toRules(space: Space): SpaceRules {
+export function toRules(space: Space): SpaceRules {
   return {
     timezone: space.timezone,
     slotDurationMin: space.slot_duration_min,
@@ -199,7 +221,7 @@ function toRules(space: Space): SpaceRules {
   };
 }
 
-function enabledModes(space: Space): SessionMode[] {
+export function enabledModes(space: Space): SessionMode[] {
   const modes: SessionMode[] = [];
   if (space.in_person_enabled) modes.push('IN_PERSON');
   if (space.virtual_enabled) modes.push('VIRTUAL');
@@ -215,7 +237,7 @@ function assertModeEnabled(space: Space, mode: SessionMode): void {
   }
 }
 
-function unitPrice(packages: PackageWithPrice[]): number {
+export function unitPrice(packages: PackageWithPrice[]): number {
   const single = packages.find((p) => !p.isFullDay && p.slotCount === 1);
   if (!single) {
     throw new ApiError(

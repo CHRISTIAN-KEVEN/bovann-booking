@@ -56,6 +56,27 @@ _Last updated 2026-11-09_
 - One space for now; admin can add more spaces (each with its own calendar, hours, modes, address, owner notification emails)
 - Manage bookings, block slots, packages & prices, opening hours, exceptional closures
 
+### Admin decisions (confirmed 2026-11-09)
+
+- **Two roles.**
+  - **Administrateur (OWNER):** everything.
+  - **Équipe (STAFF):** sees bookings, clients and payments; adds studio bookings; records payments; blocks and unblocks slots.
+  - **Administrator only:** cancellations and refunds, packages and prices, spaces, hours and closures, owner notification emails, user accounts.
+- **Sign-in with email + password.**
+  - Administrators create accounts for each other. The first account is created with a setup command (`admin:create`).
+  - New accounts and password resets get a temporary password, which must be changed at the first sign-in.
+  - A forgotten password is reset by another administrator. Reset by email comes after Phase 6.
+- **Studio bookings.** The studio can book for a client who calls or comes in.
+  - The booking is confirmed at once and uses the same calendar, so double booking is impossible.
+  - Payment is noted as one of: paid (cash, mobile money received directly, card, bank transfer, other), unpaid (to collect later), or free (price 0).
+  - A negotiated price is allowed, never above the price of the slots bought one by one.
+  - No minimum notice or booking horizon applies. A slot in progress can still be booked for a walk-in.
+- **Cancellation by the studio** (administrator) frees the slots at once.
+  - If money was received, the booking is marked "refund to handle" for the amount paid (or a smaller amount, including 0). The studio refunds by hand, then marks it done.
+  - Automatic refunds come with the real payment provider (Phase 4).
+  - The customer is emailed if they gave an address (sent in Phase 6).
+- **Late payment** for slots someone else has taken also lands in "refunds to handle".
+
 ## Technical decisions (confirmed)
 
 - Next.js + NestJS (TypeScript), **MySQL 8**, Docker Compose on a VPS
@@ -71,7 +92,7 @@ _Last updated 2026-11-09_
 
 - Opening hours 08:00–21:30 → 9 slots/day
 - Virtual price = in-studio price unless the admin sets otherwise
-- Cancellation / refund policy: not yet defined
+- Cancellation / refund policy for customers: not yet defined (the studio can cancel and refund by hand since Phase 5)
 - SMS/WhatsApp and email sending providers: TBD
 
 ## Design

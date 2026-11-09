@@ -10,13 +10,10 @@ import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
 import { PAYMENT_GATEWAY, type PaymentGateway } from '../payment/payment-gateway';
 import { inTransaction, isDuplicateOn, releaseSlots } from './booking-tx';
+import { insertBooking, lockSlots, reclaimExpiredHolds, upsertCustomer } from './booking-writes';
 import { BookingLifecycleService } from './booking-lifecycle.service';
 import { BookingQueryService } from './booking-query.service';
-import {
-  generateAccessToken,
-  generateReference,
-  paymentIdempotencyKey,
-} from './domain/identifiers';
+import { generateAccessToken, paymentIdempotencyKey } from './domain/identifiers';
 import { BookingRuleError, resolveSelection, slotUnavailable } from './domain/selection';
 
 /**
@@ -83,27 +80,7 @@ export class BookingHoldService {
     try {
       created = await inTransaction(this.db, async (trx) => {
         // 1. Customer: one record per phone, latest details win (email kept if not given).
-        await trx
-          .insertInto('t_customers')
-          .values({
-            full_name: input.customer.fullName,
-            phone_e164: phone,
-            email: input.customer.email ?? null,
-            business_name: input.customer.businessName,
-            business_sector: input.customer.businessSector,
-          })
-          .onDuplicateKeyUpdate((eb) => ({
-            full_name: input.customer.fullName,
-            business_name: input.customer.businessName,
-            business_sector: input.customer.businessSector,
-            email: eb.fn.coalesce(eb.val(input.customer.email ?? null), eb.ref('email')),
-          }))
-          .execute();
-        const customer = await trx
-          .selectFrom('t_customers')
-          .select('id')
-          .where('phone_e164', '=', phone)
-          .executeTakeFirstOrThrow();
+        const customer = { id: await upsertCustomer(trx, { ...input.customer, phone }) };
 
         // 2. One active hold per phone: replace the previous unpaid hold.
         // Lock the customer row (a real record) to serialise this customer's
@@ -137,96 +114,38 @@ export class BookingHoldService {
             .execute();
         }
 
-        // 3. Reclaim expired holds sitting on the requested slots: find them with a
-        // plain read, then lock those bookings by primary key and re-check.
-        const candidates = await trx
-          .selectFrom('t_slot_occupancies as o')
-          .innerJoin('t_bookings as b', 'b.id', 'o.booking_id')
-          .select('b.id')
-          .distinct()
-          .where('o.space_id', '=', space.id)
-          .where('o.slot_start', 'in', slotStarts)
-          .where('b.status', '=', 'PENDING_PAYMENT')
-          .where('b.hold_expires_at', '<=', now)
-          .execute();
-        let expiredIds: number[] = [];
-        if (candidates.length > 0) {
-          const locked = await trx
-            .selectFrom('t_bookings')
-            .select('id')
-            .where(
-              'id',
-              'in',
-              candidates.map((c) => c.id),
-            )
-            .where('status', '=', 'PENDING_PAYMENT')
-            .where('hold_expires_at', '<=', now)
-            .forUpdate()
-            .execute();
-          expiredIds = locked.map((l) => l.id);
-          if (expiredIds.length > 0) {
-            await releaseSlots(trx, expiredIds);
-            await trx
-              .updateTable('t_bookings')
-              .set({ status: 'EXPIRED' })
-              .where('id', 'in', expiredIds)
-              .execute();
-          }
-        }
+        // 3. Reclaim expired holds sitting on the requested slots.
+        const expiredIds = await reclaimExpiredHolds(trx, space.id, slotStarts, now);
 
-        // 4. The booking itself (retry on the rare reference collision).
+        // 4. The booking itself.
         const first = resolved.slots[0]!;
         const last = resolved.slots[resolved.slots.length - 1]!;
-        let bookingId = 0;
-        let reference = '';
-        for (let attempt = 0; attempt < 5 && !bookingId; attempt++) {
-          reference = generateReference(date);
-          try {
-            const result = await trx
-              .insertInto('t_bookings')
-              .values({
-                reference,
-                space_id: space.id,
-                customer_id: customer.id,
-                mode: input.mode,
-                booking_type: resolved.bookingType,
-                package_id: resolved.packageId,
-                package_name: resolved.packageName,
-                slot_count: resolved.slots.length,
-                starts_at: first.start,
-                ends_at: last.end,
-                unit_price_xof: unitPriceXof,
-                list_price_xof: resolved.quote.listPriceXof,
-                discount_xof: resolved.quote.discountXof,
-                total_xof: resolved.quote.totalXof,
-                status: 'PENDING_PAYMENT',
-                hold_expires_at: holdExpiresAt,
-                live_description: input.liveDescription ?? null,
-                access_token_hash: access.hash,
-              })
-              .executeTakeFirstOrThrow();
-            bookingId = Number(result.insertId);
-          } catch (error) {
-            if (!isDuplicateOn(error, 'uq_bookings_reference')) throw error;
-          }
-        }
-        if (!bookingId) throw new Error('Could not generate a unique booking reference');
+        const { id: bookingId, reference } = await insertBooking(
+          trx,
+          {
+            space_id: space.id,
+            customer_id: customer.id,
+            mode: input.mode,
+            booking_type: resolved.bookingType,
+            package_id: resolved.packageId,
+            package_name: resolved.packageName,
+            slot_count: resolved.slots.length,
+            starts_at: first.start,
+            ends_at: last.end,
+            unit_price_xof: unitPriceXof,
+            list_price_xof: resolved.quote.listPriceXof,
+            discount_xof: resolved.quote.discountXof,
+            total_xof: resolved.quote.totalXof,
+            status: 'PENDING_PAYMENT',
+            hold_expires_at: holdExpiresAt,
+            live_description: input.liveDescription ?? null,
+            access_token_hash: access.hash,
+          },
+          date,
+        );
 
         // 5. Lock the slots. A slot taken meanwhile raises a duplicate key → 409.
-        await trx
-          .insertInto('t_booking_slots')
-          .values(slotStarts.map((slot_start) => ({ booking_id: bookingId, slot_start })))
-          .execute();
-        await trx
-          .insertInto('t_slot_occupancies')
-          .values(
-            slotStarts.map((slot_start) => ({
-              space_id: space.id,
-              slot_start,
-              booking_id: bookingId,
-            })),
-          )
-          .execute();
+        await lockSlots(trx, bookingId, space.id, slotStarts);
 
         // 6. The payment attempt.
         const payment = await trx

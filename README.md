@@ -33,6 +33,8 @@ cp apps/web/.env.example apps/web/.env.local
 pnpm --filter @bovann/shared build
 pnpm db:migrate        # create the t_ tables
 pnpm db:seed           # studio, hours, packages, prices
+pnpm --filter @bovann/api admin:create -- --email you@example.com --name "Your Name"
+                       # first administrator; prints a temporary password
 pnpm dev:api           # http://localhost:3001/health/ready
 pnpm dev:web           # http://localhost:3000 (full booking flow, payments simulated)
 ```

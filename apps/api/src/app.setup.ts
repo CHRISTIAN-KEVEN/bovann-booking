@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { ApiExceptionFilter } from './common/errors';
 
@@ -14,6 +15,8 @@ export function configureApp(
   if (options.trustProxyHops)
     app.getHttpAdapter().getInstance().set('trust proxy', options.trustProxyHops);
   app.use(helmet());
+  // Admin sessions travel in an httpOnly cookie.
+  app.use(cookieParser());
   app.enableCors({ origin: options.corsOrigins, credentials: true });
   // Business endpoints live under /api/v1; health checks stay at the root for probes.
   app.setGlobalPrefix('api/v1', { exclude: ['health/live', 'health/ready'] });

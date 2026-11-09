@@ -368,6 +368,55 @@ describe('payment and notification rules', () => {
   });
 });
 
+describe('admin rules (Phase 5)', () => {
+  const SLOT = [new Date('2026-11-13T08:00:00.000Z')];
+
+  it('refuses a studio booking without the admin who created it', async () => {
+    const id = await createBooking(SLOT);
+    await expect(
+      db.updateTable('t_bookings').set({ source: 'ADMIN' }).where('id', '=', id).execute(),
+    ).rejects.toThrow(/chk_bookings_source/);
+  });
+
+  it('refuses a refund status without an amount, or a done refund without its date', async () => {
+    const id = await createBooking(SLOT);
+    await expect(
+      db.updateTable('t_bookings').set({ refund_status: 'DUE' }).where('id', '=', id).execute(),
+    ).rejects.toThrow(/chk_bookings_refund/);
+    await expect(
+      db
+        .updateTable('t_bookings')
+        .set({ refund_status: 'DONE', refund_amount_xof: 15000 })
+        .where('id', '=', id)
+        .execute(),
+    ).rejects.toThrow(/chk_bookings_refund_done/);
+  });
+
+  it('refuses a "Remboursée" booking whose refund is not done', async () => {
+    const id = await createBooking(SLOT);
+    await expect(
+      db.updateTable('t_bookings').set({ status: 'REFUNDED' }).where('id', '=', id).execute(),
+    ).rejects.toThrow(/chk_bookings_refunded_status/);
+  });
+
+  it('stores only one session per token hash', async () => {
+    const admin = await db
+      .insertInto('t_admin_users')
+      .values({ email: 'schema@example.test', full_name: 'Schema', password_hash: 'x' })
+      .executeTakeFirstOrThrow();
+    const session = {
+      admin_user_id: Number(admin.insertId),
+      token_hash: 'a'.repeat(64),
+      last_seen_at: new Date(),
+      expires_at: new Date(Date.now() + 60_000),
+    };
+    await db.insertInto('t_admin_sessions').values(session).execute();
+    await expect(db.insertInto('t_admin_sessions').values(session).execute()).rejects.toMatchObject(
+      DUPLICATE_KEY,
+    );
+  });
+});
+
 describe('time handling', () => {
   it('stores and returns slot times in UTC without shifting', async () => {
     const slot = new Date('2026-11-19T20:00:00.000Z');
