@@ -15,7 +15,10 @@ import { loadEnv } from '../config/env';
 import { generateTemporaryPassword, hashPassword } from './auth/passwords';
 
 async function main(): Promise<void> {
+  // `pnpm admin:create -- --email …` passes the `--` through; accept it as well as the plain form.
+  const args = process.argv.slice(2).filter((a, i) => !(i === 0 && a === '--'));
   const { values } = parseArgs({
+    args,
     options: { email: { type: 'string' }, name: { type: 'string' } },
   });
   const email = values.email?.trim().toLowerCase();

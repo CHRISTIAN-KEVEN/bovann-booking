@@ -140,7 +140,7 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
   - CSRF header on every change.
   - Temporary passwords that must be changed.
   - Accounts can be created, deactivated (signed out at once), have their role changed or their password reset; there is always one active administrator.
-  - Setup command: `pnpm --filter @bovann/api admin:create -- --email … --name "…"`.
+  - Setup command: `pnpm --filter @bovann/api admin:create --email … --name "…"`.
 - **Bookings**
   - List with tabs (all, confirmed, waiting for payment, cancelled, to collect, refunds to handle, abandoned checkouts), search by name, business, phone or reference, date filter and pages.
   - Detail with slots, payments and full history.
