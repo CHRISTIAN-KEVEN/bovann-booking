@@ -1,6 +1,6 @@
 # API reference
 
-Base URL: `/api/v1` (health checks at the root). JSON only. Customer endpoints are public; admin endpoints arrive in Phase 5, real payment webhooks in Phase 4.
+Base URL: `/api/v1` (health checks at the root). JSON only. Customer endpoints are public; admin endpoints (Phase 5) need a signed-in session (see "Admin API" below); real payment webhooks come in Phase 4.
 
 ## Conventions
 

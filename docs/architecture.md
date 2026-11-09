@@ -1,6 +1,6 @@
 # Architecture & data model
 
-_Approved 2026-11-08 · updated through Phase 3b (see §10 for what changed in Phase 1 and why)_
+_Approved 2026-11-08 · updated through Phase 5a (see §10 for what changed in Phase 1 and why)_
 
 ## 1. Technical decisions
 
@@ -109,7 +109,7 @@ Public endpoints, error format and availability rules: see `api.md`.
 
 ## 9. Open questions
 
-- Cancellation and refund policy
+- Customer-facing cancellation and refund policy
 - SMS/WhatsApp provider; transactional email provider (needs a sending domain with SPF/DKIM)
 - Exact opening hours
 
