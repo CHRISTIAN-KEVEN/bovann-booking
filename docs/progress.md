@@ -261,6 +261,10 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - **14 new unit tests:** each template, escaping, separate slots, older queued emails, sending error classification, settings validation.
 - **End-to-end over real SMTP (Mailpit):** an online booking paid → 3 emails delivered within 15 s, including to christiankeven326@gmail.com as an owner address. Emails queued earlier in development were delivered too, and the test email from Paramètres arrived. The emails were checked on desktop and phone widths.
 
+### Found and fixed later (2026-11-09)
+
+- Queued emails took their "due" time from the database clock while the sender used the app clock. Tests with a frozen clock started failing once real time passed it; in production a clock difference between the two could have delayed emails. Emails are now queued with the app clock.
+
 ## Customer site redesign: phone and desktop (in review)
 
 **Objective:** the customer site was a phone-width column, even on a computer. It now works on both, in the OCD Live brand, with the same simple flow (requested by the product owner on 2026-11-09, with the studio sign, a landing mock-up and a mobile booking reference).
