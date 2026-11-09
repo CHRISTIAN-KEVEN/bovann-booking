@@ -3,9 +3,9 @@
 import { formatXof, type SessionMode, type SpaceDto } from '@bovann/shared';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { AfricaMap } from '@/components/AfricaMap';
 import { useFlow } from '@/components/FlowProvider';
 import { Icon } from '@/components/icons';
+import { LiveScene } from '@/components/LiveScene';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { Alert, SkeletonBlock } from '@/components/ui';
@@ -17,23 +17,23 @@ const OPTIONS: { mode: SessionMode; title: string; text: string; icon: 'video' |
   {
     mode: 'IN_PERSON',
     title: 'En studio',
-    text: 'Vous venez à Lomé : régie, plateau et éclairage professionnels.',
+    text: 'Vous venez à Lomé et vous vendez sur notre plateau.',
     icon: 'video',
   },
   {
     mode: 'VIRTUAL',
     title: 'Virtuel',
-    text: 'Vous restez dans votre boutique : notre équipe et une assistante animent le live au studio.',
+    text: 'Vous restez dans votre boutique ; notre équipe et une assistante animent le live au studio.',
     icon: 'monitor',
   },
 ];
 
-/** Screen 1: the brand stage and the choice of mode. One tap on a mode opens the calendar. */
+/** Screen 1: what the studio does, and the choice of mode. One tap on a mode opens the calendar. */
 export function ModeChooser() {
   const router = useRouter();
   const { update } = useFlow();
   const [space, setSpace] = useState<SpaceDto | null>(null);
-  const [fromXof, setFromXof] = useState<number | null>(null);
+  const [prices, setPrices] = useState<Partial<Record<SessionMode, number>> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function ModeChooser() {
       .then(async (s) => {
         setSpace(s);
         const catalogs = await Promise.all(s.modes.map((m) => api.packages(m)));
-        setFromXof(Math.min(...catalogs.map((c) => c.unitPriceXof)));
+        setPrices(Object.fromEntries(s.modes.map((m, i) => [m, catalogs[i]!.unitPriceXof])));
       })
       .catch((e: unknown) =>
         setError(e instanceof ApiError ? e.message : 'Une erreur est survenue.'),
@@ -50,84 +50,109 @@ export function ModeChooser() {
   }, []);
 
   const offered = OPTIONS.filter((o) => !space || space.modes.includes(o.mode));
+  const slotLength = space ? formatDuration(space.slotDurationMin) : '1h30';
 
   function choose(mode: SessionMode) {
     update({ mode });
     router.push('/reserver/date');
   }
 
-  const facts = [
-    space ? `Lives de ${formatDuration(space.slotDurationMin)}` : null,
-    fromXof ? `dès ${formatXof(fromXof)}` : null,
-    'Réservation en 2 minutes',
-    'Mobile Money ou carte',
-  ].filter(Boolean);
-
   return (
     <div className={styles.landing}>
-      <SiteHeader transparent />
-      <main className={styles.stage}>
-        <div className={styles.copy}>
-          <p className={styles.kicker}>Studio de lives · Lomé, Togo</p>
-          <h1 className={styles.title}>
-            Votre produit en direct devant <span className={styles.accent}>toute l’Afrique.</span>
-          </h1>
-          <p className={styles.lead}>
-            Une régie, un studio, une audience. Venez vendre depuis notre studio à Lomé, ou restez
-            dans votre boutique et nous vous faisons passer en live.
-          </p>
+      <SiteHeader />
+      <main>
+        <section className={styles.hero}>
+          <div className={styles.copy}>
+            <p className={styles.kicker}>
+              <span className={styles.kickerDot} aria-hidden="true" />
+              Studio de live shopping à Lomé
+            </p>
+            <h1 className={styles.title}>
+              Passez en direct.
+              <span className={styles.accent}> On s’occupe du plateau.</span>
+            </h1>
+            <p className={styles.lead}>
+              Un plateau équipé, une régie et une équipe pour vos lives de vente. Venez au studio,
+              ou restez dans votre boutique&nbsp;: nous animons le live pour vous.
+            </p>
 
-          {error ? (
-            <Alert tone="error" title="Service indisponible">
-              {error}
-            </Alert>
-          ) : null}
+            {error ? (
+              <Alert tone="error" title="Service indisponible">
+                {error}
+              </Alert>
+            ) : null}
 
-          <section aria-labelledby="mode-heading" className={styles.choose}>
-            <h2 id="mode-heading" className={styles.chooseTitle}>
-              Choisissez votre format&nbsp;:
-            </h2>
-            <div className={styles.cards}>
-              {offered.map((o) => (
-                <button
-                  key={o.mode}
-                  type="button"
-                  className={styles.card}
-                  onClick={() => choose(o.mode)}
-                >
-                  <span className={styles.cardTop}>
-                    <span className={styles.cardIcon}>
+            <section aria-labelledby="mode-heading" className={styles.choose}>
+              <h2 id="mode-heading" className={styles.chooseTitle}>
+                Comment voulez-vous faire votre live&nbsp;?
+              </h2>
+              <div className={styles.options}>
+                {offered.map((o) => (
+                  <button
+                    key={o.mode}
+                    type="button"
+                    className={styles.option}
+                    onClick={() => choose(o.mode)}
+                  >
+                    <span className={styles.optionIcon}>
                       <Icon name={o.icon} size={22} />
                     </span>
-                    <Icon name="arrowUpRight" size={20} className={styles.cardArrow} />
-                  </span>
-                  <span className={styles.cardTitle}>{o.title}</span>
-                  <span className={styles.cardText}>{o.text}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+                    <span className={styles.optionText}>
+                      <span className={styles.optionTitle}>{o.title}</span>
+                      <span className={styles.optionDesc}>{o.text}</span>
+                    </span>
+                    <span className={styles.optionPrice}>
+                      {prices?.[o.mode] ? (
+                        <>
+                          <span className={styles.from}>dès</span>
+                          <strong>{formatXof(prices[o.mode]!)}</strong>
+                        </>
+                      ) : error ? null : (
+                        <SkeletonBlock className={styles.priceSkeleton} />
+                      )}
+                    </span>
+                    <Icon name="next" size={20} className={styles.optionChevron} />
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
 
-          {fromXof || error ? (
-            <p className={styles.facts}>
-              {facts.map((f, i) => (
-                <span key={f}>
-                  {i > 0 ? <span aria-hidden="true"> · </span> : null}
-                  {f}
+          <LiveScene className={styles.scene} />
+        </section>
+
+        <section className={styles.how} aria-labelledby="how-heading">
+          <h2 id="how-heading" className={styles.howTitle}>
+            Comment ça marche
+          </h2>
+          <ol className={styles.steps}>
+            <li>
+              <span className={styles.stepNum}>1</span>
+              <span>
+                <strong>Choisissez votre créneau</strong>
+                <span>
+                  Lives de {slotLength}, ou un forfait pour plusieurs heures à prix réduit.
                 </span>
-              ))}
-            </p>
-          ) : (
-            <SkeletonBlock dark className={styles.factsSkeleton} />
-          )}
-        </div>
-
-        <div className={styles.visual}>
-          <AfricaMap />
-          <p className={styles.caption}>Le studio est à Lomé · Votre public est partout</p>
-        </div>
+              </span>
+            </li>
+            <li>
+              <span className={styles.stepNum}>2</span>
+              <span>
+                <strong>Payez en ligne</strong>
+                <span>Mobile Money (T-Money, Flooz) ou carte bancaire, en 2 minutes.</span>
+              </span>
+            </li>
+            <li>
+              <span className={styles.stepNum}>3</span>
+              <span>
+                <strong>Passez en direct</strong>
+                <span>Le studio est prêt à l’heure dite&nbsp;; vous n’avez plus qu’à vendre.</span>
+              </span>
+            </li>
+          </ol>
+        </section>
       </main>
-      <SiteFooter dark />
+      <SiteFooter />
     </div>
   );
 }

@@ -119,4 +119,4 @@ _Last updated 2026-11-09_
 ## Design
 
 - Screens canvas (approved 2026-11-08): https://claude.ai/artifact/HYzmdfMYAoXsbNHWVDRycs
-- **Phone and desktop (2026-11-09):** the customer site must work as well on a computer as on a phone, with the same simple flow, in the OCD Live brand (orange wordmark, dark stage, glowing Africa map). Details in progress.md.
+- **Phone and desktop (2026-11-09):** the customer site must work as well on a computer as on a phone, with the same simple flow, in the OCD Live brand (orange wordmark). The home page is our own design: reference images are inspiration, never to be copied. Details in progress.md.

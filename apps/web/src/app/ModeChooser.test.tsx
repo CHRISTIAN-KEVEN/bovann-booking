@@ -42,14 +42,18 @@ describe('Home page', () => {
     expect(JSON.parse(sessionStorage.getItem(FLOW_KEY)!).mode).toBe('VIRTUAL');
   });
 
-  it('shows the slot length and the lowest price across modes', async () => {
+  it('shows each mode with its own starting price, and the slot length', async () => {
     render(
       <FlowProvider>
         <ModeChooser />
       </FlowProvider>,
     );
-    expect(await screen.findByText('Lives de 1h30')).toBeInTheDocument();
-    expect(await screen.findByText(/dès 12[\s\u202f\u00a0]000/)).toBeInTheDocument();
+    const studio = await screen.findByRole('button', { name: /En studio/ });
+    await within(studio).findByText(/15[\s\u202f\u00a0]000/);
+    expect(
+      within(screen.getByRole('button', { name: /Virtuel/ })).getByText(/12[\s\u202f\u00a0]000/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Lives de 1h30/)).toBeInTheDocument();
   });
 
   it('offers only the modes the studio opens', async () => {
@@ -59,8 +63,8 @@ describe('Home page', () => {
         <ModeChooser />
       </FlowProvider>,
     );
-    await screen.findByText('Lives de 1h30');
-    const choices = screen.getByRole('region', { name: /Choisissez votre format/ });
+    await screen.findByText(/15[\s\u202f\u00a0]000/);
+    const choices = screen.getByRole('region', { name: /Comment voulez-vous faire votre live/ });
     expect(within(choices).getByRole('button', { name: /En studio/ })).toBeInTheDocument();
     expect(within(choices).queryByRole('button', { name: /Virtuel/ })).toBeNull();
   });
