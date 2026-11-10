@@ -46,6 +46,7 @@ export const NEXT_KEY = 'bovann.admin.next';
 const NAV: Array<{ href: string; label: TKey; icon: IconName; badge?: 'refunds' }> = [
   { href: '/admin', label: 'adminShell.nav.bookings', icon: 'bookings' },
   { href: '/admin/calendrier', label: 'adminShell.nav.calendar', icon: 'calendar' },
+  { href: '/admin/lives', label: 'adminShell.nav.lives', icon: 'broadcast' },
   { href: '/admin/forfaits', label: 'adminShell.nav.packages', icon: 'tag' },
   { href: '/admin/espaces', label: 'adminShell.nav.spaces', icon: 'video' },
   { href: '/admin/clients', label: 'adminShell.nav.clients', icon: 'users' },

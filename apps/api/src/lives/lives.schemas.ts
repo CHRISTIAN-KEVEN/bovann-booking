@@ -1,0 +1,96 @@
+import {
+  ADMIN_LIVE_TABS,
+  CATEGORY_OTHER_MAX,
+  checkLiveLink,
+  cleanShortText,
+  LIVE_COUNTRIES,
+  LIVE_DURATIONS_MIN,
+  SELLER_NAME_MAX,
+  SELLER_NAME_MIN,
+  type LiveLinkError,
+} from '@bovann/shared';
+import { z } from 'zod';
+
+/** Messages for a refused live link (same wording as the web form). */
+const LINK_ERRORS: Record<LiveLinkError, string> = {
+  EMPTY: 'Le lien du live est obligatoire.',
+  INVALID: 'Ce lien n’est pas valide. Copiez-le depuis TikTok ou Facebook.',
+  NOT_ALLOWED: 'Seuls les liens TikTok et Facebook sont acceptés.',
+  TOO_LONG: 'Ce lien est trop long.',
+};
+
+const sellerName = z
+  .string({ message: 'Le nom du vendeur est obligatoire.' })
+  .transform(cleanShortText)
+  .pipe(
+    z
+      .string()
+      .min(SELLER_NAME_MIN, 'Le nom du vendeur est obligatoire (2 caractères minimum).')
+      .max(SELLER_NAME_MAX, 'Le nom du vendeur est trop long (60 caractères maximum).'),
+  );
+
+const liveLink = z.string({ message: LINK_ERRORS.EMPTY }).transform((value, ctx) => {
+  const result = checkLiveLink(value);
+  if (!result.ok) {
+    ctx.addIssue({ code: 'custom', message: LINK_ERRORS[result.error] });
+    return z.NEVER;
+  }
+  return result;
+});
+
+const categoryOther = z
+  .string()
+  .transform(cleanShortText)
+  .pipe(
+    z
+      .string()
+      .min(2, 'Écrivez votre catégorie (2 caractères minimum).')
+      .max(CATEGORY_OTHER_MAX, 'Catégorie trop longue (40 caractères maximum).'),
+  )
+  .nullish();
+
+export const liveCreateSchema = z
+  .object({
+    sellerName,
+    url: liveLink,
+    countryCode: z.enum(LIVE_COUNTRIES, { message: 'Choisissez le pays du vendeur.' }),
+    categoryCode: z
+      .string()
+      .regex(/^[A-Z0-9_]{2,40}$/, 'Catégorie invalide.')
+      .nullish(),
+    categoryOther,
+    durationMin: z
+      .number({ message: 'Durée invalide : 1, 2, 3 ou 4 heures.' })
+      .refine((v) => (LIVE_DURATIONS_MIN as readonly number[]).includes(v), {
+        message: 'Durée invalide : 1, 2, 3 ou 4 heures.',
+      }),
+  })
+  .strict()
+  .refine((v) => Boolean(v.categoryCode) !== Boolean(v.categoryOther), {
+    message: 'Choisissez une catégorie ou écrivez la vôtre.',
+    path: ['categoryCode'],
+  })
+  .transform((v) => ({
+    sellerName: v.sellerName,
+    url: v.url.url,
+    platform: v.url.platform,
+    countryCode: v.countryCode,
+    categoryCode: v.categoryCode ?? null,
+    categoryOther: v.categoryCode ? null : (v.categoryOther ?? null),
+    durationMin: v.durationMin,
+  }));
+
+export const liveRemoveSchema = z
+  .object({
+    reason: z
+      .string()
+      .transform(cleanShortText)
+      .pipe(z.string().max(255, 'Texte trop long (255 caractères maximum).'))
+      .nullish()
+      .transform((v) => v || null),
+  })
+  .strict();
+
+export const adminLiveListSchema = z.object({
+  tab: z.enum(ADMIN_LIVE_TABS, { message: 'Onglet invalide.' }).default('online'),
+});

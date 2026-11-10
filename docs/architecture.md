@@ -230,3 +230,17 @@ Product-owner decision: the whole product in French (main language) and English.
 5. **Migration `007`:** `t_spaces.name_en`; `t_packages.name_en`, `description_en`; `t_bookings.locale` (CHECK fr/en) and `package_name_en`. The seed fills the English names without overwriting the admin's.
 6. **Admin (step 2):** every admin screen is translated the same way; the FR | EN switch sits under the account name. Admins enter the English names of packages and spaces next to the French ones. Booking history, email labels and package names in lists come from the API in the page's language.
 7. **Still in French only:** business sectors, until they become the shared category list with English names.
+
+## 18. Live directory "En direct", part 1: the wall (2026-11-10)
+
+Product-owner decisions are in requirements.md. This part delivers what visitors see; sellers' accounts, posting and review, review hours and passes come next.
+
+1. **Tables (migration `008`).**
+   - `t_categories`: code, French and English names, icon, order, active. Eight categories seeded. "Autre" is not a row: a live then has no `category_id` and keeps the typed text in `category_other` (CHECK: exactly one of the two). The booking form moves to this list with the categories work.
+   - `t_lives`: seller name, platform (ENUM TikTok/Facebook), link, country, category, duration, status (`PENDING`, `APPROVED`, `REJECTED`, `ENDED`, `REMOVED`), `starts_at`/`ends_at`, who added and who ended it, and why.
+   - The database enforces: https links, an upper-case country code, name length, one category, a listed live has times with `ends_at > starts_at`, an ended or removed live has `ended_at`.
+2. **No expiry job.** A live is on the wall while `status = 'APPROVED' AND starts_at <= now < ends_at` (index `status, ends_at, starts_at`). Ending early changes the status.
+3. **Links are the main risk** (a listing could send visitors anywhere). One function, `checkLiveLink`, used by the API and the web form: host allow-list, https only, no credentials or ports, fragment dropped. Cards open links in a new tab with `rel="noopener noreferrer nofollow ugc"`. React escapes all text; names are cleaned of invisible characters that can disguise text.
+4. **Duplicates:** the same link can't be on the wall twice. The check locks the link's rows (`FOR UPDATE` on the `url` index) inside the transaction, so two staff adding it together get one success and one 409.
+5. **Web.** `/en-direct` (and `/en/en-direct`). The page loads the whole wall in one call and filters in the browser: instant filters, and country counts that match what a tap shows. The choice stays in the address (`?pays=TG&plateforme=tiktok&categorie=mode`). It fetches again every minute and when the visitor comes back to the tab. Flags are drawn in SVG (Windows shows emoji flags as letters). The header of the home page and the wall has two tabs: "En direct" and "Réserver le studio".
+6. **Admin.** "Lives" page for both roles: what is online, what ended in the last 30 days, "Ajouter un live" (paste the link: platform and account are detected, the name is pre-filled) and "Retirer" with a reason. Every action is in the audit log.

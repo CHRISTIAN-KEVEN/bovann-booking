@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AvailabilityModule } from '../availability/availability.module';
 import { BookingModule } from '../booking/booking.module';
+import { LivesModule } from '../lives/lives.module';
 import { NotificationModule } from '../notification/notification.module';
 import { AdminBookingsController } from './admin-bookings.controller';
 import { AdminBookingsService } from './admin-bookings.service';
 import { AdminCatalogService } from './admin-catalog.service';
+import { AdminLivesController } from './admin-lives.controller';
 import { AdminNotificationsController } from './admin-notifications.controller';
 import { AdminReportsController, AdminUsersController } from './admin-people.controller';
 import { AdminReportsService } from './admin-reports.service';
@@ -17,9 +19,9 @@ import { AdminAuthGuard } from './auth/admin-auth.guard';
 import { AdminAuthService } from './auth/admin-auth.service';
 import { LoginRateLimiter } from './auth/login-rate-limiter';
 
-/** Everything under /api/v1/admin: sign-in, planning, bookings, catalog, settings, accounts. */
+/** Everything under /api/v1/admin: sign-in, planning, bookings, catalog, settings, accounts, lives. */
 @Module({
-  imports: [AvailabilityModule, BookingModule, NotificationModule],
+  imports: [AvailabilityModule, BookingModule, NotificationModule, LivesModule],
   controllers: [
     AdminAuthController,
     AdminBookingsController,
@@ -27,6 +29,7 @@ import { LoginRateLimiter } from './auth/login-rate-limiter';
     AdminReportsController,
     AdminUsersController,
     AdminNotificationsController,
+    AdminLivesController,
   ],
   providers: [
     AdminAuthService,

@@ -9,6 +9,7 @@ import { ConfigModule, ENV } from './config/config.module';
 import type { Env } from './config/env';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { LivesModule } from './lives/lives.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { HealthModule } from './health/health.module';
     BookingModule,
     AdminModule,
     NotificationModule,
+    LivesModule,
   ],
 })
 export class AppModule {}

@@ -9,6 +9,7 @@ import type {
   SessionMode,
   SpaceDto,
   Locale,
+  LiveWallResponse,
 } from '@bovann/shared';
 import { getApiLocale } from './api-locale';
 
@@ -130,6 +131,8 @@ export const api = {
     apiDownload(`/bookings/${reference}/receipt`, token),
   cancelBooking: (reference: string, token: string) =>
     apiFetch<BookingDto>(`/bookings/${reference}/cancel`, { method: 'POST', token }),
+  /** The "En direct" wall: lives on now and the categories for the filters. */
+  lives: () => apiFetch<LiveWallResponse>('/lives'),
   /** Development only: decide the outcome of a simulated payment. */
   simulatePayment: (reference: string, outcome: 'succeed' | 'fail') =>
     apiFetch<{ outcome: string }>(`/dev/payments/${reference}/${outcome}`, {

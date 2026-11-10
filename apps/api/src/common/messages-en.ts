@@ -170,4 +170,30 @@ export const MESSAGES_EN: Readonly<Record<string, string>> = {
     'One of the chosen times is no longer free. Refresh the schedule and choose another time.',
   'Un forfait « créneau unique » (1 créneau) est obligatoire : il sert de prix de référence.':
     'A “single slot” package (1 slot) is required: it is the reference price.',
+
+  // Live directory
+  'Le lien du live est obligatoire.': 'The live link is required.',
+  'Ce lien n’est pas valide. Copiez-le depuis TikTok ou Facebook.':
+    'This link isn’t valid. Copy it from TikTok or Facebook.',
+  'Seuls les liens TikTok et Facebook sont acceptés.':
+    'Only TikTok and Facebook links are accepted.',
+  'Ce lien est trop long.': 'This link is too long.',
+  'Le nom du vendeur est obligatoire.': 'The seller’s name is required.',
+  'Le nom du vendeur est obligatoire (2 caractères minimum).':
+    'The seller’s name is required (at least 2 characters).',
+  'Le nom du vendeur est trop long (60 caractères maximum).':
+    'The seller’s name is too long (60 characters maximum).',
+  'Écrivez votre catégorie (2 caractères minimum).': 'Type your category (at least 2 characters).',
+  'Catégorie trop longue (40 caractères maximum).': 'Category too long (40 characters maximum).',
+  'Choisissez le pays du vendeur.': 'Choose the seller’s country.',
+  'Catégorie invalide.': 'Invalid category.',
+  'Durée invalide : 1, 2, 3 ou 4 heures.': 'Invalid duration: 1, 2, 3 or 4 hours.',
+  'Choisissez une catégorie ou écrivez la vôtre.': 'Choose a category or type your own.',
+  'Texte trop long (255 caractères maximum).': 'Text too long (255 characters maximum).',
+  'Onglet invalide.': 'Invalid tab.',
+  'Cette catégorie n’existe pas. Choisissez-en une autre.':
+    'This category doesn’t exist. Choose another one.',
+  'Ce live est déjà sur le mur.': 'This live is already on the wall.',
+  'Ce live est introuvable.': 'This live can’t be found.',
+  'Ce live n’est plus sur le mur.': 'This live is no longer on the wall.',
 };

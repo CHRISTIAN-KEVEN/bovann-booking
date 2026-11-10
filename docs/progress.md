@@ -435,6 +435,40 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
   - switching to French keeps the page
   - no browser errors
 
+## Live directory, part 1: the wall (in review)
+
+### Delivered
+
+- **Page "En direct"** (`/en-direct`, English at `/en/en-direct`), from the approved design:
+  - live count, country chips with flags and counts, TikTok / Facebook switch, categories (a sheet with big tiles on phones, a row on computers)
+  - cards with the seller's initials, category colour, platform, time live, category and country; one tap opens the live on TikTok or Facebook in a new tab
+  - empty, no-match, loading and error states; refreshes every minute; filters kept in the address
+- **Header:** "En direct" and "Réserver le studio" tabs on the home page and the wall.
+- **Admin "Lives"** (both roles): lives online, lives ended in the last 30 days, add a live for a seller, remove a live with a reason.
+- **Categories table** with French and English names, used by lives (the booking form moves to it in the categories step).
+
+### Decisions taken in this step (to confirm)
+
+- **Staff can list a live for a seller**, approved at once. It lets Bovann fill the wall before sellers can sign in (that needs the SMS/WhatsApp provider), and stays useful for sellers who call or come to the studio.
+- **Duration:** 1, 2, 3 or 4 hours (the proposal in requirements.md).
+- **Countries:** the 16 countries of the phone picker.
+- **No "Publier mon live" button yet:** it arrives with seller sign-in, so it never leads to a page that doesn't work.
+
+### Tests
+
+- **API (9 new):** wall content and order, expiry at `ends_at`, category names in both languages, typed categories, removal (once, audited), duplicate links, link and text rules with messages in both languages, staff session required, database CHECK rules.
+- **Shared (6 new):** link checking (accepted forms, refused sites and schemes, look-alike hosts, length) and text cleaning.
+- **Web (9 new):** filters in the address, country counts, time and initials; the wall's list, links (new tab, noopener), filters, "Autres", empty and error states, English.
+- **Totals:** API 220, shared 12, web 66.
+- **In a real Chrome:** staff added a live through the form and six more; the wall at 360, 390, 1000 and 1440 px, French and English, the category sheet and a filter; the admin list. No browser errors.
+
+### Next
+
+1. Seller accounts: phone + code by WhatsApp/SMS (simulated sender in development).
+2. Posting a live, staff review queue (auto-refresh, counter), review hours.
+3. Categories: the booking form uses the shared list, "Autre" everywhere, admin list of typed categories.
+4. Passes and one-off payment.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.
