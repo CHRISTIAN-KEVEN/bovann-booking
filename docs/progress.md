@@ -364,6 +364,16 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - **Tests:** 2 API integration tests (PDF only once confirmed, file name, one page, token required) and 3 unit tests (payment line in the studio time zone, characters, one page for paid and unpaid, studio and virtual); web tests for the search page (never lists saved bookings) and the download helper. Totals: 248 (202 API, 5 shared, 44 web).
 - **In Chrome at phone width:** booking paid, receipt downloaded and checked; the same browser then shows only the search form.
 
+## One tap on a date opens its slots (in review)
+
+**Product owner, 2026-11-10:** choosing a day, then pressing "Voir les créneaux", was one click too many.
+
+- Tapping an open day now goes straight to its slots, like the mode choice on the home page. Full, closed and past days still can't be tapped.
+- The "Voir les créneaux" button and the day summary under the calendar are gone; the slots screen already shows the date and what is free. A short hint under the calendar says what to do.
+- Going back shows the chosen day highlighted. Opening the same day again keeps the slots already picked; another day clears them.
+- On phones the step has no bottom bar any more; on a computer the "Votre réservation" panel stays.
+- **Tests:** 3 web tests (one tap opens the slots, a full day does nothing, the earlier day is highlighted and keeps its slots). Checked in Chrome at 390 and 1440 px: no errors, no horizontal scrolling.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.

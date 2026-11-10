@@ -15,7 +15,6 @@ import {
   Screen,
   SkeletonBlock,
   StepHeader,
-  buttonClass,
   buttonSecondaryClass,
 } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
@@ -41,7 +40,7 @@ const STATUS_LABEL: Record<DayStatus, string> = {
 
 const BOOKABLE: DayStatus[] = ['AVAILABLE', 'FEW'];
 
-/** Screen 2: month calendar, then a day. */
+/** Screen 2: month calendar. Tapping an open day goes straight to its slots. */
 export default function DatePage() {
   const router = useRouter();
   const allowed = useStepGuard('/reserver/date');
@@ -49,7 +48,6 @@ export default function DatePage() {
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [data, setData] = useState<MonthAvailabilityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | undefined>(flow.date);
 
   const month = flow.month ?? (space ? monthOf(space.booking.today) : undefined);
 
@@ -77,24 +75,19 @@ export default function DatePage() {
     if (month) loadMonth(month);
   }, [month, loadMonth]);
 
-  useEffect(() => {
-    setSelected(flow.date);
-  }, [flow.date]);
-
   if (!allowed) return null;
 
   const minMonth = space ? monthOf(space.booking.today) : undefined;
   const maxMonth = space ? monthOf(space.booking.lastBookableDate) : undefined;
-  const selectedDay = data?.days.find((d) => d.date === selected);
 
   function goMonth(delta: number) {
     if (!month) return;
     update({ month: shiftMonth(month, delta) });
   }
 
-  function next() {
-    if (!selected) return;
-    update({ date: selected });
+  function openDay(date: string) {
+    // Same date as before: the flow keeps the slots already picked.
+    update({ date });
     router.push('/reserver/creneaux');
   }
 
@@ -174,7 +167,7 @@ export default function DatePage() {
               ))}
               {data.days.map((d) => {
                 const bookable = BOOKABLE.includes(d.status);
-                const isSelected = d.date === selected;
+                const isSelected = d.date === flow.date;
                 const dayNumber = Number(d.date.slice(8));
                 return (
                   <button
@@ -182,7 +175,7 @@ export default function DatePage() {
                     type="button"
                     aria-pressed={isSelected}
                     disabled={!bookable}
-                    onClick={() => setSelected(d.date)}
+                    onClick={() => openDay(d.date)}
                     className={`${styles.day} ${styles[`day_${d.status}`]} ${isSelected ? styles.daySelected : ''}`}
                     aria-label={`${formatLongDate(d.date)}, ${STATUS_LABEL[d.status]}`}
                   >
@@ -221,32 +214,15 @@ export default function DatePage() {
           </div>
         </section>
 
-        {selectedDay ? (
-          <section className={styles.summary} aria-live="polite">
-            <span className={styles.summaryBadge} aria-hidden="true">
-              <span>{formatLongDate(selectedDay.date).slice(0, 3).toUpperCase()}</span>
-              <strong>{Number(selectedDay.date.slice(8))}</strong>
-            </span>
-            <span className={styles.summaryText}>
-              <strong>{formatLongDate(selectedDay.date)}</strong>
-              <span>
-                {selectedDay.availableCount} créneau{selectedDay.availableCount > 1 ? 'x' : ''} de
-                1h30 disponible
-                {selectedDay.availableCount > 1 ? 's' : ''}
-              </span>
-            </span>
-          </section>
-        ) : data && !data.days.some((d) => BOOKABLE.includes(d.status)) ? (
+        {data && !data.days.some((d) => BOOKABLE.includes(d.status)) ? (
           <Alert tone="info" title="Aucune disponibilité ce mois-ci">
             Essayez le mois suivant.
           </Alert>
+        ) : data ? (
+          <p className={styles.hint}>Sélectionnez un jour pour voir ses créneaux.</p>
         ) : null}
       </Body>
-      <BottomBar step={2}>
-        <button type="button" className={buttonClass} onClick={next} disabled={!selectedDay}>
-          Voir les créneaux
-        </button>
-      </BottomBar>
+      <BottomBar step={2} />
     </Screen>
   );
 }

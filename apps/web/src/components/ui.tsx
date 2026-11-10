@@ -92,18 +92,23 @@ export function BottomBar({
   step,
   locked,
 }: {
-  children: ReactNode;
+  /** Without an action (a step where tapping the content moves on), phones show no bar. */
+  children?: ReactNode;
   summary?: ReactNode;
   step?: number;
   locked?: boolean;
 }) {
   return (
-    <footer className={styles.bottomBar}>
+    <footer className={`${styles.bottomBar} ${children ? '' : styles.bottomBarRecapOnly}`}>
       {step ? <ReservationRecap step={step} locked={locked} /> : null}
-      <div className={styles.bottomRow}>
-        {summary ? <div className={styles.bottomSummary}>{summary}</div> : null}
-        <div className={summary ? styles.bottomActionInline : styles.bottomAction}>{children}</div>
-      </div>
+      {children ? (
+        <div className={styles.bottomRow}>
+          {summary ? <div className={styles.bottomSummary}>{summary}</div> : null}
+          <div className={summary ? styles.bottomActionInline : styles.bottomAction}>
+            {children}
+          </div>
+        </div>
+      ) : null}
     </footer>
   );
 }
