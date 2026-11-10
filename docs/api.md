@@ -8,11 +8,12 @@ Base URL: `/api/v1` (health checks at the root). JSON only. Customer endpoints a
 - **Local dates and times** (`date`, `startTime`, `today`) are in the space's time zone (Lomé), ready to display: `2026-11-12`, `08:00`.
 - **Amounts** are whole XOF (FCFA).
 - **Modes:** `IN_PERSON` (en studio) or `VIRTUAL` (virtuel).
+- **Language:** send `Accept-Language: en` for English, anything else (or nothing) gives French. Error messages, space and package names, and payment instructions follow it. A booking keeps the language it was made in for the customer's emails; the receipt follows the language of the request that downloads it (`receipt-…pdf` in English, `recu-…pdf` in French).
 - Response types live in `packages/shared/src/api.ts`, shared with the web app.
 
 ### Errors
 
-Every error has the same shape. `code` is stable, for program logic; `message` is French and can be shown to users as is.
+Every error has the same shape. `code` is stable, for program logic; `message` is in the request's language (French by default) and can be shown to users as is. Messages inside `details` (validation problems, price rules) are translated too.
 
 ```json
 { "statusCode": 404, "code": "SPACE_NOT_FOUND", "message": "Cet espace est introuvable." }

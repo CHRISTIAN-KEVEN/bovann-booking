@@ -205,10 +205,10 @@ export class AdminSettingsService {
         d.isOpen &&
         timeToMinutes(d.closesAt) - timeToMinutes(d.opensAt) < space.slot_duration_min
       ) {
-        throw badRequest(
-          'OPENING_TOO_SHORT',
-          `${WEEKDAY_FR[d.weekday]} : l’ouverture doit durer au moins un créneau (${space.slot_duration_min} min).`,
-        );
+        throw badRequest('OPENING_TOO_SHORT', {
+          fr: `${WEEKDAY_FR[d.weekday]} : l’ouverture doit durer au moins un créneau (${space.slot_duration_min} min).`,
+          en: `${WEEKDAY_EN[d.weekday]}: opening hours must last at least one slot (${space.slot_duration_min} min).`,
+        });
       }
     }
 
@@ -238,7 +238,10 @@ export class AdminSettingsService {
     if (conflicts.length > 0) {
       throw conflictError(
         'OPENING_HOURS_CONFLICT',
-        `Ces horaires excluraient ${conflicts.length} réservation${conflicts.length > 1 ? 's' : ''} à venir. Déplacez-les ou annulez-les d’abord.`,
+        {
+          fr: `Ces horaires excluraient ${conflicts.length} réservation${conflicts.length > 1 ? 's' : ''} à venir. Déplacez-les ou annulez-les d’abord.`,
+          en: `These hours would leave out ${conflicts.length} upcoming booking${conflicts.length > 1 ? 's' : ''}. Move or cancel ${conflicts.length > 1 ? 'them' : 'it'} first.`,
+        },
         conflicts.map(toConflictDto),
       );
     }
@@ -319,7 +322,10 @@ export class AdminSettingsService {
     if (overlapping.length > 0) {
       throw conflictError(
         'CLOSURE_CONFLICT',
-        `${overlapping.length} réservation${overlapping.length > 1 ? 's tombent' : ' tombe'} pendant cette fermeture. Annulez-les ou déplacez-les d’abord.`,
+        {
+          fr: `${overlapping.length} réservation${overlapping.length > 1 ? 's tombent' : ' tombe'} pendant cette fermeture. Annulez-les ou déplacez-les d’abord.`,
+          en: `${overlapping.length} booking${overlapping.length > 1 ? 's fall' : ' falls'} during this closure. Cancel or move ${overlapping.length > 1 ? 'them' : 'it'} first.`,
+        },
         overlapping.map(toConflictDto),
       );
     }
@@ -439,6 +445,16 @@ export class AdminSettingsService {
     return row;
   }
 }
+
+export const WEEKDAY_EN: Record<number, string> = {
+  1: 'Monday',
+  2: 'Tuesday',
+  3: 'Wednesday',
+  4: 'Thursday',
+  5: 'Friday',
+  6: 'Saturday',
+  7: 'Sunday',
+};
 
 export const WEEKDAY_FR: Record<number, string> = {
   1: 'Lundi',

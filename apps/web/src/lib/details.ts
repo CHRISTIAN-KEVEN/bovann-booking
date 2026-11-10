@@ -1,24 +1,25 @@
+import type { T } from '@/i18n/I18nProvider';
 import type { CustomerDetails } from './flow';
 
 /**
  * Customer details form: country codes, phone composition and validation
- * (French messages, same rules as the API so errors show before submitting).
+ * (messages in the page's language, same rules as the API so errors show before submitting).
  */
 
-/** Countries offered for phone numbers: name (French), ISO code for the flag, dialling code. */
+/** Countries offered for phone numbers: ISO code (flag and name, see `countries.*`) and dialling code. */
 export const COUNTRY_CODES = [
-  { code: '+228', iso: 'TG', name: 'Togo' },
-  { code: '+229', iso: 'BJ', name: 'Bénin' },
-  { code: '+233', iso: 'GH', name: 'Ghana' },
-  { code: '+225', iso: 'CI', name: 'Côte d’Ivoire' },
-  { code: '+226', iso: 'BF', name: 'Burkina Faso' },
-  { code: '+227', iso: 'NE', name: 'Niger' },
-  { code: '+221', iso: 'SN', name: 'Sénégal' },
-  { code: '+223', iso: 'ML', name: 'Mali' },
-  { code: '+234', iso: 'NG', name: 'Nigeria' },
-  { code: '+237', iso: 'CM', name: 'Cameroun' },
-  { code: '+33', iso: 'FR', name: 'France' },
-  { code: '+1', iso: 'US', name: 'États-Unis / Canada' },
+  { code: '+228', iso: 'TG' },
+  { code: '+229', iso: 'BJ' },
+  { code: '+233', iso: 'GH' },
+  { code: '+225', iso: 'CI' },
+  { code: '+226', iso: 'BF' },
+  { code: '+227', iso: 'NE' },
+  { code: '+221', iso: 'SN' },
+  { code: '+223', iso: 'ML' },
+  { code: '+234', iso: 'NG' },
+  { code: '+237', iso: 'CM' },
+  { code: '+33', iso: 'FR' },
+  { code: '+1', iso: 'US' },
 ] as const;
 
 /**
@@ -62,20 +63,18 @@ export function isValidE164(phone: string): boolean {
 
 export type DetailsErrors = Partial<Record<keyof CustomerDetails, string>>;
 
-export function validateDetails(d: CustomerDetails): DetailsErrors {
+export function validateDetails(d: CustomerDetails, t: T): DetailsErrors {
   const errors: DetailsErrors = {};
-  if (!d.fullName.trim()) errors.fullName = 'Indiquez votre nom complet.';
-  else if (d.fullName.trim().length > 120)
-    errors.fullName = 'Nom trop long (120 caractères maximum).';
-  if (!isValidE164(d.phone)) errors.phone = 'Numéro invalide : vérifiez l’indicatif et le numéro.';
+  if (!d.fullName.trim()) errors.fullName = t('validation.fullNameRequired');
+  else if (d.fullName.trim().length > 120) errors.fullName = t('validation.fullNameTooLong');
+  if (!isValidE164(d.phone)) errors.phone = t('validation.phoneInvalid');
   if (d.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim()))
-    errors.email = 'Adresse e-mail invalide.';
-  if (!d.businessName.trim()) errors.businessName = 'Indiquez le nom de votre entreprise.';
+    errors.email = t('validation.emailInvalid');
+  if (!d.businessName.trim()) errors.businessName = t('validation.businessRequired');
   else if (d.businessName.trim().length > 160)
-    errors.businessName = 'Nom trop long (160 caractères maximum).';
-  if (!d.businessSector) errors.businessSector = 'Choisissez votre secteur d’activité.';
-  if (d.liveDescription.length > 1000)
-    errors.liveDescription = 'Description trop longue (1000 caractères maximum).';
-  if (!d.acceptTerms) errors.acceptTerms = 'Vous devez accepter les conditions de réservation.';
+    errors.businessName = t('validation.businessTooLong');
+  if (!d.businessSector) errors.businessSector = t('validation.sectorRequired');
+  if (d.liveDescription.length > 1000) errors.liveDescription = t('validation.descriptionTooLong');
+  if (!d.acceptTerms) errors.acceptTerms = t('validation.termsRequired');
   return errors;
 }

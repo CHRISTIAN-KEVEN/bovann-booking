@@ -15,6 +15,7 @@ import { BookingLifecycleService } from './booking-lifecycle.service';
 import { BookingQueryService } from './booking-query.service';
 import { generateAccessToken, paymentIdempotencyKey } from './domain/identifiers';
 import { BookingRuleError, resolveSelection, slotUnavailable } from './domain/selection';
+import { currentLocale } from '../common/request-context';
 
 /**
  * Creates a booking hold when the customer presses "Payer":
@@ -129,6 +130,8 @@ export class BookingHoldService {
             booking_type: resolved.bookingType,
             package_id: resolved.packageId,
             package_name: resolved.packageName,
+            package_name_en: resolved.packageNameEn,
+            locale: currentLocale(),
             slot_count: resolved.slots.length,
             starts_at: first.start,
             ends_at: last.end,

@@ -9,7 +9,10 @@ export interface PackageWithPrice {
   id: number;
   code: string;
   name: string;
+  /** English name and description, entered by the admin (null: show the French ones). */
+  nameEn: string | null;
   description: string | null;
+  descriptionEn: string | null;
   isFullDay: boolean;
   slotCount: number | null;
   priceXof: number;
@@ -114,7 +117,9 @@ export class CatalogRepository {
         'p.id',
         'p.code',
         'p.name',
+        'p.name_en',
         'p.description',
+        'p.description_en',
         'p.is_full_day',
         'p.slot_count',
         'pp.price_xof',
@@ -131,7 +136,9 @@ export class CatalogRepository {
       id: r.id,
       code: r.code,
       name: r.name,
+      nameEn: r.name_en,
       description: r.description,
+      descriptionEn: r.description_en,
       isFullDay: r.is_full_day,
       slotCount: r.slot_count,
       priceXof: r.price_xof,

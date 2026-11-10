@@ -44,7 +44,10 @@ export class AdminScheduleService {
 
   async schedule(spaceId: number, fromDate: string, days: number): Promise<ScheduleResponse> {
     if (days < 1 || days > MAX_SCHEDULE_DAYS) {
-      throw badRequest('INVALID_RANGE', `Période invalide (1 à ${MAX_SCHEDULE_DAYS} jours).`);
+      throw badRequest('INVALID_RANGE', {
+        fr: `Période invalide (1 à ${MAX_SCHEDULE_DAYS} jours).`,
+        en: `Invalid period (1 to ${MAX_SCHEDULE_DAYS} days).`,
+      });
     }
     const space = await loadSpace(this.db, spaceId);
     const now = this.clock.now();

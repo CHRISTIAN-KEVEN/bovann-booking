@@ -7,6 +7,7 @@ import { notFound } from '../common/errors';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
 import { generateAccessToken, hashAccessToken } from './domain/identifiers';
+import { localized } from '../common/request-context';
 
 /** Read side of bookings: builds the customer-facing DTO. */
 @Injectable()
@@ -87,6 +88,7 @@ export class BookingQueryService {
         'b.mode',
         'b.booking_type',
         'b.package_name',
+        'b.package_name_en',
         'b.slot_count',
         'b.starts_at',
         'b.ends_at',
@@ -95,6 +97,7 @@ export class BookingQueryService {
         'b.total_xof',
         'b.hold_expires_at',
         's.name as space_name',
+        's.name_en as space_name_en',
         's.timezone',
         's.slot_duration_min',
         'c.full_name',
@@ -128,7 +131,7 @@ export class BookingQueryService {
       reference: b.reference,
       status: b.status,
       mode: b.mode,
-      spaceName: b.space_name,
+      spaceName: localized(b.space_name, b.space_name_en),
       date: utcToLocalDate(b.starts_at, tz),
       startTime: utcToLocalTime(b.starts_at, tz),
       endTime: utcToLocalTime(b.ends_at, tz),
@@ -142,7 +145,7 @@ export class BookingQueryService {
         };
       }),
       bookingType: b.booking_type,
-      packageName: b.package_name,
+      packageName: b.package_name === null ? null : localized(b.package_name, b.package_name_en),
       slotCount: b.slot_count,
       price: { listPriceXof: b.list_price_xof, discountXof: b.discount_xof, totalXof: b.total_xof },
       holdExpiresAt: holding ? b.hold_expires_at!.toISOString() : null,

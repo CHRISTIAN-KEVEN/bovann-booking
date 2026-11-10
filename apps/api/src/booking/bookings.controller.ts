@@ -28,6 +28,7 @@ import { BookingLifecycleService } from './booking-lifecycle.service';
 import { ReceiptService } from './receipt.service';
 import { BookingQueryService } from './booking-query.service';
 import { TurnstileService } from './turnstile.service';
+import { currentLocale } from '../common/request-context';
 
 const phone = z
   .string({ message: 'Le numéro de téléphone est obligatoire.' })
@@ -171,7 +172,7 @@ export class BookingsController {
     const { reference: ref, pdf } = await this.receipts.pdf(id);
     return new StreamableFile(pdf, {
       type: 'application/pdf',
-      disposition: `attachment; filename="recu-${ref}.pdf"`,
+      disposition: `attachment; filename="${currentLocale() === 'en' ? 'receipt' : 'recu'}-${ref}.pdf"`,
       length: pdf.length,
     });
   }

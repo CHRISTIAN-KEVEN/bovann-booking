@@ -45,10 +45,17 @@ describe('receipt', () => {
     expect(paymentLine(paid)).toEqual({
       label: 'Payé',
       detail: 'Payé le 9 novembre 2026 à 14:32 par Mobile Money (T-Money).',
+      due: false,
+    });
+    expect(paymentLine(paid, 'en')).toEqual({
+      label: 'Paid',
+      detail: 'Paid on 9 November 2026 at 14:32 by Mobile Money (T-Money).',
+      due: false,
     });
     expect(paymentLine({ ...paid, payment: null })).toEqual({
       label: 'À régler au studio',
       detail: null,
+      due: true,
     });
     expect(paymentLine({ ...paid, payment: null, totalXof: 0 }).label).toBe('Offert');
     expect(dateTimeIn(new Date('2026-11-09T23:30:00Z'), 'Africa/Lagos')).toBe(

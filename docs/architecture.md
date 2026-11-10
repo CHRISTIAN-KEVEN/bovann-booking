@@ -206,3 +206,26 @@ None of these changes alter an agreed requirement; they make the agreed design i
 - Built-in PDF fonts (Helvetica) keep the file small (about 3 KB) and need no font files; `pdfText` swaps the few characters they cannot draw (narrow spaces, minus sign).
 - Only for `CONFIRMED` bookings, behind the booking access token. Times are shown in the studio's time zone. The simulated provider's transaction reference is hidden.
 - Called "Reçu de réservation" and marked "Il ne constitue pas une facture": a formal invoice needs Bovann Group's tax details.
+
+## 17. French and English (2026-11-10)
+
+Product-owner decision: the whole product in French (main language) and English.
+
+1. **Addresses.** French pages keep their plain address (`/reserver/date`); English pages are the same address under `/en` (`/en/reserver/date`). A link always opens in the language it was shared in.
+   - All routes live under `app/[lang]/`. `src/proxy.ts` (Next.js 16's name for middleware) serves the plain address from the `fr` route without changing the address, and sends `/fr/…` back to the plain address so each page has one address.
+   - Page paths stay French in both languages (`/en/mes-reservations`): one set of routes, and email links stay simple.
+2. **Texts.** `apps/web/src/i18n/messages/fr.ts` is the reference; `en.ts` has the same keys, and TypeScript fails the build if an English text is missing. A key-equality test checks it too.
+   - Client components call `useI18n()` → `{ t, locale, path }`. `t('slots.suggestText', { name, price })` fills values; texts with a count have a singular and a plural form.
+   - `Link` and `useLocaleRouter` from `@/i18n/I18nProvider` keep the current language in every link and redirect.
+   - Only the page's language is sent to the browser (the layout passes one dictionary).
+   - Legal pages (`/conditions`) are written as two whole documents; the English one says the French text applies if they differ.
+   - The FR | EN switch keeps the page and its `?ref=…`.
+3. **API.** The website sends `Accept-Language: fr|en` with every call.
+   - A request-context middleware (AsyncLocalStorage) makes the language available anywhere during the request: `currentLocale()`, `localized(fr, en)`.
+   - **Error messages:** the error filter translates them. Plain French messages map to English through `common/messages-en.ts`; messages built with values are thrown with both languages (`{ fr, en }`). A unit test fails if a French message has no English version.
+   - **Names:** spaces and packages have an optional English name (`name_en`, `description_en`), entered in the admin. The French one is shown when it is empty.
+4. **Bookings remember their language** (`t_bookings.locale`), with the package's English name as it was when booked (`package_name_en`).
+   - The customer's emails use the booking's language; the studio's emails stay in French.
+   - The receipt follows the language of the page it is downloaded from.
+5. **Migration `007`:** `t_spaces.name_en`; `t_packages.name_en`, `description_en`; `t_bookings.locale` (CHECK fr/en) and `package_name_en`. The seed fills the English names without overwriting the admin's.
+6. **Not yet translated:** the admin screens (next step), and business sectors, which become a shared category list with English names.

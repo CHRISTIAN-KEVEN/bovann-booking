@@ -1,0 +1,49 @@
+.switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid #3a3b44;
+}
+
+.light {
+  border-color: var(--color-border);
+  background: #fff;
+}
+
+.option {
+  min-width: 40px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-decoration: none;
+  color: var(--color-text-on-ink-muted);
+}
+
+.light .option {
+  color: var(--color-text-muted);
+}
+
+.option:hover {
+  color: #fff;
+}
+
+.light .option:hover {
+  color: var(--color-text);
+}
+
+.current,
+.current:hover {
+  background: #fff;
+  color: var(--color-ink);
+}
+
+.light .current,
+.light .current:hover {
+  background: var(--color-ink);
+  color: #fff;
+}

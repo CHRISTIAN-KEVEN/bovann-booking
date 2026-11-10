@@ -1,8 +1,8 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useFlow } from '@/components/FlowProvider';
+import { useLocaleRouter } from '@/i18n/I18nProvider';
 import { firstMissingStep } from './flow';
 
 const ORDER = [
@@ -18,7 +18,7 @@ const ORDER = [
  * payment page directly). Returns true once the page may render.
  */
 export function useStepGuard(current: (typeof ORDER)[number]): boolean {
-  const router = useRouter();
+  const router = useLocaleRouter();
   const { flow, ready } = useFlow();
   const missing = ready ? firstMissingStep(flow) : null;
   const mustRedirect = ready && missing !== null && ORDER.indexOf(missing) < ORDER.indexOf(current);

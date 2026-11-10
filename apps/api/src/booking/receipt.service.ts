@@ -7,6 +7,7 @@ import type { Env } from '../config/env';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
 import { loadReceiptData, renderReceiptPdf } from './receipt';
+import { currentLocale } from '../common/request-context';
 
 @Injectable()
 export class ReceiptService {
@@ -30,6 +31,7 @@ export class ReceiptService {
       webUrl: this.env.PUBLIC_WEB_URL.replace(/\/+$/, ''),
       contactPhone: this.env.STUDIO_CONTACT_PHONE,
       issuedAt: this.clock.now(),
+      locale: currentLocale(),
     });
     return { reference: data.booking.reference, pdf };
   }

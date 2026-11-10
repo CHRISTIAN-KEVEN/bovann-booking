@@ -1,3 +1,6 @@
+'use client';
+
+import { useI18n } from '@/i18n/I18nProvider';
 import { Icon } from './icons';
 import styles from './LiveScene.module.css';
 
@@ -7,6 +10,7 @@ import styles from './LiveScene.module.css';
  * information the page text doesn't).
  */
 export function LiveScene({ className }: { className?: string }) {
+  const { t } = useI18n();
   return (
     <div className={`${styles.scene} ${className ?? ''}`} aria-hidden="true">
       <div className={styles.ring} />
@@ -16,10 +20,11 @@ export function LiveScene({ className }: { className?: string }) {
           <div className={styles.topbar}>
             <span className={styles.onAir}>
               <span className={styles.onAirDot} />
-              EN DIRECT
+              {t('scene.live')}
             </span>
             <span className={styles.viewers}>
-              <Icon name="users" size={10} />1 248
+              <Icon name="users" size={10} />
+              {t('scene.viewers')}
             </span>
           </div>
 
@@ -34,26 +39,26 @@ export function LiveScene({ className }: { className?: string }) {
               <span />
             </div>
             <div className={styles.productTag}>
-              <strong>Robe wax</strong>
-              <span>12 000 F</span>
+              <strong>{t('scene.product')}</strong>
+              <span>{t('scene.price')}</span>
             </div>
           </div>
 
           <div className={styles.comments}>
             <p>
-              <b>Aïcha</b> Elle existe en taille M&nbsp;?
+              <b>Aïcha</b> {t('scene.c1')}
             </p>
             <p>
-              <b>Koffi</b> J’en prends deux&nbsp;!
+              <b>Koffi</b> {t('scene.c2')}
             </p>
             <p>
-              <b>Mawuli</b> Vous livrez à Kara&nbsp;?
+              <b>Mawuli</b> {t('scene.c3')}
             </p>
           </div>
 
           <div className={styles.bar}>
-            <span className={styles.input}>Écrire un commentaire…</span>
-            <span className={styles.buy}>Commander</span>
+            <span className={styles.input}>{t('scene.comment')}</span>
+            <span className={styles.buy}>{t('scene.buy')}</span>
           </div>
         </div>
       </div>
@@ -69,8 +74,8 @@ export function LiveScene({ className }: { className?: string }) {
           <Icon name="check" size={16} strokeWidth={3} />
         </span>
         <span className={styles.ticketText}>
-          <strong>Créneau confirmé</strong>
-          <span>Samedi · 14:00 – 15:30 · En studio</span>
+          <strong>{t('scene.confirmed')}</strong>
+          <span>{t('scene.confirmedText')}</span>
         </span>
       </div>
     </div>

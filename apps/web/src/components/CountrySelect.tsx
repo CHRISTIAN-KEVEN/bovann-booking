@@ -1,3 +1,6 @@
+'use client';
+
+import { useI18n, type TKey } from '@/i18n/I18nProvider';
 import { COUNTRY_CODES, flagOf } from '@/lib/details';
 import { Icon } from './icons';
 import styles from './CountrySelect.module.css';
@@ -16,7 +19,9 @@ export function CountrySelect({
   onChange: (code: string) => void;
   className?: string;
 }) {
+  const { t } = useI18n();
   const current = COUNTRY_CODES.find((c) => c.code === value) ?? COUNTRY_CODES[0];
+  const nameOf = (iso: string) => t(`countries.${iso}` as TKey);
   return (
     <span className={`${styles.wrap} ${className ?? ''}`}>
       <span className={styles.display} aria-hidden="true">
@@ -26,13 +31,13 @@ export function CountrySelect({
       </span>
       <select
         className={styles.select}
-        aria-label={`Pays de votre numéro : ${current.name}`}
+        aria-label={t('phone.countryLabel', { country: nameOf(current.iso) })}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
         {COUNTRY_CODES.map((c) => (
           <option key={c.code} value={c.code}>
-            {flagOf(c.iso)} {c.name} ({c.code})
+            {flagOf(c.iso)} {nameOf(c.iso)} ({c.code})
           </option>
         ))}
       </select>

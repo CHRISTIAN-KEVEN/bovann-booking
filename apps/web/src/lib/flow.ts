@@ -6,8 +6,8 @@ import type { BookingSelectionInput, SessionMode } from '@bovann/shared';
  */
 
 export interface SelectionSummary {
-  /** Label shown in summaries: "Pack 6h" or "2 créneaux". */
-  label: string;
+  /** The package's name ("Pack 6h"), or null for single slots ("2 créneaux", built when shown). */
+  packageName: string | null;
   /** "12:30 – 18:30", or "08:00 – 09:30, 20:00 – 21:30" for separate slots. */
   timesLabel: string;
   slotCount: number;
@@ -43,7 +43,8 @@ export interface BookingFlow {
   booking?: ActiveBooking;
 }
 
-const KEY = 'bovann.booking-flow.v1';
+// v2: the summary keeps the package name instead of a French label.
+const KEY = 'bovann.booking-flow.v2';
 
 export function loadFlow(
   storage: Pick<Storage, 'getItem'> | undefined = safeSession(),

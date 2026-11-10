@@ -14,6 +14,16 @@ import { firstMissingStep, updateFlow } from './flow';
 import { bookingToIcs } from './ics';
 import { suggestPackage, summarizeSlots, timesLabel } from './selection';
 import { rememberToken, tokenFor } from './tokens';
+import { tFor } from '@/test/i18n';
+
+describe('dates in English', () => {
+  it('formats dates and months in English', () => {
+    expect(formatLongDate('2026-11-12', false, 'en')).toBe('Thursday 12 November');
+    expect(formatLongDate('2026-11-12', true, 'en')).toBe('Thursday 12 November 2026');
+    expect(formatShortDate('2026-11-12', 'en')).toBe('Thu 12 Nov');
+    expect(formatMonth('2026-11', 'en')).toBe('November 2026');
+  });
+});
 
 describe('dates (French, studio-local)', () => {
   it('formats dates and months in French', () => {
@@ -91,7 +101,7 @@ describe('day selection helpers', () => {
 
   it('prices single slots at the unit price', () => {
     expect(summarizeSlots(DAY, [DAY.slots[0]!.start, DAY.slots[4]!.start])).toEqual({
-      label: '2 créneaux',
+      packageName: null,
       timesLabel: '08:00 – 09:30, 20:00 – 21:30',
       slotCount: 2,
       listPriceXof: 30000,
@@ -117,7 +127,7 @@ describe('booking flow state', () => {
       date: '2026-11-12',
       selection: { type: 'SLOTS' as const, slotStarts: ['x'] },
       summary: {
-        label: '1 créneau',
+        packageName: null,
         timesLabel: '',
         slotCount: 1,
         listPriceXof: 1,
@@ -140,6 +150,25 @@ describe('booking flow state', () => {
   });
 });
 
+describe('customer details in English', () => {
+  it('reports errors in English', () => {
+    const errors = validateDetails(
+      {
+        fullName: '',
+        phone: '+228',
+        email: '',
+        businessName: 'Shop',
+        businessSector: 'Services',
+        liveDescription: '',
+        acceptTerms: true,
+      },
+      tFor('en'),
+    );
+    expect(errors.fullName).toBe('Enter your full name.');
+    expect(errors.phone).toBe('Invalid number: check the country code and the number.');
+  });
+});
+
 describe('customer details', () => {
   it('composes and splits E.164 numbers, dropping a leading national 0', () => {
     expect(composePhone('+228', '90 12 34 56')).toBe('+22890123456');
@@ -148,15 +177,18 @@ describe('customer details', () => {
   });
 
   it('reports every missing field in French', () => {
-    const errors = validateDetails({
-      fullName: ' ',
-      phone: '+228',
-      email: 'not-an-email',
-      businessName: '',
-      businessSector: '',
-      liveDescription: '',
-      acceptTerms: false,
-    });
+    const errors = validateDetails(
+      {
+        fullName: ' ',
+        phone: '+228',
+        email: 'not-an-email',
+        businessName: '',
+        businessSector: '',
+        liveDescription: '',
+        acceptTerms: false,
+      },
+      tFor(),
+    );
     expect(Object.keys(errors).sort()).toEqual([
       'acceptTerms',
       'businessName',
@@ -234,10 +266,27 @@ describe('tokens and calendar file', () => {
         },
       ],
     } as BookingDto;
-    const ics = bookingToIcs(booking, '2026-11-08T21:00:00.000Z');
+    const ics = bookingToIcs(booking, tFor(), 'fr', '2026-11-08T21:00:00.000Z');
     expect(ics).toContain('DTSTART:20261112T123000Z');
     expect(ics).toContain('DTEND:20261112T183000Z');
     expect(ics).toContain('UID:BOV-2611-AAAAA@bovann-ocd-live');
     expect(ics.split('\r\n')[0]).toBe('BEGIN:VCALENDAR');
+    expect(ics).toContain('SUMMARY:Session live Bovann OCD Live (En studio)');
+  });
+
+  it('writes the calendar entry in English for English pages', () => {
+    const booking = {
+      reference: 'BOV-2611-AAAAA',
+      mode: 'VIRTUAL',
+      packageName: null,
+      slotCount: 2,
+      startTime: '12:30',
+      endTime: '15:30',
+      spaceName: 'Studio',
+      slots: [{ start: '2026-11-12T12:30:00.000Z', end: '2026-11-12T15:30:00.000Z' }],
+    } as unknown as BookingDto;
+    const ics = bookingToIcs(booking, tFor('en'), 'en', '2026-11-08T21:00:00.000Z');
+    expect(ics).toContain('SUMMARY:Bovann OCD Live session (Virtual)');
+    expect(ics).toContain('DESCRIPTION:Reference BOV-2611-AAAAA · 2 slots · 12:30 – 15:30');
   });
 });

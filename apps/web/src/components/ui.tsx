@@ -1,5 +1,7 @@
-import Link from 'next/link';
+'use client';
+
 import type { ReactNode } from 'react';
+import { Link, useI18n } from '@/i18n/I18nProvider';
 import { Icon, type IconName } from './icons';
 import { ReservationRecap } from './ReservationRecap';
 import { SiteFooter } from './SiteFooter';
@@ -43,20 +45,19 @@ export function StepHeader({
   label: string;
   backHref: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className={styles.stepHeader}>
       <div className={styles.stepRow}>
-        <Link href={backHref} className={styles.backLink} aria-label="Retour à l’étape précédente">
+        <Link href={backHref} className={styles.backLink} aria-label={t('steps.back')}>
           <Icon name="back" size={22} />
         </Link>
-        <span className={styles.stepLabel}>
-          Étape {step} sur 5 · {label}
-        </span>
+        <span className={styles.stepLabel}>{t('steps.of', { step, label })}</span>
       </div>
       <div
         className={styles.progress}
         role="progressbar"
-        aria-label="Progression de la réservation"
+        aria-label={t('steps.progress')}
         aria-valuemin={1}
         aria-valuemax={5}
         aria-valuenow={step}
@@ -147,11 +148,12 @@ export function Alert({
   );
 }
 
-export function Spinner({ label = 'Chargement…' }: { label?: string }) {
+export function Spinner({ label }: { label?: string }) {
+  const { t } = useI18n();
   return (
     <div className={styles.spinnerWrap} role="status">
       <span className={styles.spinner} aria-hidden="true" />
-      <span>{label}</span>
+      <span>{label ?? t('common.loading')}</span>
     </div>
   );
 }

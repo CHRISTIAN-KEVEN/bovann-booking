@@ -1,8 +1,9 @@
 'use client';
 
-import { SESSION_MODE_LABELS_FR, formatXof } from '@bovann/shared';
-import Link from 'next/link';
+import { SESSION_MODE_LABELS, formatXof } from '@bovann/shared';
+import { Link, useI18n } from '@/i18n/I18nProvider';
 import { formatLongDate } from '@/lib/dates';
+import { selectionLabel } from '@/lib/selection';
 import { useFlow } from './FlowProvider';
 import styles from './ui.module.css';
 
@@ -12,31 +13,40 @@ import styles from './ui.module.css';
  */
 export function ReservationRecap({ step, locked = false }: { step: number; locked?: boolean }) {
   const { flow } = useFlow();
+  const { t, locale } = useI18n();
   const rows: { label: string; value: string; href?: string }[] = [];
   if (step > 1 && flow.mode)
-    rows.push({ label: 'Mode', value: SESSION_MODE_LABELS_FR[flow.mode], href: '/' });
+    rows.push({
+      label: t('common.mode'),
+      value: SESSION_MODE_LABELS[locale][flow.mode],
+      href: '/',
+    });
   if (step > 2 && flow.date)
-    rows.push({ label: 'Date', value: formatLongDate(flow.date), href: '/reserver/date' });
+    rows.push({
+      label: t('common.date'),
+      value: formatLongDate(flow.date, false, locale),
+      href: '/reserver/date',
+    });
   if (step > 3 && flow.summary)
     rows.push({
-      label: flow.summary.label,
+      label: selectionLabel(flow.summary, t),
       value: flow.summary.timesLabel,
       href: '/reserver/creneaux',
     });
 
   return (
     <div className={styles.recap}>
-      <h2 className={styles.recapTitle}>Votre réservation</h2>
+      <h2 className={styles.recapTitle}>{t('recap.title')}</h2>
       {rows.length ? (
         <dl className={styles.recapRows}>
           {rows.map((r) => (
-            <div key={r.label} className={styles.recapRow}>
+            <div key={r.href} className={styles.recapRow}>
               <dt>{r.label}</dt>
               <dd>
                 {r.value}
                 {r.href && !locked ? (
                   <Link href={r.href} className={styles.recapEdit}>
-                    Modifier
+                    {t('common.edit')}
                   </Link>
                 ) : null}
               </dd>
@@ -46,8 +56,8 @@ export function ReservationRecap({ step, locked = false }: { step: number; locke
       ) : null}
       {step > 3 && flow.summary ? (
         <div className={styles.recapTotal}>
-          <span>Total</span>
-          <strong>{formatXof(flow.summary.totalXof)}</strong>
+          <span>{t('common.total')}</span>
+          <strong>{formatXof(flow.summary.totalXof, locale)}</strong>
         </div>
       ) : null}
     </div>

@@ -64,11 +64,10 @@ export class AdminAuthService {
     }
     if (user.locked_until && user.locked_until > now) {
       const minutes = Math.ceil((user.locked_until.getTime() - now.getTime()) / 60_000);
-      throw new ApiError(
-        HttpStatus.TOO_MANY_REQUESTS,
-        'ACCOUNT_LOCKED',
-        `Trop de tentatives incorrectes. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`,
-      );
+      throw new ApiError(HttpStatus.TOO_MANY_REQUESTS, 'ACCOUNT_LOCKED', {
+        fr: `Trop de tentatives incorrectes. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+        en: `Too many wrong attempts. Try again in ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+      });
     }
 
     const valid = await verifyPassword(user.password_hash, password);

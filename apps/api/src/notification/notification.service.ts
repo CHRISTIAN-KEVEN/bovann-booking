@@ -209,11 +209,10 @@ export class NotificationService {
     try {
       await this.mailer.send({ to, ...renderTestEmail(to, this.context) });
     } catch (error) {
-      throw new ApiError(
-        HttpStatus.BAD_GATEWAY,
-        'EMAIL_SEND_FAILED',
-        `L’e-mail de test n’a pas pu partir. Réponse du serveur d’envoi : ${describeSendError(error)}`,
-      );
+      throw new ApiError(HttpStatus.BAD_GATEWAY, 'EMAIL_SEND_FAILED', {
+        fr: `L’e-mail de test n’a pas pu partir. Réponse du serveur d’envoi : ${describeSendError(error)}`,
+        en: `The test email couldn’t be sent. The sending server answered: ${describeSendError(error)}`,
+      });
     }
   }
 }

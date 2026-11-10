@@ -374,6 +374,40 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - On phones the step has no bottom bar any more; on a computer the "Votre réservation" panel stays.
 - **Tests:** 3 web tests (one tap opens the slots, a full day does nothing, the earlier day is highlighted and keeps its slots). Checked in Chrome at 390 and 1440 px: no errors, no horizontal scrolling.
 
+## French and English, step 1: the public site (in review)
+
+**Product owner, 2026-11-10:** the whole product in French (main) and English. Part of the live directory work; this first step covers the customer site and everything it receives from the server.
+
+### Delivered
+
+- **English site at `/en`**, French unchanged at the plain address. FR | EN switch in the header on every page; it keeps the page you are on.
+- **Every customer screen in English:** home, calendar, slots and packages, details form and its errors, payment, confirmation, "Find my booking", terms (a full English version that says the French text applies if they differ), calendar file.
+- Dates, months, weekday initials and amounts in each language ("Thursday 12 November", "15,000 FCFA").
+- **Server in the page's language:** error messages, validation messages, space and package names, simulated payment instructions.
+- **Each booking remembers its language**: the customer's confirmation and cancellation emails are sent in it, with English links (`/en/…`). The studio's emails stay in French.
+- **Receipt** in the language of the page it is downloaded from (`receipt-BOV-….pdf`).
+- **Migration `007`:** English names for spaces and packages (filled by the seed: "Single slot", "3h package", "6h package", "Full day"), booking language, English package name kept with each booking.
+
+### Tests
+
+- **Totals:** 272 automated tests (210 API, 6 shared, 56 web).
+- **API (8 new):**
+  - names in English and French, French fallback when no English name exists
+  - error and validation messages in English, messages built with values
+  - a booking made in English: stored language, customer email in English, studio emails in French, English receipt
+  - a check that every French API message has an English version
+- **Web (7 new):**
+  - addresses and the proxy (French address served from the plain path, `/fr/…` redirected)
+  - the same keys in both languages, singular and plural
+  - the language switch, the home page in English, dates in English, form errors in English, the calendar file in English
+- **In a real Chrome at 390 px:** a full English booking from the home page to the confirmation, switching language with the header button, receipt downloaded in English, then the same booking shown in French. No browser errors, no horizontal scrolling.
+
+### Not in this step
+
+- Admin screens in English (next step).
+- Business sectors: shown in English, still stored as the French label; they become the shared category list with "Autre" right after.
+- The admin can't yet enter English names for packages and spaces (comes with the admin step); the seeded ones are in place.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.

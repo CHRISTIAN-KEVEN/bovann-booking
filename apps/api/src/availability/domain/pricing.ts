@@ -93,6 +93,8 @@ export interface LadderEntry {
 export interface PriceRuleViolation {
   code: string;
   message: string;
+  /** The same in English (the API sends it when the request asks for English). */
+  messageEn?: string;
 }
 
 /**
@@ -119,6 +121,7 @@ export function validatePriceLadder(entries: readonly LadderEntry[]): PriceRuleV
       violations.push({
         code: e.code,
         message: `« ${e.name} » doit coûter moins de ${formatXof(single.priceXof * e.slotCount)} (${e.slotCount} créneaux à l'unité).`,
+        messageEn: `“${e.name}” must cost less than ${formatXof(single.priceXof * e.slotCount, 'en')} (${e.slotCount} single slots).`,
       });
     }
   }
@@ -134,6 +137,7 @@ export function validatePriceLadder(entries: readonly LadderEntry[]): PriceRuleV
         violations.push({
           code: longer.code,
           message: `« ${longer.name} » doit revenir moins cher par créneau que « ${shorter.name} ».`,
+          messageEn: `“${longer.name}” must cost less per slot than “${shorter.name}”.`,
         });
       }
     }

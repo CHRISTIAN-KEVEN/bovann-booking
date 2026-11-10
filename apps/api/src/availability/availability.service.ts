@@ -32,6 +32,7 @@ import {
   utcToLocalDate,
   utcToLocalTime,
 } from './domain/time';
+import { localized } from '../common/request-context';
 
 /**
  * Orchestrates catalog and availability reads: loads data through the
@@ -50,7 +51,7 @@ export class AvailabilityService {
     const rules = toRules(space);
     return {
       slug: space.slug,
-      name: space.name,
+      name: localized(space.name, space.name_en),
       address: space.address,
       timezone: space.timezone,
       slotDurationMin: space.slot_duration_min,
@@ -270,8 +271,8 @@ function toPackageDto(
   const quote: Quote = quotePackage(p.priceXof, unitPriceXof, slotCount);
   return {
     code: p.code,
-    name: p.name,
-    description: p.description,
+    name: localized(p.name, p.nameEn),
+    description: p.description === null ? null : localized(p.description, p.descriptionEn),
     isFullDay: p.isFullDay,
     slotCount,
     durationMin: slotCount * space.slot_duration_min,
