@@ -3,7 +3,7 @@
 import {
   formatXof,
   PAYMENT_METHODS,
-  PAYMENT_METHOD_LABELS_FR,
+  PAYMENT_METHOD_LABELS,
   type AdminBookingDetail,
   type AdminDayOptionsResponse,
   type PaymentMethod,
@@ -11,13 +11,9 @@ import {
 } from '@bovann/shared';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { CountrySelect } from '@/components/CountrySelect';
+import { useI18n, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
-import {
-  formatAmountInput,
-  parseAmount,
-  SESSION_MODE_LABELS_FR,
-  todayIn,
-} from '@/lib/admin-format';
+import { formatAmountInput, parseAmount, SESSION_MODE_LABELS, todayIn } from '@/lib/admin-format';
 import { composePhone, isValidE164, SECTORS } from '@/lib/details';
 import { useAdmin } from './AdminShell';
 import {
@@ -53,6 +49,8 @@ export function NewBookingDialog({
   onCreated: (booking: AdminBookingDetail) => void;
 }) {
   const { space } = useAdmin();
+  const { t, locale } = useI18n();
+  const money = (n: number) => formatXof(n, locale);
   const toast = useToast();
   const modes = useMemo<SessionMode[]>(
     () => [
@@ -173,19 +171,19 @@ export function NewBookingDialog({
     e.preventDefault();
     const phone = composePhone(countryCode, localPhone);
     const next: Record<string, string> = {};
-    if (kind === 'SLOTS' && slots.length === 0) next.selection = 'Choisissez au moins un créneau.';
+    if (kind === 'SLOTS' && slots.length === 0) next.selection = t('newBooking.pickSlot');
     if (kind === 'PACKAGE' && (!packageCode || !packageStart))
-      next.selection = 'Choisissez un forfait et son heure de début.';
-    if (!isValidE164(phone)) next.phone = 'Numéro de téléphone invalide.';
-    if (!fullName.trim()) next.fullName = 'Le nom est obligatoire.';
-    if (!businessName.trim()) next.businessName = 'Le nom de l’entreprise est obligatoire.';
-    if (!businessSector) next.businessSector = 'Choisissez le secteur.';
+      next.selection = t('newBooking.pickPackage');
+    if (!isValidE164(phone)) next.phone = t('newBooking.badPhone');
+    if (!fullName.trim()) next.fullName = t('newBooking.nameRequired');
+    if (!businessName.trim()) next.businessName = t('newBooking.businessRequired');
+    if (!businessSector) next.businessSector = t('newBooking.sectorRequired');
     if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-      next.email = 'Adresse e-mail invalide.';
+      next.email = t('newBooking.badEmail');
     if (negotiated && (total === null || (catalog && total > catalog.list)))
       next.price = catalog
-        ? `Indiquez un montant entre 0 et ${formatXof(catalog.list)}.`
-        : 'Montant invalide.';
+        ? t('newBooking.priceRange', { max: money(catalog.list) })
+        : t('newBooking.badAmount');
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
@@ -213,14 +211,14 @@ export function NewBookingDialog({
           ? { status: 'PAID', method, channel: method === 'MOBILE_MONEY' ? channel : null }
           : { status: 'UNPAID' },
       });
-      toast(`Réservation ${created.reference} confirmée.`);
+      toast(t('newBooking.confirmed', { ref: created.reference }));
       onCreated(created);
     } catch (err) {
       setSubmitError(errorMessage(err));
       if ((err as { status?: number }).status === 409) {
         setSlots([]);
         setPackageStart('');
-        setOptionsTick((t) => t + 1);
+        setOptionsTick((n) => n + 1);
       }
     } finally {
       setBusy(false);
@@ -233,17 +231,17 @@ export function NewBookingDialog({
     <Dialog
       open={preset !== null}
       onClose={onClose}
-      title="Nouvelle réservation"
+      title={t('newBooking.title')}
       footer={
         <>
           <span className={styles.muted} style={{ marginRight: 'auto', alignSelf: 'center' }}>
-            {total !== null && catalog ? (total === 0 ? 'Gratuit' : formatXof(total)) : ''}
+            {total !== null && catalog ? (total === 0 ? t('newBooking.free') : money(total)) : ''}
           </span>
           <button type="button" className={styles.btnSecondary} onClick={onClose}>
-            Annuler
+            {t('newBooking.cancel')}
           </button>
           <button type="submit" form="new-booking" className={styles.btn} disabled={busy}>
-            {busy ? 'Enregistrement…' : 'Confirmer la réservation'}
+            {busy ? t('newBooking.saving') : t('newBooking.confirm')}
           </button>
         </>
       }
@@ -262,7 +260,7 @@ export function NewBookingDialog({
         ) : null}
 
         <div className={styles.grid2}>
-          <Field label="Date">
+          <Field label={t('newBooking.date')}>
             {(p) => (
               <input
                 {...p}
@@ -280,30 +278,30 @@ export function NewBookingDialog({
           </Field>
           {modes.length > 1 ? (
             <div className={styles.field}>
-              <span className={styles.label}>Mode</span>
+              <span className={styles.label}>{t('newBooking.mode')}</span>
               <Segmented
-                label="Mode"
+                label={t('newBooking.mode')}
                 value={mode}
                 onChange={(m) => {
                   setMode(m);
                   setSlots([]);
                   setPackageStart('');
                 }}
-                options={modes.map((m) => ({ value: m, label: SESSION_MODE_LABELS_FR[m] }))}
+                options={modes.map((m) => ({ value: m, label: SESSION_MODE_LABELS[locale][m] }))}
               />
             </div>
           ) : null}
         </div>
 
         <div className={styles.field}>
-          <span className={styles.label}>Formule</span>
+          <span className={styles.label}>{t('newBooking.formula')}</span>
           <Segmented
-            label="Formule"
+            label={t('newBooking.formula')}
             value={kind}
             onChange={setKind}
             options={[
-              { value: 'SLOTS', label: 'Créneaux' },
-              { value: 'PACKAGE', label: 'Forfait' },
+              { value: 'SLOTS', label: t('newBooking.slots') },
+              { value: 'PACKAGE', label: t('newBooking.package') },
             ]}
           />
         </div>
@@ -313,14 +311,14 @@ export function NewBookingDialog({
             {errorMessage(optionsError)}
           </div>
         ) : !options ? (
-          <Loading label="Chargement des disponibilités…" />
+          <Loading label={t('newBooking.loading')} />
         ) : kind === 'SLOTS' ? (
           <fieldset className={styles.fieldset}>
             <legend className={styles.legend}>
-              Créneaux ({formatXof(options.unitPriceXof)} l’unité)
+              {t('newBooking.slotsLegend', { price: money(options.unitPriceXof) })}
             </legend>
             {options.slots.length === 0 ? (
-              <p className={styles.note}>Le studio est fermé ce jour-là.</p>
+              <p className={styles.note}>{t('newBooking.closedDay')}</p>
             ) : (
               <div className={styles.chips}>
                 {options.slots.map((s) => (
@@ -341,7 +339,7 @@ export function NewBookingDialog({
           </fieldset>
         ) : (
           <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Forfait</legend>
+            <legend className={styles.legend}>{t('newBooking.package')}</legend>
             <div className={styles.chips}>
               {options.packages
                 .filter((p) => p.slotCount > 1)
@@ -357,13 +355,13 @@ export function NewBookingDialog({
                       setPackageStart('');
                     }}
                   >
-                    {p.name} · {formatXof(p.totalXof)}
+                    {p.name} · {money(p.totalXof)}
                   </button>
                 ))}
             </div>
             {selectedPackage ? (
               <>
-                <span className={styles.label}>Heure de début</span>
+                <span className={styles.label}>{t('newBooking.start')}</span>
                 <div className={styles.chips}>
                   {selectedPackage.startOptions.map((o) => (
                     <button
@@ -383,10 +381,10 @@ export function NewBookingDialog({
           </fieldset>
         )}
 
-        <h3 className={styles.sectionTitle}>Client</h3>
+        <h3 className={styles.sectionTitle}>{t('newBooking.client')}</h3>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="nb-phone">
-            Téléphone
+            {t('newBooking.phone')}
           </label>
           <div style={{ display: 'flex', gap: 8 }}>
             <CountrySelect
@@ -407,14 +405,11 @@ export function NewBookingDialog({
             />
           </div>
           <span id="nb-phone-help" className={errors.phone ? styles.error : styles.hint}>
-            {errors.phone ??
-              (known
-                ? 'Client connu\u00a0: coordonnées pré-remplies.'
-                : 'Un client déjà venu est reconnu par son numéro.')}
+            {errors.phone ?? (known ? t('newBooking.known') : t('newBooking.lookupHint'))}
           </span>
         </div>
         <div className={styles.grid2}>
-          <Field label="Nom complet" error={errors.fullName}>
+          <Field label={t('newBooking.fullName')} error={errors.fullName}>
             {(p) => (
               <input
                 {...p}
@@ -424,7 +419,7 @@ export function NewBookingDialog({
               />
             )}
           </Field>
-          <Field label="E-mail (facultatif)" error={errors.email}>
+          <Field label={t('newBooking.emailOptional')} error={errors.email}>
             {(p) => (
               <input
                 {...p}
@@ -435,7 +430,7 @@ export function NewBookingDialog({
               />
             )}
           </Field>
-          <Field label="Entreprise" error={errors.businessName}>
+          <Field label={t('newBooking.business')} error={errors.businessName}>
             {(p) => (
               <input
                 {...p}
@@ -445,7 +440,7 @@ export function NewBookingDialog({
               />
             )}
           </Field>
-          <Field label="Secteur d’activité" error={errors.businessSector}>
+          <Field label={t('newBooking.sector')} error={errors.businessSector}>
             {(p) => (
               <select
                 {...p}
@@ -453,11 +448,11 @@ export function NewBookingDialog({
                 value={businessSector}
                 onChange={(e) => setBusinessSector(e.target.value)}
               >
-                <option value="">Choisir…</option>
+                <option value="">{t('newBooking.choose')}</option>
                 {[...new Set([...SECTORS, ...(businessSector ? [businessSector] : [])])].map(
                   (s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {(SECTORS as readonly string[]).includes(s) ? t(`sectors.${s}` as TKey) : s}
                     </option>
                   ),
                 )}
@@ -465,7 +460,7 @@ export function NewBookingDialog({
             )}
           </Field>
         </div>
-        <Field label="Le live (facultatif)">
+        <Field label={t('newBooking.liveOptional')}>
           {(p) => (
             <textarea
               {...p}
@@ -476,12 +471,12 @@ export function NewBookingDialog({
           )}
         </Field>
 
-        <h3 className={styles.sectionTitle}>Prix et paiement</h3>
+        <h3 className={styles.sectionTitle}>{t('newBooking.pricePayment')}</h3>
         {catalog ? (
           <p className={styles.note}>
-            Prix catalogue&nbsp;: <strong>{formatXof(catalog.total)}</strong>
+            {t('newBooking.catalogPrice')} <strong>{money(catalog.total)}</strong>
             {catalog.list > catalog.total
-              ? ` (au lieu de ${formatXof(catalog.list)} à l’unité)`
+              ? t('newBooking.insteadOf', { price: money(catalog.list) })
               : ''}
           </p>
         ) : null}
@@ -491,32 +486,36 @@ export function NewBookingDialog({
             checked={negotiated}
             onChange={(e) => {
               setNegotiated(e.target.checked);
-              setPrice(formatAmountInput(catalog?.total ?? null));
+              setPrice(formatAmountInput(catalog?.total ?? null, locale));
             }}
           />
-          Prix négocié ou gratuit
+          {t('newBooking.negotiated')}
         </label>
         {negotiated ? (
-          <Field label="Prix convenu" hint="0 pour une séance offerte." error={errors.price}>
+          <Field
+            label={t('newBooking.agreedPrice')}
+            hint={t('newBooking.freeHint')}
+            error={errors.price}
+          >
             {(p) => <AmountInput {...p} value={price} onChange={setPrice} />}
           </Field>
         ) : null}
         {total === 0 ? (
-          <p className={styles.note}>Séance offerte&nbsp;: aucun paiement à enregistrer.</p>
+          <p className={styles.note}>{t('newBooking.freeSession')}</p>
         ) : (
           <>
             <Segmented
-              label="Paiement"
+              label={t('newBooking.payment')}
               value={paid ? 'PAID' : 'UNPAID'}
               onChange={(v) => setPaid(v === 'PAID')}
               options={[
-                { value: 'PAID', label: 'Déjà payé' },
-                { value: 'UNPAID', label: 'À encaisser plus tard' },
+                { value: 'PAID', label: t('newBooking.alreadyPaid') },
+                { value: 'UNPAID', label: t('newBooking.later') },
               ]}
             />
             {paid ? (
               <div className={styles.grid2}>
-                <Field label="Moyen de paiement">
+                <Field label={t('newBooking.method')}>
                   {(p) => (
                     <select
                       {...p}
@@ -526,14 +525,14 @@ export function NewBookingDialog({
                     >
                       {PAYMENT_METHODS.map((m) => (
                         <option key={m} value={m}>
-                          {PAYMENT_METHOD_LABELS_FR[m]}
+                          {PAYMENT_METHOD_LABELS[locale][m]}
                         </option>
                       ))}
                     </select>
                   )}
                 </Field>
                 {method === 'MOBILE_MONEY' ? (
-                  <Field label="Opérateur">
+                  <Field label={t('newBooking.operator')}>
                     {(p) => (
                       <select
                         {...p}
@@ -543,7 +542,7 @@ export function NewBookingDialog({
                       >
                         <option value="TMONEY">T-Money</option>
                         <option value="FLOOZ">Flooz</option>
-                        <option value="OTHER">Autre</option>
+                        <option value="OTHER">{t('newBooking.other')}</option>
                       </select>
                     )}
                   </Field>
@@ -552,7 +551,7 @@ export function NewBookingDialog({
             ) : null}
           </>
         )}
-        <Field label="Note interne (facultatif)">
+        <Field label={t('newBooking.noteOptional')}>
           {(p) => (
             <textarea
               {...p}

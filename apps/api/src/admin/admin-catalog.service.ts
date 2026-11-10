@@ -60,7 +60,7 @@ export class AdminCatalogService {
     const counts = new Map(upcoming.map((u) => [u.package_id, Number(u.n)]));
     const meta = await this.db
       .selectFrom('t_packages')
-      .select(['id', 'description', 'sort_order'])
+      .select(['id', 'name_en', 'description', 'sort_order'])
       .where('space_id', '=', space.id)
       .execute();
     const metaById = new Map(meta.map((m) => [m.id, m]));
@@ -70,6 +70,7 @@ export class AdminCatalogService {
         id: s.id!,
         code: s.code,
         name: s.name,
+        nameEn: metaById.get(s.id!)?.name_en ?? null,
         description: metaById.get(s.id!)?.description ?? null,
         isFullDay: s.isFullDay,
         slotCount: s.slotCount,
@@ -122,6 +123,7 @@ export class AdminCatalogService {
           space_id: space.id,
           code,
           name: input.name,
+          name_en: input.nameEn ?? null,
           description: input.description ?? null,
           is_full_day: isFullDay,
           slot_count: slotCount,
@@ -200,6 +202,7 @@ export class AdminCatalogService {
         .updateTable('t_packages')
         .set({
           name: next.name,
+          ...(input.nameEn !== undefined && { name_en: input.nameEn }),
           slot_count: next.slotCount,
           is_active: next.isActive,
           ...(input.description !== undefined && { description: input.description }),

@@ -12,9 +12,11 @@ import type { NotificationPayload } from './payload';
 import {
   renderEmail,
   renderTestEmail,
+  TEMPLATE_LABELS_EN,
   TEMPLATE_LABELS_FR,
   type TemplateContext,
 } from './templates';
+import { currentLocale } from '../common/request-context';
 
 /** Wait before each retry, in minutes: about 8 hours of attempts in total. */
 export const RETRY_DELAYS_MIN = [1, 2, 5, 15, 30, 60, 120, 240];
@@ -171,7 +173,9 @@ export class NotificationService {
     return rows.map((r) => ({
       id: r.id,
       template: r.template,
-      label: TEMPLATE_LABELS_FR[r.template] ?? r.template,
+      label:
+        (currentLocale() === 'en' ? TEMPLATE_LABELS_EN : TEMPLATE_LABELS_FR)[r.template] ??
+        r.template,
       recipient: r.recipient,
       status: r.status,
       attempts: r.attempts,

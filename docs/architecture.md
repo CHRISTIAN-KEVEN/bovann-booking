@@ -228,4 +228,5 @@ Product-owner decision: the whole product in French (main language) and English.
    - The customer's emails use the booking's language; the studio's emails stay in French.
    - The receipt follows the language of the page it is downloaded from.
 5. **Migration `007`:** `t_spaces.name_en`; `t_packages.name_en`, `description_en`; `t_bookings.locale` (CHECK fr/en) and `package_name_en`. The seed fills the English names without overwriting the admin's.
-6. **Not yet translated:** the admin screens (next step), and business sectors, which become a shared category list with English names.
+6. **Admin (step 2):** every admin screen is translated the same way; the FR | EN switch sits under the account name. Admins enter the English names of packages and spaces next to the French ones. Booking history, email labels and package names in lists come from the API in the page's language.
+7. **Still in French only:** business sectors, until they become the shared category list with English names.

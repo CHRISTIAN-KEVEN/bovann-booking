@@ -24,6 +24,13 @@ export const TEMPLATE_LABELS_FR: Record<string, string> = {
   owner_late_payment_refund: 'Remboursement à faire (gérants)',
 };
 
+export const TEMPLATE_LABELS_EN: Record<string, string> = {
+  owner_booking_confirmed: 'New booking (managers)',
+  customer_booking_confirmed: 'Confirmation (customer)',
+  customer_booking_cancelled: 'Cancellation (customer)',
+  owner_late_payment_refund: 'Refund to make (managers)',
+};
+
 export interface TemplateContext {
   /** Public website address, without trailing slash. */
   webUrl: string;

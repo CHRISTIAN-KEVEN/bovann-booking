@@ -38,6 +38,7 @@ export function toSpaceDto(s: Space): AdminSpaceDto {
     id: s.id,
     slug: s.slug,
     name: s.name,
+    nameEn: s.name_en,
     address: s.address,
     timezone: s.timezone,
     slotDurationMin: s.slot_duration_min,
@@ -94,6 +95,7 @@ export class AdminSettingsService {
             .values({
               slug: n === 1 ? base : `${base}-${n}`,
               name: input.name,
+              name_en: input.nameEn ?? null,
               address: input.address ?? null,
               in_person_enabled: input.inPersonEnabled,
               virtual_enabled: input.virtualEnabled,
@@ -137,6 +139,7 @@ export class AdminSettingsService {
 
     const changes = {
       ...(input.name !== undefined && { name: input.name }),
+      ...(input.nameEn !== undefined && { name_en: input.nameEn }),
       ...(input.address !== undefined && { address: input.address }),
       ...(input.minLeadMin !== undefined && { min_lead_min: input.minLeadMin }),
       ...(input.horizonDays !== undefined && { horizon_days: input.horizonDays }),

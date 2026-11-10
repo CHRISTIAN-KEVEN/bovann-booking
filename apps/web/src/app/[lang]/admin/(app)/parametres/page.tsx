@@ -1,7 +1,6 @@
 'use client';
 
 import type { AdminRole, AdminUserDto, TemporaryPasswordResponse } from '@bovann/shared';
-import Link from 'next/link';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useAdmin } from '@/components/admin/AdminShell';
 import {
@@ -18,33 +17,29 @@ import {
   useToast,
 } from '@/components/admin/ui';
 import { Icon } from '@/components/icons';
+import { Link, useI18n } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
-import { ADMIN_ROLE_LABELS_FR, formatDateTime } from '@/lib/admin-format';
-
-const ROLE_HELP: Record<AdminRole, string> = {
-  OWNER: 'Tout\u00a0: réservations, annulations et remboursements, prix, horaires, comptes.',
-  STAFF:
-    'Réservations, clients et paiements\u00a0; ajoute des réservations, enregistre les paiements, bloque des créneaux.',
-};
+import { ADMIN_ROLE_LABELS, formatDateTime } from '@/lib/admin-format';
 
 export default function AdminSettingsPage() {
   const { me, isOwner } = useAdmin();
+  const { t, locale } = useI18n();
   return (
     <>
-      <PageHeader title="Paramètres" />
+      <PageHeader title={t('settings.title')} />
       <section className={cx(styles.card, styles.cardPad)}>
-        <h2 className={styles.cardTitle}>Mon compte</h2>
+        <h2 className={styles.cardTitle}>{t('settings.account')}</h2>
         <dl className={styles.dl}>
-          <dt>Nom</dt>
+          <dt>{t('settings.name')}</dt>
           <dd>{me.fullName}</dd>
-          <dt>E-mail</dt>
+          <dt>{t('settings.email')}</dt>
           <dd>{me.email}</dd>
-          <dt>Rôle</dt>
-          <dd>{ADMIN_ROLE_LABELS_FR[me.role]}</dd>
+          <dt>{t('settings.role')}</dt>
+          <dd>{ADMIN_ROLE_LABELS[locale][me.role]}</dd>
         </dl>
         <div>
           <Link href="/admin/mot-de-passe" className={styles.btnSecondary}>
-            Changer mon mot de passe
+            {t('settings.changePassword')}
           </Link>
         </div>
       </section>
@@ -55,9 +50,7 @@ export default function AdminSettingsPage() {
           <Recipients />
         </>
       ) : (
-        <p className={styles.note}>
-          La gestion des comptes et des e-mails de notification est réservée aux administrateurs.
-        </p>
+        <p className={styles.note}>{t('settings.ownerOnly')}</p>
       )}
     </>
   );
@@ -65,6 +58,7 @@ export default function AdminSettingsPage() {
 
 function Users() {
   const { me } = useAdmin();
+  const { t, locale } = useI18n();
   const toast = useToast();
   const users = useAsync(() => adminApi.users(), 'users');
   const [adding, setAdding] = useState(false);
@@ -74,9 +68,9 @@ function Users() {
   return (
     <section className={styles.card}>
       <div className={styles.toolbar}>
-        <h2 className={styles.cardTitle}>Utilisateurs</h2>
+        <h2 className={styles.cardTitle}>{t('settings.users')}</h2>
         <button type="button" className={styles.btn} onClick={() => setAdding(true)}>
-          <Icon name="plus" size={16} /> Ajouter un utilisateur
+          <Icon name="plus" size={16} /> {t('settings.addUser')}
         </button>
       </div>
       {users.error ? (
@@ -88,12 +82,12 @@ function Users() {
           <table className={styles.table} style={{ minWidth: 640 }}>
             <thead>
               <tr>
-                <th>Nom</th>
-                <th>Rôle</th>
-                <th>État</th>
-                <th>Dernière connexion</th>
+                <th>{t('settings.colName')}</th>
+                <th>{t('settings.colRole')}</th>
+                <th>{t('settings.colState')}</th>
+                <th>{t('settings.colLast')}</th>
                 <th>
-                  <span className={styles.srOnly}>Actions</span>
+                  <span className={styles.srOnly}>{t('settings.colActions')}</span>
                 </th>
               </tr>
             </thead>
@@ -104,22 +98,26 @@ function Users() {
                     <div className={styles.cellStack}>
                       <span style={{ fontWeight: 600 }}>
                         {u.fullName}
-                        {u.id === me.id ? ' (vous)' : ''}
+                        {u.id === me.id ? t('settings.you') : ''}
                       </span>
                       <span className={styles.cellSub}>{u.email}</span>
                     </div>
                   </td>
-                  <td>{ADMIN_ROLE_LABELS_FR[u.role]}</td>
+                  <td>{ADMIN_ROLE_LABELS[locale][u.role]}</td>
                   <td>
                     {!u.isActive ? (
-                      <Badge tone="neutral">Désactivé</Badge>
+                      <Badge tone="neutral">{t('settings.deactivated')}</Badge>
                     ) : u.mustChangePassword ? (
-                      <Badge tone="warning">Mot de passe temporaire</Badge>
+                      <Badge tone="warning">{t('settings.tempPassword')}</Badge>
                     ) : (
-                      <Badge tone="success">Actif</Badge>
+                      <Badge tone="success">{t('settings.active')}</Badge>
                     )}
                   </td>
-                  <td>{u.lastLoginAt ? formatDateTime(u.lastLoginAt) : 'Jamais'}</td>
+                  <td>
+                    {u.lastLoginAt
+                      ? formatDateTime(u.lastLoginAt, undefined, locale)
+                      : t('settings.never')}
+                  </td>
                   <td className={styles.right}>
                     {u.id === me.id ? null : (
                       <button
@@ -127,7 +125,7 @@ function Users() {
                         className={cx(styles.btnSecondary, styles.btnSmall)}
                         onClick={() => setEditing(u)}
                       >
-                        Gérer
+                        {t('settings.manage')}
                       </button>
                     )}
                   </td>
@@ -164,20 +162,17 @@ function Users() {
         open={issued !== null}
         onClose={() => setIssued(null)}
         variant="modal"
-        title="Mot de passe temporaire"
+        title={t('settings.tempPassword')}
         footer={
           <button type="button" className={styles.btn} onClick={() => setIssued(null)}>
-            C’est noté
+            {t('settings.noted')}
           </button>
         }
       >
         {issued ? (
           <>
-            <p>
-              Transmettez ce mot de passe à <strong>{issued.user.fullName}</strong> (
-              {issued.user.email}). Il devra le remplacer à sa première connexion.
-            </p>
-            <div className={styles.tempPassword} aria-label="Mot de passe temporaire">
+            <p>{t('settings.giveTo', { name: issued.user.fullName, email: issued.user.email })}</p>
+            <div className={styles.tempPassword} aria-label={t('settings.tempPassword')}>
               {issued.temporaryPassword}
             </div>
             <button
@@ -185,17 +180,14 @@ function Users() {
               className={styles.btnSecondary}
               onClick={() => {
                 void navigator.clipboard?.writeText(issued.temporaryPassword).then(
-                  () => toast('Mot de passe copié.'),
-                  () => toast('Copie impossible\u00a0: notez-le à la main.', true),
+                  () => toast(t('settings.copied')),
+                  () => toast(t('settings.copyFailed'), true),
                 );
               }}
             >
-              <Icon name="copy" size={16} /> Copier
+              <Icon name="copy" size={16} /> {t('settings.copy')}
             </button>
-            <p className={styles.note}>
-              Il ne sera plus affiché ensuite. En cas de perte, réinitialisez-le depuis
-              «&nbsp;Gérer&nbsp;».
-            </p>
+            <p className={styles.note}>{t('settings.shownOnce')}</p>
           </>
         ) : null}
       </Dialog>
@@ -212,6 +204,7 @@ function NewUserDialog({
   onClose: () => void;
   onCreated: (result: TemporaryPasswordResponse) => void;
 }) {
+  const { t } = useI18n();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<AdminRole>('STAFF');
@@ -229,7 +222,7 @@ function NewUserDialog({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!fullName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Indiquez un nom et une adresse e-mail valide.');
+      setError(t('settings.invalidUser'));
       return;
     }
     setBusy(true);
@@ -250,20 +243,20 @@ function NewUserDialog({
       open={open}
       onClose={onClose}
       variant="modal"
-      title="Ajouter un utilisateur"
+      title={t('settings.addUser')}
       footer={
         <>
           <button type="button" className={styles.btnSecondary} onClick={onClose}>
-            Annuler
+            {t('settings.cancel')}
           </button>
           <button type="submit" form="user-form" className={styles.btn} disabled={busy}>
-            {busy ? 'Création…' : 'Créer le compte'}
+            {busy ? t('settings.creating') : t('settings.create')}
           </button>
         </>
       }
     >
       <form id="user-form" className={styles.section} onSubmit={submit} noValidate>
-        <Field label="Nom complet">
+        <Field label={t('settings.fullName')}>
           {(p) => (
             <input
               {...p}
@@ -273,7 +266,7 @@ function NewUserDialog({
             />
           )}
         </Field>
-        <Field label="Adresse e-mail" hint="Elle sert d’identifiant de connexion.">
+        <Field label={t('settings.emailAddress')} hint={t('settings.emailHint')}>
           {(p) => (
             <input
               {...p}
@@ -302,16 +295,17 @@ function RolePicker({
   value: AdminRole;
   onChange: (role: AdminRole) => void;
 }) {
+  const { t, locale } = useI18n();
   return (
     <fieldset className={styles.fieldset}>
-      <legend className={styles.legend}>Rôle</legend>
+      <legend className={styles.legend}>{t('settings.role')}</legend>
       {(['STAFF', 'OWNER'] as const).map((r) => (
         <label key={r} className={styles.checkCard} style={{ alignItems: 'flex-start' }}>
           <input type="radio" name="role" checked={value === r} onChange={() => onChange(r)} />
           <span className={styles.cellStack}>
-            <span>{ADMIN_ROLE_LABELS_FR[r]}</span>
+            <span>{ADMIN_ROLE_LABELS[locale][r]}</span>
             <span className={styles.cellSub} style={{ fontWeight: 400 }}>
-              {ROLE_HELP[r]}
+              {t(`settings.roleHelp.${r}`)}
             </span>
           </span>
         </label>
@@ -331,6 +325,7 @@ function EditUserDialog({
   onSaved: (message: string) => void;
   onReset: (result: TemporaryPasswordResponse) => void;
 }) {
+  const { t, locale } = useI18n();
   const [role, setRole] = useState<AdminRole>('STAFF');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -375,12 +370,15 @@ function EditUserDialog({
               () => adminApi.updateUser(user.id, { role }),
               () =>
                 onSaved(
-                  `${user.fullName} est maintenant ${ADMIN_ROLE_LABELS_FR[role].toLowerCase()}.`,
+                  t('settings.nowRole', {
+                    name: user.fullName,
+                    role: ADMIN_ROLE_LABELS[locale][role].toLowerCase(),
+                  }),
                 ),
             )
           }
         >
-          Enregistrer le rôle
+          {t('settings.saveRole')}
         </button>
       ) : null}
       <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: 0 }} />
@@ -396,7 +394,7 @@ function EditUserDialog({
             )
           }
         >
-          Réinitialiser le mot de passe
+          {t('settings.reset')}
         </button>
         {user.isActive ? (
           <button
@@ -406,11 +404,11 @@ function EditUserDialog({
             onClick={() =>
               act(
                 () => adminApi.updateUser(user.id, { isActive: false }),
-                () => onSaved(`Le compte de ${user.fullName} est désactivé.`),
+                () => onSaved(t('settings.deactivatedToast', { name: user.fullName })),
               )
             }
           >
-            Désactiver le compte
+            {t('settings.deactivate')}
           </button>
         ) : (
           <button
@@ -420,17 +418,15 @@ function EditUserDialog({
             onClick={() =>
               act(
                 () => adminApi.updateUser(user.id, { isActive: true }),
-                () => onSaved(`Le compte de ${user.fullName} est réactivé.`),
+                () => onSaved(t('settings.reactivatedToast', { name: user.fullName })),
               )
             }
           >
-            Réactiver le compte
+            {t('settings.reactivate')}
           </button>
         )}
       </div>
-      <p className={styles.note}>
-        Désactiver ou réinitialiser déconnecte immédiatement la personne sur tous ses appareils.
-      </p>
+      <p className={styles.note}>{t('settings.signsOut')}</p>
       {error ? (
         <div className={styles.banner} role="alert">
           {error}
@@ -442,6 +438,7 @@ function EditUserDialog({
 
 function Recipients() {
   const { space } = useAdmin();
+  const { t } = useI18n();
   const toast = useToast();
   const list = useAsync(() => adminApi.recipients(space.id), `rec-${space.id}`);
   const [email, setEmail] = useState('');
@@ -452,7 +449,7 @@ function Recipients() {
   async function add(e: FormEvent) {
     e.preventDefault();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Adresse e-mail invalide.');
+      setError(t('settings.badEmail'));
       return;
     }
     setBusy(true);
@@ -461,7 +458,7 @@ function Recipients() {
       list.setData(await adminApi.addRecipient(space.id, email.trim(), name.trim() || null));
       setEmail('');
       setName('');
-      toast('Adresse ajoutée.');
+      toast(t('settings.added'));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -479,19 +476,14 @@ function Recipients() {
 
   return (
     <section className={cx(styles.card, styles.cardPad)}>
-      <h2 className={styles.cardTitle}>E-mails de notification · {space.name}</h2>
-      <p className={styles.note}>
-        Ces adresses reçoivent un e-mail à chaque réservation confirmée, avec les coordonnées
-        professionnelles du client.
-      </p>
+      <h2 className={styles.cardTitle}>{t('settings.recipients', { space: space.name })}</h2>
+      <p className={styles.note}>{t('settings.recipientsNote')}</p>
       {list.error ? (
         <LoadError error={list.error} onRetry={list.reload} />
       ) : !list.data ? (
         <Loading />
       ) : list.data.length === 0 ? (
-        <div className={styles.banner}>
-          Aucune adresse&nbsp;: personne ne sera prévenu des réservations.
-        </div>
+        <div className={styles.banner}>{t('settings.noRecipients')}</div>
       ) : (
         list.data.map((r) => (
           <div
@@ -519,12 +511,12 @@ function Recipients() {
                   checked={r.isActive}
                   onChange={() => run(() => adminApi.updateRecipient(r.id, !r.isActive))}
                 />
-                Reçoit les e-mails
+                {t('settings.receives')}
               </label>
               <button
                 type="button"
                 className={styles.iconBtn}
-                aria-label={`Retirer ${r.email}`}
+                aria-label={t('settings.remove', { email: r.email })}
                 onClick={() => run(() => adminApi.deleteRecipient(r.id))}
               >
                 <Icon name="trash" size={16} />
@@ -534,7 +526,7 @@ function Recipients() {
         ))
       )}
       <form onSubmit={add} className={styles.grid2} style={{ alignItems: 'end' }} noValidate>
-        <Field label="Adresse e-mail">
+        <Field label={t('settings.emailAddress')}>
           {(p) => (
             <input
               {...p}
@@ -545,7 +537,7 @@ function Recipients() {
             />
           )}
         </Field>
-        <Field label="Nom (facultatif)">
+        <Field label={t('settings.nameOptional')}>
           {(p) => (
             <input
               {...p}
@@ -557,7 +549,7 @@ function Recipients() {
         </Field>
         <div>
           <button type="submit" className={styles.btnSecondary} disabled={busy}>
-            <Icon name="plus" size={16} /> Ajouter
+            <Icon name="plus" size={16} /> {t('settings.add')}
           </button>
         </div>
       </form>
@@ -572,6 +564,7 @@ function Recipients() {
 
 function EmailSending() {
   const { me } = useAdmin();
+  const { t } = useI18n();
   const toast = useToast();
   const settings = useAsync(() => adminApi.notificationSettings(), 'email-settings');
   const [to, setTo] = useState(me.email);
@@ -584,9 +577,7 @@ function EmailSending() {
     setError(null);
     try {
       const res = await adminApi.sendTestEmail(to.trim() || undefined);
-      toast(
-        `E-mail de test envoyé à ${res.to}. Vérifiez la boîte de réception (et le dossier Spam).`,
-      );
+      toast(t('settings.testSent', { to: res.to }));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -596,36 +587,30 @@ function EmailSending() {
 
   return (
     <section className={cx(styles.card, styles.cardPad)}>
-      <h2 className={styles.cardTitle}>Envoi des e-mails</h2>
+      <h2 className={styles.cardTitle}>{t('settings.sending')}</h2>
       {settings.error ? (
         <LoadError error={settings.error} onRetry={settings.reload} />
       ) : !settings.data ? (
         <Loading />
       ) : !settings.data.enabled ? (
-        <div className={styles.banner}>
-          L’envoi des e-mails n’est pas encore configuré sur le serveur : les e-mails restent en
-          attente et partiront dès que la configuration sera faite.
-        </div>
+        <div className={styles.banner}>{t('settings.notConfigured')}</div>
       ) : (
         <>
           <dl className={styles.dl}>
-            <dt>Expéditeur</dt>
+            <dt>{t('settings.from')}</dt>
             <dd>{settings.data.from}</dd>
-            <dt>En attente</dt>
+            <dt>{t('settings.pending')}</dt>
             <dd>{settings.data.pending}</dd>
-            <dt>En échec</dt>
+            <dt>{t('settings.failed')}</dt>
             <dd>
               {settings.data.failed > 0 ? <Badge tone="danger">{settings.data.failed}</Badge> : 0}
               {settings.data.failed > 0 ? (
-                <span className={styles.cellSub}>
-                  {' '}
-                  · ouvrez la réservation concernée pour voir l’erreur et renvoyer
-                </span>
+                <span className={styles.cellSub}>{t('settings.failedHint')}</span>
               ) : null}
             </dd>
           </dl>
           <form onSubmit={test} className={styles.grid2} style={{ alignItems: 'end' }} noValidate>
-            <Field label="Envoyer un e-mail de test à">
+            <Field label={t('settings.testTo')}>
               {(p) => (
                 <input
                   {...p}
@@ -638,7 +623,7 @@ function EmailSending() {
             </Field>
             <div>
               <button type="submit" className={styles.btnSecondary} disabled={busy}>
-                {busy ? 'Envoi…' : 'Envoyer le test'}
+                {busy ? t('settings.testing') : t('settings.test')}
               </button>
             </div>
           </form>

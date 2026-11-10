@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   createContext,
   useCallback,
@@ -12,8 +11,11 @@ import {
   type ReactNode,
 } from 'react';
 import type { AdminMe, AdminSpaceDto } from '@bovann/shared';
+import { splitLocale } from '@/i18n/config';
+import { Link, useI18n, useLocaleRouter, type TKey } from '@/i18n/I18nProvider';
 import { adminApi, setUnauthorizedHandler } from '@/lib/admin-api';
-import { ADMIN_ROLE_LABELS_FR } from '@/lib/admin-format';
+import { ADMIN_ROLE_LABELS } from '@/lib/admin-format';
+import { LanguageSwitch } from '../LanguageSwitch';
 import { Icon, type IconName } from '../icons';
 import { cx, Loading, ToastProvider } from './ui';
 import styles from './admin.module.css';
@@ -41,14 +43,14 @@ export function useAdmin(): AdminContextValue {
 const SPACE_KEY = 'bovann.admin.space';
 export const NEXT_KEY = 'bovann.admin.next';
 
-const NAV: Array<{ href: string; label: string; icon: IconName; badge?: 'refunds' }> = [
-  { href: '/admin', label: 'Réservations', icon: 'bookings' },
-  { href: '/admin/calendrier', label: 'Calendrier', icon: 'calendar' },
-  { href: '/admin/forfaits', label: 'Forfaits & prix', icon: 'tag' },
-  { href: '/admin/espaces', label: 'Espaces & horaires', icon: 'video' },
-  { href: '/admin/clients', label: 'Clients', icon: 'users' },
-  { href: '/admin/paiements', label: 'Paiements', icon: 'card', badge: 'refunds' },
-  { href: '/admin/parametres', label: 'Paramètres', icon: 'sliders' },
+const NAV: Array<{ href: string; label: TKey; icon: IconName; badge?: 'refunds' }> = [
+  { href: '/admin', label: 'adminShell.nav.bookings', icon: 'bookings' },
+  { href: '/admin/calendrier', label: 'adminShell.nav.calendar', icon: 'calendar' },
+  { href: '/admin/forfaits', label: 'adminShell.nav.packages', icon: 'tag' },
+  { href: '/admin/espaces', label: 'adminShell.nav.spaces', icon: 'video' },
+  { href: '/admin/clients', label: 'adminShell.nav.clients', icon: 'users' },
+  { href: '/admin/paiements', label: 'adminShell.nav.payments', icon: 'card', badge: 'refunds' },
+  { href: '/admin/parametres', label: 'adminShell.nav.settings', icon: 'sliders' },
 ];
 
 function readStoredSpace(): number | null {
@@ -66,8 +68,10 @@ function readStoredSpace(): number | null {
  * renders the sidebar from the approved design.
  */
 export function AdminShell({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
+  const router = useLocaleRouter();
+  const { t, locale } = useI18n();
+  // The page's path without its language prefix ("/en/admin/clients" → "/admin/clients").
+  const pathname = splitLocale(usePathname() ?? '/').path;
   const [me, setMe] = useState<AdminMe | null>(null);
   const [spaces, setSpaces] = useState<AdminSpaceDto[] | null>(null);
   const [spaceId, setSpaceIdState] = useState<number | null>(null);
@@ -77,7 +81,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const toSignIn = useCallback(() => {
     try {
-      sessionStorage.setItem(NEXT_KEY, window.location.pathname);
+      // Stored without the language: the sign-in page adds the current one back.
+      sessionStorage.setItem(NEXT_KEY, splitLocale(window.location.pathname).path);
     } catch {
       /* private mode: just go to sign-in */
     }
@@ -175,10 +180,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return (
       <div className={styles.authPage}>
         <div className={styles.authCard} role="alert">
-          <h1 className={styles.authTitle}>Service indisponible</h1>
-          <p>Impossible de joindre le serveur. Vérifiez votre connexion internet.</p>
+          <h1 className={styles.authTitle}>{t('adminShell.downTitle')}</h1>
+          <p>{t('adminShell.downText')}</p>
           <button type="button" className={styles.btn} onClick={() => window.location.reload()}>
-            Réessayer
+            {t('adminShell.retry')}
           </button>
         </div>
       </div>
@@ -211,7 +216,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               className={styles.iconBtn}
               aria-expanded={menuOpen}
               aria-controls="admin-menu"
-              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-label={menuOpen ? t('adminShell.closeMenu') : t('adminShell.openMenu')}
               onClick={() => setMenuOpen((o) => !o)}
             >
               <Icon name={menuOpen ? 'close' : 'menu'} size={18} />
@@ -219,7 +224,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </header>
           <nav
             id="admin-menu"
-            aria-label="Administration"
+            aria-label={t('adminShell.admin')}
             className={cx(styles.sidebar, menuOpen && styles.sidebarOpen)}
           >
             <span className={styles.brand}>
@@ -228,19 +233,19 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </span>
             {value.spaces.length > 1 ? (
               <label className={styles.spacePicker}>
-                ESPACE
+                {t('adminShell.space')}
                 <select value={value.space.id} onChange={(e) => setSpaceId(Number(e.target.value))}>
                   {value.spaces.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
-                      {s.isActive ? '' : ' (désactivé)'}
+                      {s.isActive ? '' : t('adminShell.inactive')}
                     </option>
                   ))}
                 </select>
               </label>
             ) : (
               <div className={styles.spacePicker}>
-                ESPACE
+                {t('adminShell.space')}
                 <span style={{ color: '#fff', fontSize: 14, fontWeight: 500, letterSpacing: 0 }}>
                   {value.space.name}
                 </span>
@@ -255,11 +260,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   className={cx(styles.navLink, isActive(item.href) && styles.navLinkActive)}
                 >
                   <Icon name={item.icon} size={17} />
-                  {item.label}
+                  {t(item.label)}
                   {item.badge === 'refunds' && refundsDue > 0 ? (
                     <span
                       className={styles.navBadge}
-                      aria-label={`${refundsDue} remboursements à faire`}
+                      aria-label={t('adminShell.refundsDue', { count: refundsDue })}
                     >
                       {refundsDue}
                     </span>
@@ -270,11 +275,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <div className={styles.account}>
               <span className={styles.accountName}>{value.me.fullName}</span>
               <span className={styles.accountRole}>
-                {ADMIN_ROLE_LABELS_FR[value.me.role]} · {value.me.email}
+                {ADMIN_ROLE_LABELS[locale][value.me.role]} · {value.me.email}
               </span>
-              <button type="button" className={styles.linkButton} onClick={logout}>
-                Se déconnecter
-              </button>
+              <span className={styles.accountActions}>
+                <button type="button" className={styles.linkButton} onClick={logout}>
+                  {t('adminShell.logout')}
+                </button>
+                <LanguageSwitch />
+              </span>
             </div>
           </nav>
           <main className={styles.main}>{children}</main>

@@ -124,6 +124,13 @@
   font-size: 12px;
 }
 
+.accountActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .linkButton {
   background: none;
   border: none;

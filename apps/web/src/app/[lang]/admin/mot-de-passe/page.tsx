@@ -1,15 +1,15 @@
 'use client';
 
 import { ADMIN_PASSWORD_MIN_LENGTH, type AdminMe } from '@bovann/shared';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState, type FormEvent } from 'react';
 import { adminStyles as styles, errorMessage, Field, Loading } from '@/components/admin/ui';
+import { Link, useI18n, useLocaleRouter } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 
 /** Choose a new password; required after a temporary one, optional otherwise. */
 export default function AdminPasswordPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const [me, setMe] = useState<AdminMe | null>(null);
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -27,13 +27,11 @@ export default function AdminPasswordPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (next.length < ADMIN_PASSWORD_MIN_LENGTH) {
-      setError(
-        `Le nouveau mot de passe doit contenir au moins ${ADMIN_PASSWORD_MIN_LENGTH} caractères.`,
-      );
+      setError(t('adminAuth.tooShort', { min: ADMIN_PASSWORD_MIN_LENGTH }));
       return;
     }
     if (next !== confirm) {
-      setError('Les deux mots de passe ne sont pas identiques.');
+      setError(t('adminAuth.mismatch'));
       return;
     }
     setBusy(true);
@@ -65,20 +63,17 @@ export default function AdminPasswordPage() {
           Bovann OCD Live
         </span>
         <h1 className={styles.authTitle}>
-          {me.mustChangePassword ? 'Choisissez votre mot de passe' : 'Changer mon mot de passe'}
+          {me.mustChangePassword ? t('adminAuth.chooseTitle') : t('adminAuth.changeTitle')}
         </h1>
         {me.mustChangePassword ? (
-          <p className={styles.hint}>
-            Bienvenue {me.fullName}. Remplacez le mot de passe temporaire qui vous a été remis par
-            un mot de passe personnel.
-          </p>
+          <p className={styles.hint}>{t('adminAuth.welcome', { name: me.fullName })}</p>
         ) : null}
         {error ? (
           <div className={styles.banner} role="alert">
             {error}
           </div>
         ) : null}
-        <Field label={me.mustChangePassword ? 'Mot de passe temporaire' : 'Mot de passe actuel'}>
+        <Field label={me.mustChangePassword ? t('adminAuth.temporary') : t('adminAuth.current')}>
           {(p) => (
             <input
               {...p}
@@ -91,8 +86,8 @@ export default function AdminPasswordPage() {
           )}
         </Field>
         <Field
-          label="Nouveau mot de passe"
-          hint={`Au moins ${ADMIN_PASSWORD_MIN_LENGTH} caractères. Une phrase facile à retenir fonctionne bien.`}
+          label={t('adminAuth.new')}
+          hint={t('adminAuth.newHint', { min: ADMIN_PASSWORD_MIN_LENGTH })}
         >
           {(p) => (
             <input
@@ -105,7 +100,7 @@ export default function AdminPasswordPage() {
             />
           )}
         </Field>
-        <Field label="Confirmer le nouveau mot de passe">
+        <Field label={t('adminAuth.confirm')}>
           {(p) => (
             <input
               {...p}
@@ -118,11 +113,11 @@ export default function AdminPasswordPage() {
           )}
         </Field>
         <button type="submit" className={styles.btn} disabled={busy}>
-          {busy ? 'Enregistrement…' : 'Enregistrer'}
+          {busy ? t('adminAuth.saving') : t('adminAuth.save')}
         </button>
         {me.mustChangePassword ? null : (
           <Link href="/admin/parametres" className={styles.hint}>
-            Annuler
+            {t('adminAuth.cancel')}
           </Link>
         )}
       </form>

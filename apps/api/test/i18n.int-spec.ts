@@ -4,7 +4,8 @@ import type { Kysely } from 'kysely';
 import request from 'supertest';
 import type { Database } from '../src/database/schema';
 import { NotificationService } from '../src/notification/notification.service';
-import { adminApp, FakeMailer } from './helpers/admin-app';
+import type { AdminBookingDetail, AdminPackagesResponse, AdminSpaceDto } from '@bovann/shared';
+import { adminApp, createAdminUser, FakeMailer, signedIn } from './helpers/admin-app';
 import { holdRequest, newPhone, TestClock } from './helpers/booking-app';
 import { freshDatabase } from './helpers/test-db';
 
@@ -185,5 +186,45 @@ describe('bookings remember their language', () => {
       .where('reference', '=', b.booking.reference)
       .executeTakeFirstOrThrow();
     expect(row.locale).toBe('fr');
+  });
+});
+
+describe('admin in English', () => {
+  it('saves English names, and shows booking history and email labels in English', async () => {
+    const owner = await signedIn(app, await createAdminUser(db));
+    const pk = (await owner.get('/spaces/1/packages').expect(200)).body as AdminPackagesResponse;
+    const pack3 = pk.packages.find((p) => p.code === 'PACK_3H')!;
+    expect(pack3.nameEn).toBe('3h package');
+
+    const updated = (
+      await owner.patch(`/packages/${pack3.id}`, { nameEn: 'Three-hour package' }).expect(200)
+    ).body as AdminPackagesResponse;
+    expect(updated.packages.find((p) => p.id === pack3.id)!.nameEn).toBe('Three-hour package');
+    const pkEn = (await get(`/spaces/${SLUG}/packages?mode=IN_PERSON`, 'en').expect(200))
+      .body as PackagesResponse;
+    expect(pkEn.packages.find((p) => p.code === 'PACK_3H')!.name).toBe('Three-hour package');
+
+    const space = (await owner.patch('/spaces/1', { nameEn: 'Lomé studio' }).expect(200))
+      .body as AdminSpaceDto;
+    expect(space.nameEn).toBe('Lomé studio');
+
+    const b = await book('2026-11-22T08:00:00.000Z', 'en', 'third@example.test');
+    await request(app.getHttpServer())
+      .post(`/api/v1/dev/payments/${b.booking.reference}/succeed`)
+      .send({})
+      .expect(200);
+    const row = await db
+      .selectFrom('t_bookings')
+      .select('id')
+      .where('reference', '=', b.booking.reference)
+      .executeTakeFirstOrThrow();
+    const fr = (await owner.get(`/bookings/${row.id}`).expect(200)).body as AdminBookingDetail;
+    const en = (await owner.get(`/bookings/${row.id}`).set('Accept-Language', 'en').expect(200))
+      .body as AdminBookingDetail;
+    expect(fr.history.map((h) => h.label)).toContain('Paiement reçu, réservation confirmée');
+    expect(en.history.map((h) => h.label)).toContain('Payment received, booking confirmed');
+    expect(en.notifications.map((n) => n.label)).toContain('Confirmation (customer)');
+    expect(fr.packageName).toBe('Pack 3h');
+    expect(en.packageName).toBe('Three-hour package');
   });
 });

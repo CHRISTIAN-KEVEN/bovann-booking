@@ -16,6 +16,7 @@ import {
   useAsync,
 } from '@/components/admin/ui';
 import { Icon } from '@/components/icons';
+import { useI18n } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import { addDays, mondayOf, todayIn } from '@/lib/admin-format';
 import { formatShortDate } from '@/lib/dates';
@@ -23,6 +24,7 @@ import { formatShortDate } from '@/lib/dates';
 /** Week planning: every slot of the week, at a glance. */
 export default function AdminCalendarPage() {
   const { space, refreshCounters } = useAdmin();
+  const { t, locale } = useI18n();
   const today = todayIn(space.timezone);
   const [monday, setMonday] = useState(() => mondayOf(today));
   const [openId, setOpenId] = useState<number | null>(null);
@@ -52,18 +54,17 @@ export default function AdminCalendarPage() {
   return (
     <>
       <PageHeader
-        title="Calendrier"
-        sub={`Semaine du ${formatShortDate(monday)} au ${formatShortDate(addDays(monday, 6))}${
-          week.data
-            ? ` · ${bookedCount} créneau${bookedCount > 1 ? 'x' : ''} réservé${bookedCount > 1 ? 's' : ''}`
-            : ''
-        }`}
+        title={t('calendar.title')}
+        sub={`${t('calendar.week', {
+          from: formatShortDate(monday, locale),
+          to: formatShortDate(addDays(monday, 6), locale),
+        })}${week.data ? t('calendar.booked', { count: bookedCount }) : ''}`}
         actions={
           <>
             <button
               type="button"
               className={styles.iconBtn}
-              aria-label="Semaine précédente"
+              aria-label={t('calendar.prev')}
               onClick={() => setMonday((m) => addDays(m, -7))}
             >
               <Icon name="back" size={16} />
@@ -74,12 +75,12 @@ export default function AdminCalendarPage() {
               onClick={() => setMonday(mondayOf(today))}
               disabled={monday === mondayOf(today)}
             >
-              Cette semaine
+              {t('calendar.thisWeek')}
             </button>
             <button
               type="button"
               className={styles.iconBtn}
-              aria-label="Semaine suivante"
+              aria-label={t('calendar.next')}
               onClick={() => setMonday((m) => addDays(m, 7))}
             >
               <Icon name="next" size={16} />
@@ -88,7 +89,7 @@ export default function AdminCalendarPage() {
         }
       />
 
-      <section className={cx(styles.card, styles.cardPad)} aria-label="Planning de la semaine">
+      <section className={cx(styles.card, styles.cardPad)} aria-label={t('calendar.plan')}>
         <ScheduleKey />
         {week.error ? (
           <LoadError error={week.error} onRetry={week.reload} />
@@ -96,7 +97,7 @@ export default function AdminCalendarPage() {
           <Loading />
         ) : (
           <div className={styles.tableWrap}>
-            <div className={styles.week} role="grid" aria-label="Créneaux de la semaine">
+            <div className={styles.week} role="grid" aria-label={t('calendar.grid')}>
               <div role="row" style={{ display: 'contents' }}>
                 <span />
                 {days.map((d) => (
@@ -105,9 +106,11 @@ export default function AdminCalendarPage() {
                     role="columnheader"
                     className={cx(styles.weekHead, d.date === today && styles.weekHeadToday)}
                   >
-                    {formatShortDate(d.date)}
-                    {d.date === today ? ' · aujourd’hui' : ''}
-                    {!d.isOpen ? <span className={styles.cellSub}>Fermé</span> : null}
+                    {formatShortDate(d.date, locale)}
+                    {d.date === today ? t('calendar.today') : ''}
+                    {!d.isOpen ? (
+                      <span className={styles.cellSub}>{t('calendar.closed')}</span>
+                    ) : null}
                   </span>
                 ))}
               </div>

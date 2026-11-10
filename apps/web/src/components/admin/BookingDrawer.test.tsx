@@ -1,5 +1,6 @@
+import { renderI18n } from '@/test/i18n';
 import type { AdminBookingDetail } from '@bovann/shared';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BookingDrawer } from './BookingDrawer';
@@ -94,7 +95,7 @@ describe('Booking panel', () => {
       .mockResolvedValueOnce(json(cancelled));
     vi.stubGlobal('fetch', fetchMock);
     const onChanged = vi.fn();
-    render(<BookingDrawer bookingId={5} onClose={() => {}} onChanged={onChanged} />);
+    renderI18n(<BookingDrawer bookingId={5} onClose={() => {}} onChanged={onChanged} />);
 
     expect(await screen.findByText('Afi Mensah')).toBeInTheDocument();
     expect(screen.getByText('+228 90 12 34 56')).toBeInTheDocument();
@@ -121,6 +122,18 @@ describe('Booking panel', () => {
     expect(
       await screen.findByRole('button', { name: 'Marquer comme remboursée' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/À rembourser : 51/)).toBeInTheDocument();
+    expect(screen.getByText(/À rembourser\s*:\s*51/)).toBeInTheDocument();
+  });
+
+  it('works in English, amounts included', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(json(detail)));
+    renderI18n(<BookingDrawer bookingId={5} onClose={() => {}} onChanged={() => {}} />, {
+      locale: 'en',
+    });
+    expect(await screen.findByRole('heading', { name: 'Booking BOV-2611-ABCDE' })).toBeVisible();
+    expect(screen.getByText('Thursday 12 November 2026')).toBeInTheDocument();
+    expect(screen.getByText('51,000 FCFA')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel the booking' }));
+    expect(screen.getByLabelText('Amount to refund')).toHaveValue('51,000');
   });
 });
