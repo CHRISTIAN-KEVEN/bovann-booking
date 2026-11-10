@@ -149,6 +149,7 @@ describe('validatePriceLadder', () => {
     expect(v).toContainEqual({
       code: 'PACK_6H',
       message: '« Pack 6h » doit revenir moins cher par créneau que « Pack 3h ».',
+      messageEn: '“Pack 6h” must cost less per slot than “Pack 3h”.',
     });
   });
 

@@ -1,16 +1,16 @@
 /**
- * Formats an XOF amount the way it is written in Togo: "51 000 FCFA".
- * Uses a regular space as thousands separator so output is stable across
+ * Formats an XOF amount the way it is written in Togo: "51 000 FCFA" (English: "51,000 FCFA").
+ * Uses a regular space as the French thousands separator so output is stable across
  * Node and browser ICU builds (Intl uses a narrow no-break space for fr-FR).
  */
-export function formatXof(amount: number): string {
+export function formatXof(amount: number, locale: 'fr' | 'en' = 'fr'): string {
   if (!Number.isInteger(amount)) {
     throw new RangeError(`XOF amounts must be whole numbers, got ${amount}`);
   }
   const sign = amount < 0 ? '−' : '';
   const digits = Math.abs(amount)
     .toString()
-    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    .replace(/\B(?=(\d{3})+(?!\d))/g, locale === 'en' ? ',' : ' ');
   return `${sign}${digits} FCFA`;
 }
 

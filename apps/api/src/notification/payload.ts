@@ -1,4 +1,9 @@
-import { SESSION_MODE_LABELS_FR, type BookingType, type SessionMode } from '@bovann/shared';
+import {
+  SESSION_MODE_LABELS_FR,
+  type BookingType,
+  type Locale,
+  type SessionMode,
+} from '@bovann/shared';
 import type { Kysely } from 'kysely';
 import { utcToLocalDate, utcToLocalTime } from '../availability/domain/time';
 import type { Database } from '../database/schema';
@@ -12,8 +17,11 @@ import type { Database } from '../database/schema';
 export interface NotificationPayload {
   bookingId?: number;
   reference: string;
+  /** The customer's language (the booking's); owners' emails stay in French. */
+  locale?: Locale;
   spaceId: number;
   spaceName: string;
+  spaceNameEn?: string | null;
   spaceAddress?: string | null;
   mode: SessionMode;
   modeLabel: string;
@@ -25,6 +33,7 @@ export interface NotificationPayload {
   /** Each slot 'HH:MM–HH:MM' (single slots may not be consecutive). */
   slotRanges?: string[];
   packageName: string | null;
+  packageNameEn?: string | null;
   slotCount: number;
   totalXof: number;
   /** Amount the studio must give back (cancellation or late payment). */
@@ -57,12 +66,15 @@ export async function buildNotificationPayload(
       'b.starts_at',
       'b.ends_at',
       'b.package_name',
+      'b.package_name_en',
+      'b.locale',
       'b.slot_count',
       'b.total_xof',
       'b.refund_amount_xof',
       'b.live_description',
       's.id as space_id',
       's.name as space_name',
+      's.name_en as space_name_en',
       's.address',
       's.timezone',
       's.slot_duration_min',
@@ -84,8 +96,10 @@ export async function buildNotificationPayload(
   return {
     bookingId: row.id,
     reference: row.reference,
+    locale: row.locale,
     spaceId: row.space_id,
     spaceName: row.space_name,
+    spaceNameEn: row.space_name_en,
     spaceAddress: row.address,
     mode: row.mode,
     modeLabel: SESSION_MODE_LABELS_FR[row.mode],
@@ -98,6 +112,7 @@ export async function buildNotificationPayload(
       return `${utcToLocalTime(slot_start, tz)}–${utcToLocalTime(end, tz)}`;
     }),
     packageName: row.package_name,
+    packageNameEn: row.package_name_en,
     slotCount: row.slot_count,
     totalXof: row.total_xof,
     refundXof: row.refund_amount_xof,

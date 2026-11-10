@@ -8,11 +8,13 @@ import type {
   PackagesResponse,
   SessionMode,
   SpaceDto,
+  Locale,
 } from '@bovann/shared';
+import { getApiLocale } from './api-locale';
 
 /**
  * Typed client for the Bovann API. Every failure becomes an ApiError with a
- * stable `code` and a French `message` that can be shown as is.
+ * stable `code` and a `message` in the page's language that can be shown as is.
  */
 
 export const SPACE_SLUG = process.env.NEXT_PUBLIC_SPACE_SLUG ?? 'studio-principal-lome';
@@ -34,8 +36,19 @@ export class ApiError extends Error {
   }
 }
 
-const NETWORK_MESSAGE =
-  'Impossible de joindre le service de réservation. Vérifiez votre connexion internet et réessayez.';
+const FALLBACK: Record<Locale, { network: string; unknown: string; download: string }> = {
+  fr: {
+    network:
+      'Impossible de joindre le service de réservation. Vérifiez votre connexion internet et réessayez.',
+    unknown: 'Une erreur est survenue. Veuillez réessayer.',
+    download: 'Le téléchargement a échoué. Réessayez dans un instant.',
+  },
+  en: {
+    network: 'We can’t reach the booking service. Check your internet connection and try again.',
+    unknown: 'Something went wrong. Please try again.',
+    download: 'The download failed. Try again in a moment.',
+  },
+};
 
 export async function apiFetch<T>(
   path: string,
@@ -44,6 +57,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
+  headers.set('Accept-Language', getApiLocale());
   if (init.body) headers.set('Content-Type', 'application/json');
   if (init.token) headers.set('X-Booking-Token', init.token);
 
@@ -51,7 +65,7 @@ export async function apiFetch<T>(
   try {
     res = await fetchImpl(`${BASE_URL}/api/v1${path}`, { ...init, headers, cache: 'no-store' });
   } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', NETWORK_MESSAGE);
+    throw new ApiError(0, 'NETWORK_ERROR', FALLBACK[getApiLocale()].network);
   }
 
   const body: unknown = await res.json().catch(() => null);
@@ -60,7 +74,7 @@ export async function apiFetch<T>(
     throw new ApiError(
       res.status,
       err.code ?? 'HTTP_ERROR',
-      err.message ?? 'Une erreur est survenue. Veuillez réessayer.',
+      err.message ?? FALLBACK[getApiLocale()].unknown,
       err.details,
     );
   }
@@ -76,18 +90,18 @@ export async function apiDownload(
   let res: Response;
   try {
     res = await fetchImpl(`${BASE_URL}/api/v1${path}`, {
-      headers: { 'X-Booking-Token': token },
+      headers: { 'X-Booking-Token': token, 'Accept-Language': getApiLocale() },
       cache: 'no-store',
     });
   } catch {
-    throw new ApiError(0, 'NETWORK_ERROR', NETWORK_MESSAGE);
+    throw new ApiError(0, 'NETWORK_ERROR', FALLBACK[getApiLocale()].network);
   }
   if (!res.ok) {
     const err = ((await res.json().catch(() => null)) ?? {}) as { code?: string; message?: string };
     throw new ApiError(
       res.status,
       err.code ?? 'HTTP_ERROR',
-      err.message ?? 'Le téléchargement a échoué. Réessayez dans un instant.',
+      err.message ?? FALLBACK[getApiLocale()].download,
     );
   }
   return res.blob();

@@ -4,6 +4,7 @@ import type {
   BookingSource,
   BookingStatus,
   BookingType,
+  Locale,
   NotificationChannel,
   NotificationStatus,
   PaymentMethod,
@@ -69,6 +70,8 @@ export interface SpacesTable {
   id: Generated<number>;
   slug: string;
   name: string;
+  /** English name; the French one is shown when empty. */
+  name_en: string | null;
   address: string | null;
   timezone: Generated<string>;
   slot_duration_min: Generated<number>;
@@ -117,7 +120,9 @@ export interface PackagesTable {
   space_id: number;
   code: string;
   name: string;
+  name_en: string | null;
   description: string | null;
+  description_en: string | null;
   is_full_day: Generated<boolean>;
   /** NULL for full-day packages (they take every slot of the day). */
   slot_count: number | null;
@@ -159,6 +164,8 @@ export interface BookingsTable {
   booking_type: BookingType;
   package_id: number | null;
   package_name: string | null;
+  /** The package's English name when booked, if it had one. */
+  package_name_en: string | null;
   slot_count: number;
   starts_at: Date;
   ends_at: Date;
@@ -169,6 +176,8 @@ export interface BookingsTable {
   currency: Generated<string>;
   status: Generated<BookingStatus>;
   source: Generated<BookingSource>;
+  /** Language the booking was made in: the customer's emails and receipt use it. */
+  locale: Generated<Locale>;
   created_by_admin_id: number | null;
   hold_expires_at: Date | null;
   confirmed_at: Date | null;

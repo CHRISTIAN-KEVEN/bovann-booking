@@ -13,6 +13,11 @@ describe('formatXof', () => {
     expect(formatXof(-9000)).toBe('−9 000 FCFA');
   });
 
+  it('groups thousands with commas in English', () => {
+    expect(formatXof(51000, 'en')).toBe('51,000 FCFA');
+    expect(formatXof(-1250000, 'en')).toBe('−1,250,000 FCFA');
+  });
+
   it('rejects fractional amounts', () => {
     expect(() => formatXof(10.5)).toThrow(RangeError);
   });

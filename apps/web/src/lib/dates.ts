@@ -1,39 +1,77 @@
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 /**
- * French calendar helpers working on local date strings ('YYYY-MM-DD'), the
+ * Calendar helpers (French and English) working on local date strings ('YYYY-MM-DD'), the
  * format the API returns in the studio's time zone. No Date arithmetic in the
  * browser's own zone, so a visitor abroad sees Lomé dates, not their own.
  */
 
-const MONTHS = [
-  'janvier',
-  'février',
-  'mars',
-  'avril',
-  'mai',
-  'juin',
-  'juillet',
-  'août',
-  'septembre',
-  'octobre',
-  'novembre',
-  'décembre',
-];
-const MONTHS_SHORT = [
-  'janv.',
-  'févr.',
-  'mars',
-  'avr.',
-  'mai',
-  'juin',
-  'juil.',
-  'août',
-  'sept.',
-  'oct.',
-  'nov.',
-  'déc.',
-];
-const WEEKDAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
-export const WEEKDAY_INITIALS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+type Lang = 'fr' | 'en';
+
+const MONTHS: Record<Lang, string[]> = {
+  fr: [
+    'janvier',
+    'février',
+    'mars',
+    'avril',
+    'mai',
+    'juin',
+    'juillet',
+    'août',
+    'septembre',
+    'octobre',
+    'novembre',
+    'décembre',
+  ],
+  en: [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ],
+};
+const MONTHS_SHORT: Record<Lang, string[]> = {
+  fr: [
+    'janv.',
+    'févr.',
+    'mars',
+    'avr.',
+    'mai',
+    'juin',
+    'juil.',
+    'août',
+    'sept.',
+    'oct.',
+    'nov.',
+    'déc.',
+  ],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+};
+const WEEKDAYS: Record<Lang, string[]> = {
+  fr: ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'],
+  en: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+};
+const INITIALS: Record<Lang, string[]> = {
+  fr: ['L', 'M', 'M', 'J', 'V', 'S', 'D'],
+  en: ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+};
+/** Monday-first weekday initials for the calendar header. */
+export function weekdayInitials(lang: Lang = 'fr'): string[] {
+  return INITIALS[lang];
+}
+/** Full weekday names, Monday first. */
+export function weekdayNames(lang: Lang = 'fr'): string[] {
+  return WEEKDAYS[lang].map(capitalize);
+}
+export const WEEKDAY_INITIALS = INITIALS.fr;
 
 function parts(date: string): { y: number; m: number; d: number } {
   const [y, m, d] = date.split('-').map(Number);
@@ -47,25 +85,26 @@ export function isoWeekday(date: string): number {
   return day === 0 ? 7 : day;
 }
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-/** "Jeudi 12 novembre" (with the year when `withYear`). */
-export function formatLongDate(date: string, withYear = false): string {
+/** "Jeudi 12 novembre" / "Thursday 12 November" (with the year when `withYear`). */
+export function formatLongDate(date: string, withYear = false, lang: Lang = 'fr'): string {
   const { y, m, d } = parts(date);
-  const base = `${capitalize(WEEKDAYS[isoWeekday(date) - 1]!)} ${d} ${MONTHS[m - 1]}`;
+  const base = `${capitalize(WEEKDAYS[lang][isoWeekday(date) - 1]!)} ${d} ${MONTHS[lang][m - 1]}`;
   return withYear ? `${base} ${y}` : base;
 }
 
-/** "Jeu. 12 nov." for compact summaries. */
-export function formatShortDate(date: string): string {
+/** "Jeu. 12 nov." / "Thu 12 Nov" for compact summaries. */
+export function formatShortDate(date: string, lang: Lang = 'fr'): string {
   const { m, d } = parts(date);
-  return `${capitalize(WEEKDAYS[isoWeekday(date) - 1]!.slice(0, 3))}. ${d} ${MONTHS_SHORT[m - 1]}`;
+  const day = capitalize(WEEKDAYS[lang][isoWeekday(date) - 1]!.slice(0, 3));
+  return lang === 'en'
+    ? `${day} ${d} ${MONTHS_SHORT.en[m - 1]}`
+    : `${day}. ${d} ${MONTHS_SHORT.fr[m - 1]}`;
 }
 
-/** "Novembre 2026" */
-export function formatMonth(month: string): string {
+/** "Novembre 2026" / "November 2026" */
+export function formatMonth(month: string, lang: Lang = 'fr'): string {
   const [y, m] = month.split('-').map(Number);
-  return `${capitalize(MONTHS[m! - 1]!)} ${y}`;
+  return `${capitalize(MONTHS[lang][m! - 1]!)} ${y}`;
 }
 
 export function monthOf(date: string): string {

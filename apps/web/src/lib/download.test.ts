@@ -12,7 +12,10 @@ describe('apiDownload (receipt PDF)', () => {
     expect(await blob.text()).toBe('%PDF-1.3');
     const [url, init] = fetchImpl.mock.calls[0]!;
     expect(url).toBe('/api/v1/bookings/BOV-2611-7KQ4M/receipt');
-    expect((init as RequestInit).headers).toEqual({ 'X-Booking-Token': 'tok' });
+    expect((init as RequestInit).headers).toEqual({
+      'X-Booking-Token': 'tok',
+      'Accept-Language': 'fr',
+    });
   });
 
   it('turns a refusal into the server message, and a network failure into a clear one', async () => {

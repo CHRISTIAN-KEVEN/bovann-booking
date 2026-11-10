@@ -17,6 +17,7 @@ import type { Database } from './schema';
 export const SEED_SPACE = {
   slug: 'studio-principal-lome',
   name: 'Studio principal — Lomé',
+  name_en: 'Main studio — Lomé',
   address: null,
   timezone: 'Africa/Lome',
   slot_duration_min: 90,
@@ -28,6 +29,7 @@ export const SEED_PACKAGES = [
   {
     code: 'SLOT',
     name: 'Créneau unique',
+    name_en: 'Single slot',
     slot_count: 1,
     is_full_day: false,
     price_xof: 15000,
@@ -36,6 +38,7 @@ export const SEED_PACKAGES = [
   {
     code: 'PACK_3H',
     name: 'Pack 3h',
+    name_en: '3h package',
     slot_count: 2,
     is_full_day: false,
     price_xof: 27000,
@@ -44,6 +47,7 @@ export const SEED_PACKAGES = [
   {
     code: 'PACK_6H',
     name: 'Pack 6h',
+    name_en: '6h package',
     slot_count: 4,
     is_full_day: false,
     price_xof: 51000,
@@ -52,6 +56,7 @@ export const SEED_PACKAGES = [
   {
     code: 'FULL_DAY',
     name: 'Journée',
+    name_en: 'Full day',
     slot_count: null,
     is_full_day: true,
     price_xof: 108000,
@@ -66,7 +71,12 @@ export async function seed(db: Kysely<Database>, ownerEmails: string[] = []): Pr
     await trx
       .insertInto('t_spaces')
       .values(SEED_SPACE)
-      .onDuplicateKeyUpdate({ name: SEED_SPACE.name, timezone: SEED_SPACE.timezone })
+      .onDuplicateKeyUpdate({
+        name: SEED_SPACE.name,
+        // Keep an English name the admin has already changed.
+        name_en: sql<string>`COALESCE(name_en, ${SEED_SPACE.name_en})`,
+        timezone: SEED_SPACE.timezone,
+      })
       .execute();
 
     const space = await trx
@@ -98,11 +108,16 @@ export async function seed(db: Kysely<Database>, ownerEmails: string[] = []): Pr
           space_id: space.id,
           code: pkg.code,
           name: pkg.name,
+          name_en: pkg.name_en,
           slot_count: pkg.slot_count,
           is_full_day: pkg.is_full_day,
           sort_order: pkg.sort_order,
         })
-        .onDuplicateKeyUpdate({ name: pkg.name, sort_order: pkg.sort_order })
+        .onDuplicateKeyUpdate({
+          name: pkg.name,
+          name_en: sql<string>`COALESCE(name_en, ${pkg.name_en})`,
+          sort_order: pkg.sort_order,
+        })
         .execute();
 
       const row = await trx

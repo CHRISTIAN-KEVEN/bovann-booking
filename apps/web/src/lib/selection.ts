@@ -4,6 +4,7 @@ import type {
   SlotDto,
   StartOptionDto,
 } from '@bovann/shared';
+import type { T } from '@/i18n/I18nProvider';
 import type { SelectionSummary } from './flow';
 
 /**
@@ -37,7 +38,7 @@ export function summarizeSlots(
   if (chosen.length === 0) return null;
   const total = day.unitPriceXof * chosen.length;
   return {
-    label: `${chosen.length} créneau${chosen.length > 1 ? 'x' : ''}`,
+    packageName: null,
     timesLabel: timesLabel(chosen),
     slotCount: chosen.length,
     listPriceXof: total,
@@ -48,13 +49,21 @@ export function summarizeSlots(
 
 export function summarizePackage(pkg: DayPackageDto, option: StartOptionDto): SelectionSummary {
   return {
-    label: pkg.name,
+    packageName: pkg.name,
     timesLabel: `${option.startTime} – ${option.endTime}`,
     slotCount: pkg.slotCount,
     listPriceXof: pkg.price.listPriceXof,
     discountXof: pkg.price.discountXof,
     totalXof: pkg.price.totalXof,
   };
+}
+
+/** "Pack 6h", or "2 créneaux" / "2 slots" in the page's language. */
+export function selectionLabel(
+  summary: Pick<SelectionSummary, 'packageName' | 'slotCount'>,
+  t: T,
+): string {
+  return summary.packageName ?? t('selection.slots', { count: summary.slotCount });
 }
 
 export interface PackageSuggestion {

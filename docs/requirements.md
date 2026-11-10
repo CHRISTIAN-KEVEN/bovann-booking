@@ -1,6 +1,6 @@
 # Bovann OCD Live — Requirements
 
-_Last updated 2026-11-09_
+_Last updated 2026-11-10_
 
 ## Context
 
@@ -102,6 +102,48 @@ _Last updated 2026-11-09_
 - The customer confirmation email links to the search with the reference filled in.
 - **Later**, with an SMS/WhatsApp provider: a code sent to the phone shows every booking for that number (a personal list without a password).
 
+## Live directory: "En direct" (decided 2026-11-10)
+
+Sellers who are live on TikTok or Facebook list their live on the OCD Live site. Visitors browse the lives, filter them, and tap one to join it on the platform. Listing is a paid service.
+
+### Confirmed by the product owner
+
+- **What a seller enters:** name, platform (TikTok, Facebook), link of the live, country, business category.
+- **Every live is reviewed by staff** (approve or reject), for sellers with a pass too (decided 2026-11-10, knowing that subscribers can then post only during review hours).
+- **Review hours:** configurable per weekday, several periods per day (e.g. 08:00–11:00 and 15:00–18:00). Outside them the form is closed and shows the next opening time.
+- **Visitors:** see all lives, filter by country, platform and category, and tap a live to open it on the platform. No sign-in for visitors.
+- **Paid:** a monthly or an annual pass, or a one-off payment for one live, priced above the monthly price ÷ 30.
+- **One-off payment: review first, then pay.** Submitting is free; once approved, the seller pays and the live is listed. A rejected request costs nothing, so there are no refunds.
+- **Seller accounts:** sign-in with a phone number and a one-time code sent by WhatsApp or SMS. Needs an SMS/WhatsApp provider (to be chosen by Bovann); development uses a simulated sender.
+- **Staff alerts:** for now the admin review page refreshes by itself and shows a counter; real-time notifications later.
+- **Category "Autre":** choosing it shows a field to type the category, on every form (booking and live). See "Business categories".
+- **Languages:** French (main) and English, on the whole product: public site, admin, emails, receipt.
+- **Design:** usable by people who read little or are not comfortable with technology: few words, icons, flags, big buttons, one question per screen. A look of its own, not a copy of other sites.
+- **Security:** everything users type is validated and escaped (see "Live links" below).
+
+### Proposed (to confirm)
+
+- **Passes are prepaid:** Mobile Money can't charge automatically each month, so a pass is paid once and lasts 30 or 365 days, with a reminder before it ends.
+- **Before online payment exists (Phase 4):** staff can activate a pass by hand after receiving the money, as for studio bookings.
+- **Duration of a listing:** the seller picks 1, 2, 3 or 4 hours; the live disappears after that, or earlier with "J'ai terminé". Platforms don't tell other sites when a live ends.
+- **Live links:** https only, TikTok or Facebook addresses only. They open in a new tab, isolated from our site.
+- **Abuse:** visitors can report a live; staff can remove a listing at any time; a limit on lives per seller per day.
+- **Prices:** set by Bovann in the admin. Example only: 10 000 FCFA a month, 100 000 FCFA a year, 1 500 FCFA per live.
+- **Idea:** studio customers get their live listed for free.
+
+### Business categories (proposed)
+
+- One list in the database, edited by administrators, in French and English, used by the booking form and the live form.
+- "Autre" + typed text: the text is saved with the booking or live. An admin list groups these entries; staff can turn one into a new category or link it to an existing one.
+- Existing bookings keep their sector, mapped to the new list.
+
+### Open questions
+
+- SMS/WhatsApp provider and its cost.
+- Prices of the passes and of a one-off live.
+- Platforms at launch: TikTok and Facebook only, or Instagram and YouTube too.
+- Default review hours and which days.
+
 ## Technical decisions (confirmed)
 
 - Next.js + NestJS (TypeScript), **MySQL 8**, Docker Compose on a VPS
@@ -122,4 +164,5 @@ _Last updated 2026-11-09_
 ## Design
 
 - Screens canvas (approved 2026-11-08): https://claude.ai/artifact/HYzmdfMYAoXsbNHWVDRycs
+- Live directory screens (proposed 2026-11-10, to approve): https://claude.ai/artifact/YbZ9aWJhzni9XXSfMsQ3jv
 - **Phone and desktop (2026-11-09):** the customer site must work as well on a computer as on a phone, with the same simple flow, in the OCD Live brand (orange wordmark). The home page is our own design: reference images are inspiration, never to be copied. Details in progress.md.

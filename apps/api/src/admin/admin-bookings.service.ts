@@ -12,6 +12,7 @@ import type {
   CustomerLookupDto,
   SessionMode,
 } from '@bovann/shared';
+import { formatXof } from '@bovann/shared';
 import { sql, type Kysely } from 'kysely';
 import { AvailabilityService } from '../availability/availability.service';
 import { fullDayOption, packageStartOptions, quotePackage } from '../availability/domain/pricing';
@@ -413,10 +414,10 @@ export class AdminBookingsService {
     const listPrice = resolved.quote.listPriceXof;
     const total = input.totalXof ?? resolved.quote.totalXof;
     if (total > listPrice) {
-      throw badRequest(
-        'PRICE_ABOVE_LIST',
-        `Le prix ne peut pas dépasser le prix des créneaux à l’unité (${listPrice} FCFA).`,
-      );
+      throw badRequest('PRICE_ABOVE_LIST', {
+        fr: `Le prix ne peut pas dépasser le prix des créneaux à l’unité (${formatXof(listPrice)}).`,
+        en: `The price can’t be more than the single-slot price (${formatXof(listPrice, 'en')}).`,
+      });
     }
     const paidNow = total > 0 && input.payment.status === 'PAID';
     const slotStarts = resolved.slots.map((s) => s.start);
@@ -437,6 +438,7 @@ export class AdminBookingsService {
             booking_type: resolved.bookingType,
             package_id: resolved.packageId,
             package_name: resolved.packageName,
+            package_name_en: resolved.packageNameEn,
             slot_count: resolved.slots.length,
             starts_at: first.start,
             ends_at: last.end,
@@ -598,7 +600,10 @@ export class AdminBookingsService {
           'REFUND_ABOVE_PAID',
           paid === 0
             ? 'Aucun paiement n’a été reçu : il n’y a rien à rembourser.'
-            : `Le remboursement ne peut pas dépasser le montant payé (${paid} FCFA).`,
+            : {
+                fr: `Le remboursement ne peut pas dépasser le montant payé (${formatXof(paid)}).`,
+                en: `The refund can’t be more than the amount paid (${formatXof(paid, 'en')}).`,
+              },
         );
       }
 

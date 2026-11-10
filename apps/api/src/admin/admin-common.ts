@@ -13,7 +13,7 @@ import type {
 import type { Kysely } from 'kysely';
 import { z } from 'zod';
 import { utcToLocalDate, utcToLocalTime } from '../availability/domain/time';
-import { ApiError, notFound } from '../common/errors';
+import { ApiError, notFound, type BilingualText } from '../common/errors';
 import type { Database, Space } from '../database/schema';
 
 export async function loadSpace(db: Kysely<Database>, spaceId: number): Promise<Space> {
@@ -81,7 +81,7 @@ export const optionalText = (max: number) =>
 
 export function conflictError(
   code: string,
-  message: string,
+  message: string | BilingualText,
   conflicts: ConflictingBookingDto[],
 ): ApiError {
   return new ApiError(HttpStatus.CONFLICT, code, message, { bookings: conflicts });

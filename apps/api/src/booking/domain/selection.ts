@@ -22,6 +22,7 @@ export interface CatalogPackage {
   id: number;
   code: string;
   name: string;
+  nameEn?: string | null;
   isFullDay: boolean;
   slotCount: number | null;
   priceXof: number;
@@ -31,6 +32,8 @@ export interface ResolvedSelection {
   bookingType: BookingType;
   packageId: number | null;
   packageName: string | null;
+  /** The package's English name, kept with the booking like the French one. */
+  packageNameEn: string | null;
   slots: Interval[];
   quote: Quote;
 }
@@ -75,6 +78,7 @@ export function resolveSelection(
       bookingType: 'SLOTS',
       packageId: null,
       packageName: null,
+      packageNameEn: null,
       slots,
       quote: quoteSlots(unitPriceXof, slots.length),
     };
@@ -112,6 +116,7 @@ export function resolveSelection(
     bookingType: 'PACKAGE',
     packageId: pkg.id,
     packageName: pkg.name,
+    packageNameEn: pkg.nameEn ?? null,
     slots,
     quote: quotePackage(pkg.priceXof, unitPriceXof, count),
   };

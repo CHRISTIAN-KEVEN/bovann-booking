@@ -50,32 +50,65 @@ export type NotificationStatus = (typeof NOTIFICATION_STATUSES)[number];
 export const ADMIN_ROLES = ['OWNER', 'STAFF'] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-/** French labels used in the UI and in notification emails. */
-export const SESSION_MODE_LABELS_FR: Record<SessionMode, string> = {
-  IN_PERSON: 'En studio',
-  VIRTUAL: 'Virtuel',
+/** Languages of the product. French is the main one; English mirrors it. */
+export const LOCALES = ['fr', 'en'] as const;
+export type Locale = (typeof LOCALES)[number];
+export const DEFAULT_LOCALE: Locale = 'fr';
+
+export function isLocale(value: unknown): value is Locale {
+  return typeof value === 'string' && (LOCALES as readonly string[]).includes(value);
+}
+
+/** Labels shown in the UI, in emails and on the receipt, per language. */
+export const SESSION_MODE_LABELS: Record<Locale, Record<SessionMode, string>> = {
+  fr: { IN_PERSON: 'En studio', VIRTUAL: 'Virtuel' },
+  en: { IN_PERSON: 'In studio', VIRTUAL: 'Virtual' },
 };
 
-export const PAYMENT_METHOD_LABELS_FR: Record<PaymentMethod, string> = {
-  MOBILE_MONEY: 'Mobile Money',
-  CARD: 'Carte bancaire',
-  CASH: 'Espèces',
-  BANK_TRANSFER: 'Virement',
-  OTHER: 'Autre',
+export const PAYMENT_METHOD_LABELS: Record<Locale, Record<PaymentMethod, string>> = {
+  fr: {
+    MOBILE_MONEY: 'Mobile Money',
+    CARD: 'Carte bancaire',
+    CASH: 'Espèces',
+    BANK_TRANSFER: 'Virement',
+    OTHER: 'Autre',
+  },
+  en: {
+    MOBILE_MONEY: 'Mobile Money',
+    CARD: 'Bank card',
+    CASH: 'Cash',
+    BANK_TRANSFER: 'Bank transfer',
+    OTHER: 'Other',
+  },
 };
 
-export const ADMIN_ROLE_LABELS_FR: Record<AdminRole, string> = {
-  OWNER: 'Administrateur',
-  STAFF: 'Équipe',
+export const ADMIN_ROLE_LABELS: Record<Locale, Record<AdminRole, string>> = {
+  fr: { OWNER: 'Administrateur', STAFF: 'Équipe' },
+  en: { OWNER: 'Administrator', STAFF: 'Team' },
 };
 
-export const BOOKING_STATUS_LABELS_FR: Record<BookingStatus, string> = {
-  PENDING_PAYMENT: 'En attente de paiement',
-  CONFIRMED: 'Confirmée',
-  CANCELLED: 'Annulée',
-  EXPIRED: 'Expirée',
-  REFUNDED: 'Remboursée',
+export const BOOKING_STATUS_LABELS: Record<Locale, Record<BookingStatus, string>> = {
+  fr: {
+    PENDING_PAYMENT: 'En attente de paiement',
+    CONFIRMED: 'Confirmée',
+    CANCELLED: 'Annulée',
+    EXPIRED: 'Expirée',
+    REFUNDED: 'Remboursée',
+  },
+  en: {
+    PENDING_PAYMENT: 'Awaiting payment',
+    CONFIRMED: 'Confirmed',
+    CANCELLED: 'Cancelled',
+    EXPIRED: 'Expired',
+    REFUNDED: 'Refunded',
+  },
 };
+
+/** French labels (kept for existing callers). */
+export const SESSION_MODE_LABELS_FR = SESSION_MODE_LABELS.fr;
+export const PAYMENT_METHOD_LABELS_FR = PAYMENT_METHOD_LABELS.fr;
+export const ADMIN_ROLE_LABELS_FR = ADMIN_ROLE_LABELS.fr;
+export const BOOKING_STATUS_LABELS_FR = BOOKING_STATUS_LABELS.fr;
 
 /** All amounts are whole West African CFA francs (XOF has no minor unit). */
 export const CURRENCY = 'XOF' as const;

@@ -1,8 +1,9 @@
-import { formatXof } from '@bovann/shared';
+import { SESSION_MODE_LABELS, formatXof, type Locale } from '@bovann/shared';
 import type { NotificationPayload } from './payload';
 
 /**
- * French email templates. Each returns a subject, an HTML body (table layout
+ * Email templates: owners' emails in French, customers' emails in the language of their booking
+ * (French or English). Each returns a subject, an HTML body (table layout
  * and inline styles, which every mail client understands) and a plain-text
  * body for clients that don't show HTML. Every value from the database is
  * HTML-escaped.
@@ -54,10 +55,12 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/** '2026-11-12' → 'jeudi 12 novembre 2026'. */
-export function longDate(date: string): string {
+const INTL: Record<Locale, string> = { fr: 'fr-FR', en: 'en-GB' };
+
+/** '2026-11-12' → 'jeudi 12 novembre 2026' / 'Thursday 12 November 2026'. */
+export function longDate(date: string, locale: Locale = 'fr'): string {
   const [y, m, d] = date.split('-').map(Number);
-  return new Intl.DateTimeFormat('fr-FR', {
+  return new Intl.DateTimeFormat(INTL[locale], {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -95,17 +98,46 @@ export function timesOf(p: NotificationPayload): string {
   return `${p.startTime}–${p.endTime}`;
 }
 
-export function formulaOf(p: NotificationPayload): string {
+export function formulaOf(p: NotificationPayload, locale: Locale = 'fr'): string {
+  if (locale === 'en') {
+    return (
+      (p.packageName ? (p.packageNameEn ?? p.packageName) : null) ??
+      `${p.slotCount} slot${p.slotCount > 1 ? 's' : ''}`
+    );
+  }
   return p.packageName ?? `${p.slotCount} créneau${p.slotCount > 1 ? 'x' : ''}`;
 }
 
-function amountOf(xof: number): string {
-  return xof === 0 ? 'Offert' : formatXof(xof);
+function amountOf(xof: number, locale: Locale = 'fr'): string {
+  return xof === 0 ? (locale === 'en' ? 'Free' : 'Offert') : formatXof(xof, locale);
 }
+
+/** Row labels of the customer emails, per language. */
+const LABELS: Record<Locale, Record<string, string>> = {
+  fr: {
+    date: 'Date',
+    time: 'Horaire',
+    formula: 'Formule',
+    mode: 'Mode',
+    address: 'Adresse',
+    space: 'Espace',
+    reference: 'Référence',
+  },
+  en: {
+    date: 'Date',
+    time: 'Time',
+    formula: 'Option',
+    mode: 'Mode',
+    address: 'Address',
+    space: 'Space',
+    reference: 'Reference',
+  },
+};
 
 type Row = [label: string, value: string, href?: string];
 
 function layout(o: {
+  lang?: Locale;
   preheader: string;
   title: string;
   intro: string[];
@@ -140,7 +172,7 @@ function layout(o: {
     )
     .join('');
   return `<!doctype html>
-<html lang="fr">
+<html lang="${o.lang ?? 'fr'}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(o.title)}</title></head>
 <body style="margin:0;padding:0;background:${C.ground};font-family:Inter,Segoe UI,Helvetica,Arial,sans-serif">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(o.preheader)}</div>
@@ -194,22 +226,24 @@ function plain(o: {
 
 function build(
   subject: string,
-  content: Parameters<typeof plain>[0] & { preheader: string },
+  content: Parameters<typeof plain>[0] & { preheader: string; lang?: Locale },
 ): RenderedEmail {
   return { subject, html: layout(content), text: plain(content) };
 }
 
-function sessionRows(p: NotificationPayload, withPlace: boolean): Row[] {
+function sessionRows(p: NotificationPayload, withPlace: boolean, locale: Locale = 'fr'): Row[] {
+  const l = LABELS[locale];
+  const en = locale === 'en';
   return [
-    ['Date', longDate(p.date)],
-    ['Horaire', timesOf(p)],
-    ['Formule', formulaOf(p)],
-    ['Mode', p.modeLabel],
+    [l.date!, longDate(p.date, locale)],
+    [l.time!, timesOf(p)],
+    [l.formula!, formulaOf(p, locale)],
+    [l.mode!, en ? SESSION_MODE_LABELS.en[p.mode] : p.modeLabel],
     ...(withPlace && p.mode === 'IN_PERSON' && p.spaceAddress
-      ? ([['Adresse', p.spaceAddress]] as Row[])
+      ? ([[l.address!, p.spaceAddress]] as Row[])
       : []),
-    ['Espace', p.spaceName],
-    ['Référence', p.reference],
+    [l.space!, en ? (p.spaceNameEn ?? p.spaceName) : p.spaceName],
+    [l.reference!, p.reference],
   ];
 }
 
@@ -227,7 +261,12 @@ function customerRows(p: NotificationPayload): Row[] {
 const OWNER_FOOTER =
   'E-mail automatique envoyé aux gérants de l’espace. Les adresses qui le reçoivent se règlent dans l’administration, rubrique Paramètres.';
 
-function customerFooter(ctx: TemplateContext): string {
+function customerFooter(ctx: TemplateContext, locale: Locale = 'fr'): string {
+  if (locale === 'en') {
+    return ctx.contactPhone
+      ? `A question? Call the studio on ${ctx.contactPhone}. This email is sent automatically: please don’t reply to it if you need a quick answer.`
+      : 'This email is sent automatically by Bovann OCD Live.';
+  }
   return ctx.contactPhone
     ? `Une question${NB}? Appelez le studio au ${ctx.contactPhone}. Cet e-mail est envoyé automatiquement : merci de ne pas y répondre si vous attendez une réponse rapide.`
     : 'Cet e-mail est envoyé automatiquement par Bovann OCD Live.';
@@ -275,6 +314,7 @@ export function renderEmail(
     }
 
     case 'customer_booking_confirmed':
+      if (p.locale === 'en') return customerConfirmedEn(p, ctx);
       return build(`Réservation confirmée · ${p.reference}`, {
         preheader: `Votre séance du ${longDate(p.date)} à ${p.startTime} est confirmée.`,
         title: 'Votre réservation est confirmée',
@@ -299,6 +339,7 @@ export function renderEmail(
       });
 
     case 'customer_booking_cancelled':
+      if (p.locale === 'en') return customerCancelledEn(p, ctx);
       return build(`Réservation annulée · ${p.reference}`, {
         preheader: `Votre séance du ${longDate(p.date)} a été annulée.`,
         title: 'Votre réservation a été annulée',
@@ -336,6 +377,54 @@ export function renderEmail(
     default:
       throw new Error(`Unknown email template: ${template}`);
   }
+}
+
+/** English customer confirmation (bookings made on the English site). */
+function customerConfirmedEn(p: NotificationPayload, ctx: TemplateContext): RenderedEmail {
+  const en: Locale = 'en';
+  return build(`Booking confirmed · ${p.reference}`, {
+    lang: en,
+    preheader: `Your session on ${longDate(p.date, en)} at ${p.startTime} is confirmed.`,
+    title: 'Your booking is confirmed',
+    intro: [
+      `Hello ${p.customer.fullName},`,
+      'Thank you! Your session at the Bovann OCD Live studio is confirmed. Keep this email: you’ll be asked for the reference.',
+    ],
+    sections: [
+      { heading: 'Your session', rows: sessionRows(p, true, en) },
+      { heading: 'Payment', rows: [['Amount', amountOf(p.totalXof, en)]] },
+    ],
+    note: `${
+      p.mode === 'VIRTUAL'
+        ? 'Virtual session: the studio team will contact you before the session to set up the connection.'
+        : 'Please arrive a few minutes before your session starts.'
+    } To cancel or change the date, contact the studio at least 48 hours before (terms: ${ctx.webUrl}/en/conditions).`,
+    button: {
+      label: 'See my booking',
+      href: `${ctx.webUrl}/en/mes-reservations?ref=${encodeURIComponent(p.reference)}`,
+    },
+    footer: customerFooter(ctx, en),
+  });
+}
+
+/** English cancellation email. */
+function customerCancelledEn(p: NotificationPayload, ctx: TemplateContext): RenderedEmail {
+  const en: Locale = 'en';
+  return build(`Booking cancelled · ${p.reference}`, {
+    lang: en,
+    preheader: `Your session on ${longDate(p.date, en)} has been cancelled.`,
+    title: 'Your booking has been cancelled',
+    intro: [
+      `Hello ${p.customer.fullName},`,
+      `The studio has cancelled your session on ${longDate(p.date, en)}, ${timesOf(p)}. We’re sorry for the inconvenience.`,
+    ],
+    sections: [{ heading: 'Cancelled session', rows: sessionRows(p, false, en) }],
+    note:
+      p.refundXof && p.refundXof > 0
+        ? `You’ll be refunded ${formatXof(p.refundXof, en)}. The studio will contact you on ${readablePhone(p.customer.phone)} about the refund.`
+        : undefined,
+    footer: customerFooter(ctx, en),
+  });
 }
 
 /** A short email to check the sending settings from the admin. */
