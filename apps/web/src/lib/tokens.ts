@@ -45,23 +45,3 @@ export function tokenFor(
 ): string | undefined {
   return read(store)[reference];
 }
-
-/** Bookings remembered in this browser, most recent first. */
-export function rememberedBookings(
-  store: Storage | undefined = storage(),
-): { reference: string; token: string }[] {
-  return Object.entries(read(store))
-    .reverse()
-    .map(([reference, token]) => ({ reference, token }));
-}
-
-/** Forget a booking this browser can no longer open. */
-export function forgetToken(reference: string, store: Storage | undefined = storage()): void {
-  if (!store) return;
-  const entries = Object.entries(read(store)).filter(([ref]) => ref !== reference);
-  try {
-    store.setItem(KEY, JSON.stringify(Object.fromEntries(entries)));
-  } catch {
-    // Storage disabled: nothing to forget.
-  }
-}

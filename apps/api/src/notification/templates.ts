@@ -83,7 +83,8 @@ export function readablePhone(e164: string): string {
   return m ? `+${m[1]} ${m[2]!.replace(/(\d{2})(?=\d)/g, '$1 ')}` : e164;
 }
 
-function timesOf(p: NotificationPayload): string {
+/** Session times: one range, or the separate slots when they don't follow each other. */
+export function timesOf(p: NotificationPayload): string {
   if (p.bookingType === 'SLOTS' && p.slotRanges && p.slotRanges.length > 1) {
     // Separate slots may not follow each other: list them.
     const consecutive = p.slotRanges.every(
@@ -94,7 +95,7 @@ function timesOf(p: NotificationPayload): string {
   return `${p.startTime}–${p.endTime}`;
 }
 
-function formulaOf(p: NotificationPayload): string {
+export function formulaOf(p: NotificationPayload): string {
   return p.packageName ?? `${p.slotCount} créneau${p.slotCount > 1 ? 'x' : ''}`;
 }
 

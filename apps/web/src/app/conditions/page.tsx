@@ -55,8 +55,9 @@ export default function ConditionsPage() {
               </li>
               <li>
                 La réservation est confirmée à la réception du paiement. Vous recevez une référence
-                (par exemple BOV-2611-7KQ4M)&nbsp;: gardez-la, elle permet de retrouver votre
-                réservation dans <Link href="/mes-reservations">Mes réservations</Link>.
+                (par exemple BOV-2611-7KQ4M)&nbsp;: gardez-la. Avec votre numéro de téléphone, elle
+                vous permet de <Link href="/mes-reservations">retrouver votre réservation</Link> à
+                tout moment.
               </li>
             </ul>
           </section>

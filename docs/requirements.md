@@ -93,11 +93,14 @@ _Last updated 2026-11-09_
 - A studio cancellation is always refunded in full, or moved to a new date if the customer prefers.
 - Published on the conditions page (`/conditions`), linked from the booking form. To be reviewed by a lawyer before launch.
 
-## Mes réservations (decided 2026-11-09)
+## Finding a booking again (decided 2026-11-09, changed 2026-11-10)
 
-- No customer accounts or passwords. "Mes réservations" shows the bookings made on that device and finds any other booking with its reference and phone number.
-- The customer confirmation email links to it.
-- Later, with an SMS/WhatsApp provider: a code sent to the phone lists every booking for that number.
+- No customer accounts or passwords.
+- **"Retrouver ma réservation"** (`/mes-reservations`): the customer enters the booking reference and the phone number given when booking.
+- **No list of bookings saved in the browser** (changed 2026-11-10): on a shared phone or computer, the next person would have seen the previous customer's bookings.
+- **Receipt (2026-11-10):** after payment, the confirmation page offers "Télécharger le reçu (PDF)" with the reference, the session, the client, the amount and how to find the booking again. It is a "reçu de réservation", not an invoice.
+- The customer confirmation email links to the search with the reference filled in.
+- **Later**, with an SMS/WhatsApp provider: a code sent to the phone shows every booking for that number (a personal list without a password).
 
 ## Technical decisions (confirmed)
 

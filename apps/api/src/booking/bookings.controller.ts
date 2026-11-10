@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Req,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle, ThrottlerGuard } from '@nestjs/throttler';
@@ -24,6 +25,7 @@ import { z } from 'zod';
 import { badRequest, parseOrThrow } from '../common/errors';
 import { BookingHoldService } from './booking-hold.service';
 import { BookingLifecycleService } from './booking-lifecycle.service';
+import { ReceiptService } from './receipt.service';
 import { BookingQueryService } from './booking-query.service';
 import { TurnstileService } from './turnstile.service';
 
@@ -119,6 +121,7 @@ export class BookingsController {
     private readonly holds: BookingHoldService,
     private readonly lifecycle: BookingLifecycleService,
     private readonly query: BookingQueryService,
+    private readonly receipts: ReceiptService,
     private readonly turnstile: TurnstileService,
   ) {}
 
@@ -153,6 +156,24 @@ export class BookingsController {
       token,
     );
     return this.query.byId(id);
+  }
+
+  /** Booking receipt (PDF), so the customer keeps the reference even without email. */
+  @Get(':reference/receipt')
+  async receipt(
+    @Param('reference') reference: string,
+    @Headers('x-booking-token') token: string | undefined,
+  ): Promise<StreamableFile> {
+    const id = await this.query.idByReferenceAndToken(
+      parseOrThrow(referenceSchema, reference),
+      token,
+    );
+    const { reference: ref, pdf } = await this.receipts.pdf(id);
+    return new StreamableFile(pdf, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="recu-${ref}.pdf"`,
+      length: pdf.length,
+    });
   }
 
   /** The customer gives up before paying: slots are freed immediately. */
