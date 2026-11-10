@@ -67,6 +67,32 @@ export async function apiFetch<T>(
   return body as T;
 }
 
+/** Downloads a file (e.g. the receipt PDF); errors come back in the usual JSON shape. */
+export async function apiDownload(
+  path: string,
+  token: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${BASE_URL}/api/v1${path}`, {
+      headers: { 'X-Booking-Token': token },
+      cache: 'no-store',
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK_ERROR', NETWORK_MESSAGE);
+  }
+  if (!res.ok) {
+    const err = ((await res.json().catch(() => null)) ?? {}) as { code?: string; message?: string };
+    throw new ApiError(
+      res.status,
+      err.code ?? 'HTTP_ERROR',
+      err.message ?? 'Le téléchargement a échoué. Réessayez dans un instant.',
+    );
+  }
+  return res.blob();
+}
+
 export const api = {
   space: () => apiFetch<SpaceDto>(`/spaces/${SPACE_SLUG}`),
   packages: (mode: SessionMode) =>
@@ -77,7 +103,7 @@ export const api = {
     apiFetch<DayAvailabilityResponse>(`/spaces/${SPACE_SLUG}/availability/${date}?mode=${mode}`),
   createBooking: (request: CreateBookingRequest) =>
     apiFetch<CreateBookingResponse>('/bookings', { method: 'POST', body: JSON.stringify(request) }),
-  /** "Mes réservations": find a booking with its reference and phone (E.164). */
+  /** "Retrouver ma réservation": find a booking with its reference and phone (E.164). */
   lookupBooking: (reference: string, phone: string) =>
     apiFetch<BookingLookupResponse>('/bookings/lookup', {
       method: 'POST',
@@ -85,6 +111,9 @@ export const api = {
     }),
   booking: (reference: string, token: string) =>
     apiFetch<BookingDto>(`/bookings/${reference}`, { token }),
+  /** Booking receipt (PDF), for confirmed bookings. */
+  receipt: (reference: string, token: string) =>
+    apiDownload(`/bookings/${reference}/receipt`, token),
   cancelBooking: (reference: string, token: string) =>
     apiFetch<BookingDto>(`/bookings/${reference}/cancel`, { method: 'POST', token }),
   /** Development only: decide the outcome of a simulated payment. */

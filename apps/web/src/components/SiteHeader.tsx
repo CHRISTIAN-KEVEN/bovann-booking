@@ -19,7 +19,7 @@ export function SiteHeader({ transparent = false }: { transparent?: boolean }) {
           </span>
           <Link href="/mes-reservations" className={styles.mine}>
             <Icon name="bookings" size={18} />
-            Mes réservations
+            Ma réservation
           </Link>
         </div>
       </div>

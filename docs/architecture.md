@@ -193,9 +193,16 @@ None of these changes alter an agreed requirement; they make the agreed design i
 
 ## 15. Customer site: conditions, loaders, "Mes réservations" (2026-11-09)
 
-1. **No customer accounts** (product-owner decision). "Mes réservations" lists the bookings whose access tokens this browser holds, and finds any other booking with its reference and phone number (`POST /bookings/lookup`).
+1. **No customer accounts** (product-owner decision). "Retrouver ma réservation" finds a booking with its reference and phone number (`POST /bookings/lookup`). _Changed 2026-11-10:_ the page no longer lists the bookings this browser holds tokens for, because the next user of a shared device would see them.
    - Each lookup issues a new token for that device, stored hashed in `t_booking_access_tokens` (migration `006`). The device that booked keeps its own token in `t_bookings.access_token_hash`.
    - Guessing is impractical: a random 5-character code in the reference, the phone number must match, a uniform 404 and a rate limit.
    - Later, with an SMS/WhatsApp provider: a code sent to the phone can list every booking for that number, which works like an account without a password.
 2. **Conditions page** (`/conditions`), linked from the details checkbox and from the footer on every page. Customer cancellation rule decided on 2026-11-09: contact the studio at least 48 h before for a full refund or a new date; later, no refund. To be reviewed by a lawyer before launch.
 3. **Loaders** shaped like the content (calendar grid, slots, booking card), and buttons that call the server show a spinner and are disabled while they run.
+
+## 16. Booking receipt (2026-11-10)
+
+- `GET /bookings/:reference/receipt` renders a one-page A4 PDF on the API with **pdfkit**: the content comes from the same data as the confirmation email (`buildNotificationPayload`) plus the price breakdown and the successful payment, so the receipt, the email and the admin always agree.
+- Built-in PDF fonts (Helvetica) keep the file small (about 3 KB) and need no font files; `pdfText` swaps the few characters they cannot draw (narrow spaces, minus sign).
+- Only for `CONFIRMED` bookings, behind the booking access token. Times are shown in the studio's time zone. The simulated provider's transaction reference is hidden.
+- Called "Reçu de réservation" and marked "Il ne constitue pas une facture": a formal invoice needs Bovann Group's tax details.

@@ -16,6 +16,7 @@ import {
   buttonClass,
   buttonDarkClass,
   buttonSecondaryClass,
+  ButtonSpinner,
 } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { formatLongDate } from '@/lib/dates';
@@ -32,6 +33,8 @@ export default function BookingPage() {
   const { flow, ready, reset } = useFlow();
   const [booking, setBooking] = useState<BookingDto | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [receipt, setReceipt] = useState<'idle' | 'loading' | { error: string }>('idle');
 
   useEffect(() => {
     if (!ready) return;
@@ -41,6 +44,7 @@ export default function BookingPage() {
       setError('Cette réservation n’est pas enregistrée sur cet appareil.');
       return;
     }
+    setToken(token);
     api
       .booking(reference, token)
       .then((b) => {
@@ -61,6 +65,26 @@ export default function BookingPage() {
     a.download = `bovann-${booking.reference}.ics`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function downloadReceipt() {
+    if (!booking || !token) return;
+    setReceipt('loading');
+    try {
+      const blob = await api.receipt(booking.reference, token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recu-${booking.reference}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Some mobile browsers read the file after click() returns.
+      setTimeout(() => URL.revokeObjectURL(url), 30_000);
+      setReceipt('idle');
+    } catch (e) {
+      setReceipt({ error: e instanceof ApiError ? e.message : 'Le téléchargement a échoué.' });
+    }
   }
 
   function newBooking() {
@@ -174,10 +198,26 @@ export default function BookingPage() {
         </section>
 
         {confirmed ? (
-          <button type="button" className={buttonSecondaryClass} onClick={downloadCalendar}>
-            <Icon name="calendar" size={16} />
-            Ajouter à mon calendrier
-          </button>
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className={buttonClass}
+              onClick={downloadReceipt}
+              disabled={receipt === 'loading'}
+            >
+              {receipt === 'loading' ? <ButtonSpinner /> : <Icon name="download" size={18} />}
+              {receipt === 'loading' ? 'Préparation du reçu…' : 'Télécharger le reçu (PDF)'}
+            </button>
+            {typeof receipt === 'object' ? <Alert tone="error">{receipt.error}</Alert> : null}
+            <p className={styles.keep}>
+              Gardez ce reçu&nbsp;: avec votre numéro de téléphone, sa référence vous permet de{' '}
+              <Link href="/mes-reservations">retrouver votre réservation</Link> à tout moment.
+            </p>
+            <button type="button" className={buttonSecondaryClass} onClick={downloadCalendar}>
+              <Icon name="calendar" size={16} />
+              Ajouter à mon calendrier
+            </button>
+          </div>
         ) : null}
       </Body>
       <BottomBar>

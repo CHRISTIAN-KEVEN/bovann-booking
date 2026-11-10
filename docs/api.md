@@ -243,6 +243,10 @@ Finds a booking from another device, without an account. Body: `{reference, phon
 - **`404 BOOKING_NOT_FOUND`**: the same answer for an unknown reference and a wrong phone.
 - **`429`**: 10 lookups per minute per connection (`LOOKUP_RATE_LIMIT_PER_MIN`), counted separately from "Payer".
 
+### `GET /bookings/:reference/receipt` (header `X-Booking-Token`)
+
+The customer's receipt as a one-page PDF (`Content-Disposition: attachment; filename="recu-<reference>.pdf"`): reference, session, client, price with discount, how it was paid, how to find the booking again, the 48 h rule. `409 RECEIPT_NOT_AVAILABLE` unless the booking is `CONFIRMED`; `404` for a wrong token. Not an invoice.
+
 ### Development only: `POST /dev/payments/:reference/succeed` | `/fail`
 
 Decides the outcome of a simulated payment. Answers 404 unless `PAYMENT_PROVIDER=mock` outside production. Replaced by signed provider webhooks in Phase 4.

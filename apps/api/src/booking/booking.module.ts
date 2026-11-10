@@ -8,6 +8,7 @@ import { MockPaymentGateway } from '../payment/mock-payment.gateway';
 import { PAYMENT_GATEWAY } from '../payment/payment-gateway';
 import { BookingHoldService } from './booking-hold.service';
 import { BookingLifecycleService } from './booking-lifecycle.service';
+import { ReceiptService } from './receipt.service';
 import { BookingQueryService } from './booking-query.service';
 import { BookingsController } from './bookings.controller';
 import { HoldExpiryWorker } from './hold-expiry.worker';
@@ -29,6 +30,7 @@ import { TurnstileService } from './turnstile.service';
     BookingHoldService,
     BookingLifecycleService,
     BookingQueryService,
+    ReceiptService,
     TurnstileService,
     HoldExpiryWorker,
     // Phase 4 selects the real provider adapter from PAYMENT_PROVIDER.
