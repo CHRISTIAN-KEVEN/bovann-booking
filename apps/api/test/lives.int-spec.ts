@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import type { AdminLiveDto, AdminLiveListResponse, LiveWallResponse } from '@bovann/shared';
-import { sql, type Kysely } from 'kysely';
+import type { Kysely } from 'kysely';
 import request from 'supertest';
 import type { Database } from '../src/database/schema';
 import { adminApp, createAdminUser, signedIn, type AdminClient } from './helpers/admin-app';
@@ -257,7 +257,10 @@ describe('database rules', () => {
       }),
     ).rejects.toMatchObject({ errno: 3819 });
     await insert({}); // a pending request needs no times
-    const [{ n }] = (await sql<{ n: number }>`SELECT COUNT(*) AS n FROM t_lives`.execute(db)).rows;
+    const { n } = await db
+      .selectFrom('t_lives')
+      .select((eb) => eb.fn.countAll<number>().as('n'))
+      .executeTakeFirstOrThrow();
     expect(Number(n)).toBe(1);
   });
 });
