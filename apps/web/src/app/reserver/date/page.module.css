@@ -186,46 +186,11 @@
   text-decoration: line-through;
 }
 
-.summary {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: var(--color-accent-soft);
-  border: 1px solid var(--color-accent-border);
-}
-
-.summaryBadge {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: var(--color-accent);
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.summaryBadge strong {
-  font-size: 16px;
-}
-
-.summaryText {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-  color: #4b4d55;
-}
-
-.summaryText strong {
-  font-size: 15px;
-  color: var(--color-text);
+.hint {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-text-muted);
 }
 
 @media (min-width: 1024px) {

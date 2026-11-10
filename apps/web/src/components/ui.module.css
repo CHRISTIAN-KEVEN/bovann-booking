@@ -194,6 +194,13 @@
   z-index: 5;
 }
 
+/* Phones: a bar with nothing to press is not shown (the recap is desktop-only). */
+@media (max-width: 1023.98px) {
+  .bottomBarRecapOnly {
+    display: none;
+  }
+}
+
 .bottomRow {
   display: flex;
   align-items: center;
