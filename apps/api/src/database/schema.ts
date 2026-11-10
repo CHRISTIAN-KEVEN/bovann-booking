@@ -1,6 +1,9 @@
 import type { ColumnType, Generated, Insertable, Selectable, Updateable } from 'kysely';
 import type {
   AdminRole,
+  CategoryIcon,
+  LivePlatform,
+  LiveStatus,
   BookingSource,
   BookingStatus,
   BookingType,
@@ -281,6 +284,40 @@ export interface AuditLogTable {
   created_at: CreatedAt;
 }
 
+/** Business categories (French and English names), shared by lives and, later, bookings. */
+export interface CategoriesTable {
+  id: Generated<number>;
+  code: string;
+  name_fr: string;
+  name_en: string;
+  icon: Generated<CategoryIcon>;
+  sort_order: Generated<number>;
+  is_active: Generated<boolean>;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/** A live listed on the "En direct" wall (visible while APPROVED and starts_at <= now < ends_at). */
+export interface LivesTable {
+  id: Generated<number>;
+  seller_name: string;
+  platform: LivePlatform;
+  url: string;
+  country_code: string;
+  category_id: number | null;
+  category_other: string | null;
+  duration_min: number;
+  status: Generated<LiveStatus>;
+  starts_at: Date | null;
+  ends_at: Date | null;
+  created_by_admin_id: number | null;
+  ended_at: Date | null;
+  ended_by_admin_id: number | null;
+  end_reason: string | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
 export interface Database {
   t_admin_users: AdminUsersTable;
   t_admin_sessions: AdminSessionsTable;
@@ -300,6 +337,8 @@ export interface Database {
   t_payment_events: PaymentEventsTable;
   t_notifications: NotificationsTable;
   t_audit_log: AuditLogTable;
+  t_categories: CategoriesTable;
+  t_lives: LivesTable;
 }
 
 export type Space = Selectable<SpacesTable>;

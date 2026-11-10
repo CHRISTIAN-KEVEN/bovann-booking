@@ -6,8 +6,17 @@ import { LanguageSwitch } from './LanguageSwitch';
 import { Logo } from './Logo';
 import styles from './SiteHeader.module.css';
 
-/** Brand bar shared by every customer screen, full width on every device. */
-export function SiteHeader({ transparent = false }: { transparent?: boolean }) {
+/**
+ * Brand bar shared by every customer screen, full width on every device.
+ * Main pages (`section`) also show the two parts of the site: the lives wall and studio booking.
+ */
+export function SiteHeader({
+  transparent = false,
+  section,
+}: {
+  transparent?: boolean;
+  section?: 'lives' | 'studio';
+}) {
   const { t } = useI18n();
   return (
     <header className={`${styles.header} ${transparent ? styles.transparent : ''}`}>
@@ -16,6 +25,26 @@ export function SiteHeader({ transparent = false }: { transparent?: boolean }) {
           <Logo height={44} className={styles.logo} />
           <span className={styles.by}>{t('header.by')}</span>
         </Link>
+        {section && (
+          <nav aria-label={t('header.sections')} className={styles.sections}>
+            <Link
+              href="/en-direct"
+              aria-current={section === 'lives' ? 'page' : undefined}
+              className={styles.section}
+            >
+              <span className={styles.pulse} aria-hidden="true" />
+              {t('header.lives')}
+            </Link>
+            <Link
+              href="/"
+              aria-current={section === 'studio' ? 'page' : undefined}
+              className={styles.section}
+            >
+              <Icon name="calendar" size={18} />
+              {t('header.studio')}
+            </Link>
+          </nav>
+        )}
         <div className={styles.right}>
           <span className={styles.place}>
             <span className={styles.liveDot} aria-hidden="true" />

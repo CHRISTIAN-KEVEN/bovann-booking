@@ -51,7 +51,7 @@ export function ModeChooser() {
 
   return (
     <div className={styles.landing}>
-      <SiteHeader />
+      <SiteHeader section="studio" />
       <main>
         <section className={styles.hero}>
           <div className={styles.copy}>

@@ -367,3 +367,48 @@ All admin routes are under `/api/v1/admin`. Request and response shapes are in `
 | `POST /notifications/:id/retry` | any   | Puts a failed email back in the queue. 409 if already sent                                                                            |
 
 `GET /bookings/:id` now includes `notifications`: each email about the booking with its state (`PENDING`, `SENDING`, `SENT`, `FAILED`), attempts and last error.
+
+## Live directory: "En direct" (2026-11-10)
+
+### `GET /lives` (public)
+
+Everything on the wall now, most recent first (at most 500), with the categories for the filters. Category names follow `Accept-Language`; a category the seller typed ("Autre") is returned as written, with `categoryCode: null` and icon `autre`.
+
+```json
+{
+  "now": "2026-11-10T09:10:00.000Z",
+  "lives": [
+    {
+      "id": 12,
+      "sellerName": "Kofi Électro",
+      "platform": "FACEBOOK",
+      "url": "https://www.facebook.com/kofielectro/videos/123",
+      "countryCode": "GH",
+      "categoryCode": "ELECTRONIQUE",
+      "categoryLabel": "Téléphones & électronique",
+      "categoryIcon": "elec",
+      "startedAt": "2026-11-10T09:00:00.000Z",
+      "endsAt": "2026-11-10T13:00:00.000Z"
+    }
+  ],
+  "categories": [{ "code": "MODE", "name": "Mode", "icon": "mode" }]
+}
+```
+
+A live is shown while it is approved and `startedAt <= now < endsAt`. The web page filters in the browser (country, platform, category) and fetches again every minute.
+
+### Admin (`/admin/lives`, both roles)
+
+| Method & path                 | Notes                                                                                                                                                                                                                                        |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /lives?tab=online\|past` | `online`: on the wall now. `past`: ended, removed or expired in the last 30 days (200 max)                                                                                                                                                   |
+| `GET /lives/categories`       | Active categories, for the form                                                                                                                                                                                                              |
+| `POST /lives`                 | `{sellerName, url, countryCode, categoryCode \| null, categoryOther \| null, durationMin}`: on the wall at once for 60, 120, 180 or 240 minutes. 400 `CATEGORY_NOT_FOUND`; 409 `LIVE_ALREADY_ONLINE` if the same link is already on the wall |
+| `POST /lives/:id/remove`      | `{reason?}`: off the wall at once. 409 `LIVE_NOT_ONLINE`                                                                                                                                                                                     |
+
+**Input rules** (shared with the web form, `packages/shared/src/lives.ts`):
+
+- **Link:** TikTok or Facebook addresses only (`tiktok.com`, `vm.tiktok.com`, `facebook.com`, `m.facebook.com`, `fb.watch`…), stored as https without the `#…` part. A link without `https://` is accepted; `http` is upgraded. Refused: other sites, look-alike hosts, `javascript:` and other schemes, user names or ports in the link.
+- **Seller name** (2–60) and **typed category** (2–40): invisible and control characters removed, spaces collapsed.
+- **Country:** one of the supported countries (`LIVE_COUNTRIES`, the same list as the phone picker).
+- **Category:** exactly one of `categoryCode` or `categoryOther`.

@@ -23,9 +23,100 @@
   margin: 0 auto;
   padding: 12px var(--page-gutter);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+/* "En direct" | "Réserver le studio": a full-width row of two tabs on phones, inline on computers. */
+.sections {
+  order: 3;
+  flex: 1 0 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: -4px calc(-1 * var(--page-gutter)) -12px;
+}
+
+.section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-on-ink-muted);
+  text-decoration: none;
+  border-bottom: 3px solid transparent;
+}
+
+.section:hover {
+  color: #fff;
+}
+
+.section[aria-current='page'] {
+  color: #fff;
+  border-bottom-color: var(--color-brand);
+}
+
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff5b2e;
+  animation: pulse 1.6s ease-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 91, 46, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(255, 91, 46, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 91, 46, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+    box-shadow: 0 0 0 3px rgba(255, 91, 46, 0.3);
+  }
+}
+
+@media (max-width: 379px) {
+  .section {
+    gap: 6px;
+    padding: 0 6px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 900px) {
+  .sections {
+    order: 0;
+    flex: 1 1 auto;
+    display: flex;
+    gap: 4px;
+    margin: -12px 0;
+    align-self: stretch;
+  }
+
+  .section {
+    min-height: 72px;
+    padding: 0 16px;
+    border-bottom: 0;
+    box-shadow: inset 0 -3px 0 transparent;
+  }
+
+  .section[aria-current='page'] {
+    box-shadow: inset 0 -3px 0 var(--color-brand);
+  }
 }
 
 .brand {

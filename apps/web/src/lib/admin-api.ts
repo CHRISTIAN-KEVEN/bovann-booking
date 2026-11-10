@@ -9,6 +9,11 @@ import {
   type AdminCustomerListResponse,
   type AdminDashboardStats,
   type AdminDayOptionsResponse,
+  type AdminLiveCreate,
+  type AdminLiveDto,
+  type AdminLiveListResponse,
+  type AdminLiveTab,
+  type LiveCategoryDto,
   type AdminMe,
   type AdminPackageInput,
   type AdminPackagesResponse,
@@ -173,4 +178,11 @@ export const adminApi = {
     adminFetch<AdminUserDto>(`/users/${id}`, send('PATCH', input)),
   resetPassword: (id: number) =>
     adminFetch<TemporaryPasswordResponse>(`/users/${id}/reset-password`, send('POST')),
+
+  // lives ("En direct")
+  lives: (tab: AdminLiveTab) => adminFetch<AdminLiveListResponse>(`/lives?tab=${tab}`),
+  liveCategories: () => adminFetch<LiveCategoryDto[]>('/lives/categories'),
+  createLive: (input: AdminLiveCreate) => adminFetch<AdminLiveDto>('/lives', send('POST', input)),
+  removeLive: (id: number, reason: string | null) =>
+    adminFetch<AdminLiveDto>(`/lives/${id}/remove`, send('POST', { reason })),
 };

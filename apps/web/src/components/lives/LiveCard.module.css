@@ -1,0 +1,204 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #ebe3d9;
+  color: #17130f;
+  text-decoration: none;
+  box-shadow: 0 10px 22px -18px rgba(23, 19, 15, 0.55);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.card:hover {
+  color: #17130f;
+  transform: translateY(-2px);
+  box-shadow: 0 16px 28px -18px rgba(23, 19, 15, 0.6);
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.cover {
+  position: relative;
+  height: 172px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4d443c;
+  background-image: repeating-radial-gradient(
+    circle at 50% 108%,
+    rgba(255, 255, 255, 0.14) 0 1.5px,
+    transparent 1.5px 18px
+  );
+}
+
+.liveTag,
+.tiktok,
+.facebook {
+  position: absolute;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.liveTag {
+  top: 10px;
+  left: 10px;
+  background: #d9361e;
+  color: #fff;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+/* Bottom right, opposite the time: on narrow phone cards it would collide with "EN DIRECT". */
+.tiktok {
+  right: 10px;
+  bottom: 10px;
+  background: #000;
+  color: #fff;
+  font-weight: 700;
+}
+
+.facebook {
+  right: 10px;
+  bottom: 10px;
+  background: #fff;
+  color: #1d4ed8;
+  font-weight: 700;
+}
+
+.initials {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 0 0 6px rgba(255, 255, 255, 0.08),
+    0 0 0 14px rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  color: #fff;
+}
+
+.since {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.body {
+  padding: 11px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.25;
+  min-height: 38px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  color: #4d443c;
+}
+
+.ellipsis {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.watch {
+  margin-top: 4px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--color-accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.card:hover .watch {
+  background: var(--color-accent-hover);
+}
+
+/* Loading placeholders */
+.skeleton .cover {
+  background: #ece4da;
+  background-image: none;
+}
+
+.bar,
+.barShort {
+  height: 14px;
+  border-radius: 6px;
+  background: #ece4da;
+}
+
+.bar {
+  height: 18px;
+  margin-bottom: 8px;
+}
+
+.barShort {
+  width: 65%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
+  }
+}

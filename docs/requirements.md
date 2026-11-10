@@ -137,6 +137,10 @@ Sellers who are live on TikTok or Facebook list their live on the OCD Live site.
 - "Autre" + typed text: the text is saved with the booking or live. An admin list groups these entries; staff can turn one into a new category or link it to an existing one.
 - Existing bookings keep their sector, mapped to the new list.
 
+### Built so far (2026-11-10)
+
+- The public wall at `/en-direct` with filters, and an admin "Lives" page where staff list a live for a seller (approved at once) or take one down. Sellers' own posting comes next.
+
 ### Open questions
 
 - SMS/WhatsApp provider and its cost.
