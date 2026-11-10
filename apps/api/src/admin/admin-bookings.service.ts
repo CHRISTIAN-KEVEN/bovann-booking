@@ -42,6 +42,7 @@ import {
 } from './admin-common';
 import { auditAdmin } from './admin-audit';
 import type { AdminPrincipal } from './auth/admin-auth.service';
+import { currentLocale } from '../common/request-context';
 
 export interface BookingListQuery {
   spaceId?: number;
@@ -70,7 +71,24 @@ const HISTORY_LABELS: Record<string, string> = {
   ADMIN_BOOKING_NOTE_UPDATED: 'Note interne modifiée',
 };
 
-const ACTOR_LABELS = { CUSTOMER: 'Client', SYSTEM: 'Système', PROVIDER: 'Paiement' } as const;
+const HISTORY_LABELS_EN: Record<string, string> = {
+  BOOKING_HOLD_CREATED: 'Booking started online, waiting for payment',
+  BOOKING_CONFIRMED: 'Payment received, booking confirmed',
+  BOOKING_PAYMENT_FAILED: 'Payment failed, times released',
+  BOOKING_HOLD_EXPIRED: 'Time to pay ran out, times released',
+  BOOKING_CANCELLED_BY_CUSTOMER: 'Abandoned by the customer before paying',
+  LATE_PAYMENT_REFUND_REQUIRED: 'Payment received after the times were released: refund to make',
+  ADMIN_BOOKING_CREATED: 'Booking added by the studio',
+  ADMIN_BOOKING_CANCELLED: 'Cancelled by the studio',
+  ADMIN_PAYMENT_RECORDED: 'Payment recorded',
+  ADMIN_REFUND_DONE: 'Refund made',
+  ADMIN_BOOKING_NOTE_UPDATED: 'Internal note changed',
+};
+
+const ACTOR_LABELS = {
+  fr: { CUSTOMER: 'Client', SYSTEM: 'Système', PROVIDER: 'Paiement', STUDIO: 'Studio' },
+  en: { CUSTOMER: 'Customer', SYSTEM: 'System', PROVIDER: 'Payment', STUDIO: 'Studio' },
+} as const;
 
 /**
  * Admin side of bookings. Studio bookings go through the same slot locks as
@@ -252,8 +270,13 @@ export class AdminBookingsService {
     const history: AdminHistoryEntry[] = audit.map((l) => ({
       at: l.created_at.toISOString(),
       action: l.action,
-      label: HISTORY_LABELS[l.action] ?? l.action,
-      actor: l.actor_type === 'ADMIN' ? (l.full_name ?? 'Studio') : ACTOR_LABELS[l.actor_type],
+      label:
+        (currentLocale() === 'en' ? HISTORY_LABELS_EN[l.action] : HISTORY_LABELS[l.action]) ??
+        l.action,
+      actor:
+        l.actor_type === 'ADMIN'
+          ? (l.full_name ?? ACTOR_LABELS[currentLocale()].STUDIO)
+          : ACTOR_LABELS[currentLocale()][l.actor_type],
     }));
 
     return {

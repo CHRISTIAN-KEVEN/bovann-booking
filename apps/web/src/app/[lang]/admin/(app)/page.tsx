@@ -22,6 +22,7 @@ import {
   useAsync,
 } from '@/components/admin/ui';
 import { Icon } from '@/components/icons';
+import { useI18n, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import {
   addDays,
@@ -29,26 +30,29 @@ import {
   formatPhone,
   paymentMethodLabel,
   paymentStateLabel,
-  SESSION_MODE_LABELS_FR,
+  SESSION_MODE_LABELS,
   todayIn,
 } from '@/lib/admin-format';
 import { formatLongDate, formatShortDate } from '@/lib/dates';
+import { selectionLabel } from '@/lib/selection';
 
 type Tab = AdminBookingTab | 'ABANDONED';
 type When = 'upcoming' | 'past' | 'all';
 
-const TABS: Array<{ value: Tab; label: string }> = [
-  { value: 'ALL', label: 'Toutes' },
-  { value: 'CONFIRMED', label: 'Confirmées' },
-  { value: 'PENDING', label: 'Paiement en cours' },
-  { value: 'UNPAID', label: 'À encaisser' },
-  { value: 'REFUND_DUE', label: 'À rembourser' },
-  { value: 'CANCELLED', label: 'Annulées' },
-  { value: 'ABANDONED', label: 'Abandonnées' },
+const TABS: Tab[] = [
+  'ALL',
+  'CONFIRMED',
+  'PENDING',
+  'UNPAID',
+  'REFUND_DUE',
+  'CANCELLED',
+  'ABANDONED',
 ];
 
 export default function AdminBookingsPage() {
   const { space, refreshCounters } = useAdmin();
+  const { t, locale } = useI18n();
+  const money = (n: number) => formatXof(n, locale);
   const today = todayIn(space.timezone);
 
   const [day, setDay] = useState(today);
@@ -64,11 +68,11 @@ export default function AdminBookingsPage() {
   const [menuSlot, setMenuSlot] = useState<ScheduleSlotDto | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setQ(search.trim());
       setPage(1);
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [search]);
 
   const stats = useAsync(() => adminApi.stats(space.id), `stats-${space.id}`);
@@ -108,7 +112,7 @@ export default function AdminBookingsPage() {
   return (
     <>
       <PageHeader
-        title="Réservations"
+        title={t('adminBookings.title')}
         sub={space.name}
         actions={
           <>
@@ -117,31 +121,31 @@ export default function AdminBookingsPage() {
               className={styles.btnSecondary}
               onClick={() => setBlockPreset({ date: day < today ? today : day })}
             >
-              Bloquer des créneaux
+              {t('adminBookings.block')}
             </button>
             <button
               type="button"
               className={styles.btn}
               onClick={() => setNewPreset({ date: day < today ? today : day })}
             >
-              <Icon name="plus" size={16} /> Nouvelle réservation
+              <Icon name="plus" size={16} /> {t('adminBookings.new')}
             </button>
           </>
         }
       />
 
       <div className={styles.stats}>
-        <StatTile label="Réservations aujourd’hui" value={stats.data?.todayBookings ?? '–'} />
+        <StatTile label={t('adminBookings.statToday')} value={stats.data?.todayBookings ?? '–'} />
         <StatTile
-          label="Taux d’occupation (semaine)"
+          label={t('adminBookings.statOccupancy')}
           value={stats.data ? `${stats.data.weekOccupancyPercent} %` : '–'}
         />
         <StatTile
-          label="Encaissé ce mois"
-          value={stats.data ? formatXof(stats.data.collectedThisMonthXof) : '–'}
+          label={t('adminBookings.statCollected')}
+          value={stats.data ? money(stats.data.collectedThisMonthXof) : '–'}
         />
         <StatTile
-          label="Paiements à encaisser"
+          label={t('adminBookings.statUnpaid')}
           value={stats.data?.unpaidCount ?? '–'}
           highlight={(stats.data?.unpaidCount ?? 0) > 0}
         />
@@ -149,10 +153,7 @@ export default function AdminBookingsPage() {
 
       {stats.data && stats.data.refundsDueCount > 0 ? (
         <div className={styles.banner}>
-          <span>
-            {stats.data.refundsDueCount} remboursement
-            {stats.data.refundsDueCount > 1 ? 's' : ''} à effectuer.
-          </span>
+          <span>{t('adminBookings.refundsBanner', { count: stats.data.refundsDueCount })}</span>
           <button
             type="button"
             className={cx(styles.btnSecondary, styles.btnSmall)}
@@ -161,27 +162,27 @@ export default function AdminBookingsPage() {
               setPage(1);
             }}
           >
-            Voir
+            {t('adminBookings.see')}
           </button>
         </div>
       ) : null}
 
-      <section className={cx(styles.card, styles.cardPad)} aria-label="Planning du jour">
+      <section className={cx(styles.card, styles.cardPad)} aria-label={t('adminBookings.dayPlan')}>
         <div className={styles.cardHeader}>
           <div className={styles.dayNav}>
             <button
               type="button"
               className={styles.iconBtn}
-              aria-label="Jour précédent"
+              aria-label={t('adminBookings.prevDay')}
               onClick={() => setDay((d) => addDays(d, -1))}
             >
               <Icon name="back" size={16} />
             </button>
-            <h2>{formatLongDate(day, true)}</h2>
+            <h2>{formatLongDate(day, true, locale)}</h2>
             <button
               type="button"
               className={styles.iconBtn}
-              aria-label="Jour suivant"
+              aria-label={t('adminBookings.nextDay')}
               onClick={() => setDay((d) => addDays(d, 1))}
             >
               <Icon name="next" size={16} />
@@ -192,7 +193,7 @@ export default function AdminBookingsPage() {
                 className={cx(styles.btnGhost, styles.btnSmall)}
                 onClick={() => setDay(today)}
               >
-                Aujourd’hui
+                {t('adminBookings.today')}
               </button>
             ) : null}
           </div>
@@ -203,7 +204,7 @@ export default function AdminBookingsPage() {
         ) : !schedule.data ? (
           <Loading />
         ) : daySlots.length === 0 ? (
-          <Empty>Le studio est fermé ce jour-là.</Empty>
+          <Empty>{t('adminBookings.closedDay')}</Empty>
         ) : (
           <div className={styles.strip}>
             {daySlots.map((s) => (
@@ -213,22 +214,25 @@ export default function AdminBookingsPage() {
         )}
       </section>
 
-      <section className={styles.card} aria-label="Liste des réservations">
+      <section className={styles.card} aria-label={t('adminBookings.list')}>
         <div className={styles.toolbar}>
           <Tabs
-            label="Filtrer les réservations"
+            label={t('adminBookings.filter')}
             value={tab}
-            onChange={(t) => {
-              setTab(t);
+            onChange={(next) => {
+              setTab(next);
               setPage(1);
             }}
-            options={TABS}
+            options={TABS.map((value) => ({
+              value,
+              label: t(`adminBookings.tabs.${value}` as TKey),
+            }))}
           />
           <input
             type="search"
             className={styles.search}
-            aria-label="Rechercher une réservation"
-            placeholder="Rechercher&nbsp;: nom, entreprise, téléphone, référence"
+            aria-label={t('adminBookings.searchLabel')}
+            placeholder={t('adminBookings.searchPlaceholder')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -236,16 +240,16 @@ export default function AdminBookingsPage() {
         {q || tab === 'REFUND_DUE' || tab === 'UNPAID' ? null : (
           <div style={{ padding: '12px 18px 0', maxWidth: 420 }}>
             <Segmented
-              label="Période"
+              label={t('adminBookings.period')}
               value={when}
               onChange={(w) => {
                 setWhen(w);
                 setPage(1);
               }}
               options={[
-                { value: 'upcoming', label: 'À venir' },
-                { value: 'past', label: 'Passées' },
-                { value: 'all', label: 'Toutes les dates' },
+                { value: 'upcoming', label: t('adminBookings.upcoming') },
+                { value: 'past', label: t('adminBookings.past') },
+                { value: 'all', label: t('adminBookings.allDates') },
               ]}
             />
           </div>
@@ -255,29 +259,25 @@ export default function AdminBookingsPage() {
         ) : !list.data ? (
           <Loading />
         ) : list.data.items.length === 0 ? (
-          <Empty>
-            {q
-              ? `Aucune réservation ne correspond à «\u00a0${q}\u00a0».`
-              : 'Aucune réservation dans cette vue.'}
-          </Empty>
+          <Empty>{q ? t('adminBookings.noMatch', { q }) : t('adminBookings.none')}</Empty>
         ) : (
           <>
             <div className={styles.tableWrap}>
               <table className={styles.table} style={{ minWidth: 900 }}>
                 <thead>
                   <tr>
-                    <th>Référence</th>
-                    <th>Client / entreprise</th>
-                    <th>Date &amp; horaire</th>
-                    <th>Formule</th>
-                    <th>Mode</th>
-                    <th>Paiement</th>
-                    <th>Statut</th>
+                    <th>{t('adminBookings.colRef')}</th>
+                    <th>{t('adminBookings.colClient')}</th>
+                    <th>{t('adminBookings.colDate')}</th>
+                    <th>{t('adminBookings.colFormula')}</th>
+                    <th>{t('adminBookings.colMode')}</th>
+                    <th>{t('adminBookings.colPayment')}</th>
+                    <th>{t('adminBookings.colStatus')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {list.data.items.map((b) => {
-                    const status = bookingStatus(b);
+                    const status = bookingStatus(b, t, locale);
                     return (
                       <tr
                         key={b.id}
@@ -306,25 +306,23 @@ export default function AdminBookingsPage() {
                         </td>
                         <td>
                           <div className={styles.cellStack}>
-                            <span>{formatShortDate(b.date)}</span>
+                            <span>{formatShortDate(b.date, locale)}</span>
                             <span className={styles.cellSub}>
                               {b.startTime} – {b.endTime}
                             </span>
                           </div>
                         </td>
-                        <td>
-                          {b.packageName ?? `${b.slotCount} créneau${b.slotCount > 1 ? 'x' : ''}`}
-                        </td>
-                        <td>{SESSION_MODE_LABELS_FR[b.mode]}</td>
+                        <td>{selectionLabel(b, t)}</td>
+                        <td>{SESSION_MODE_LABELS[locale][b.mode]}</td>
                         <td>
                           <div className={styles.cellStack}>
                             <span style={{ fontWeight: 600 }}>
-                              {b.totalXof === 0 ? 'Gratuit' : formatXof(b.totalXof)}
+                              {b.totalXof === 0 ? t('adminBookings.free') : money(b.totalXof)}
                             </span>
                             <span className={styles.cellSub}>
                               {b.paymentState === 'PAID'
-                                ? paymentMethodLabel(b.paymentMethod, b.paymentChannel)
-                                : paymentStateLabel(b.paymentState)}
+                                ? paymentMethodLabel(b.paymentMethod, b.paymentChannel, locale)
+                                : paymentStateLabel(b.paymentState, t)}
                             </span>
                           </div>
                         </td>

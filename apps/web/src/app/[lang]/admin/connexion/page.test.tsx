@@ -1,10 +1,14 @@
-import { render, screen } from '@testing-library/react';
+import { renderI18n } from '@/test/i18n';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import SignInPage from './page';
 
 const replace = vi.fn();
-vi.mock('next/navigation', () => ({ useRouter: () => ({ replace, push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/admin/connexion',
+  useRouter: () => ({ replace, push: vi.fn() }),
+}));
 
 function respond(status: number, body: unknown) {
   return vi.fn().mockResolvedValue(
@@ -25,7 +29,7 @@ describe('Admin sign-in', () => {
   it('asks for both fields before calling the server', async () => {
     const fetchMock = respond(200, {});
     vi.stubGlobal('fetch', fetchMock);
-    render(<SignInPage />);
+    renderI18n(<SignInPage />);
     await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
     expect(screen.getByRole('alert')).toHaveTextContent('adresse e-mail et votre mot de passe');
     expect(fetchMock).not.toHaveBeenCalled();
@@ -36,7 +40,7 @@ describe('Admin sign-in', () => {
       'fetch',
       respond(401, { code: 'INVALID_CREDENTIALS', message: 'E-mail ou mot de passe incorrect.' }),
     );
-    render(<SignInPage />);
+    renderI18n(<SignInPage />);
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'owner@bovann.tg');
     await userEvent.type(screen.getByLabelText('Mot de passe'), 'mauvais');
     await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
@@ -56,7 +60,7 @@ describe('Admin sign-in', () => {
         mustChangePassword: false,
       }),
     );
-    const { unmount } = render(<SignInPage />);
+    const { unmount } = renderI18n(<SignInPage />);
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'o@b.tg');
     await userEvent.type(screen.getByLabelText('Mot de passe'), 'un mot de passe');
     await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
@@ -74,7 +78,7 @@ describe('Admin sign-in', () => {
         mustChangePassword: true,
       }),
     );
-    render(<SignInPage />);
+    renderI18n(<SignInPage />);
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'n@b.tg');
     await userEvent.type(screen.getByLabelText('Mot de passe'), 'temporaire');
     await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));

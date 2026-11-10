@@ -16,12 +16,13 @@ import {
   Tabs,
   useAsync,
 } from '@/components/admin/ui';
+import { useI18n } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import {
   formatDateTime,
   formatPhone,
   paymentMethodLabel,
-  PAYMENT_STATUS_LABELS,
+  paymentStatusLabel,
 } from '@/lib/admin-format';
 import { formatShortDate } from '@/lib/dates';
 
@@ -29,6 +30,8 @@ type Filter = 'ALL' | PaymentStatus;
 
 export default function AdminPaymentsPage() {
   const { space, isOwner, refreshCounters } = useAdmin();
+  const { t, locale } = useI18n();
+  const money = (n: number) => formatXof(n, locale);
   const [filter, setFilter] = useState<Filter>('SUCCEEDED');
   const [page, setPage] = useState(1);
   const [bookingId, setBookingId] = useState<number | null>(null);
@@ -55,34 +58,30 @@ export default function AdminPaymentsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Paiements"
-        sub="Paiements reçus en ligne ou enregistrés par le studio, et remboursements à effectuer."
-      />
+      <PageHeader title={t('payments.title')} sub={t('payments.sub')} />
 
-      <section className={cx(styles.card, styles.cardPad)} aria-label="Remboursements à effectuer">
-        <h2 className={styles.cardTitle}>Remboursements à effectuer</h2>
+      <section className={cx(styles.card, styles.cardPad)} aria-label={t('payments.refunds')}>
+        <h2 className={styles.cardTitle}>{t('payments.refunds')}</h2>
         {refunds.error ? (
           <LoadError error={refunds.error} onRetry={refunds.reload} />
         ) : !refunds.data ? (
           <Loading />
         ) : refunds.data.items.length === 0 ? (
-          <p className={styles.note}>Aucun remboursement en attente.</p>
+          <p className={styles.note}>{t('payments.noRefunds')}</p>
         ) : (
           <>
             <p className={styles.note}>
-              Rendez l’argent au client (Mobile Money, espèces…), puis ouvrez la réservation pour
-              confirmer le remboursement.
-              {isOwner ? '' : ' Seul un administrateur peut le confirmer.'}
+              {t('payments.refundHow')}
+              {isOwner ? '' : t('payments.ownerOnly')}
             </p>
             <div className={styles.tableWrap}>
               <table className={styles.table} style={{ minWidth: 640 }}>
                 <thead>
                   <tr>
-                    <th>Réservation</th>
-                    <th>Client</th>
-                    <th>Séance</th>
-                    <th className={styles.right}>Montant payé</th>
+                    <th>{t('payments.colBooking')}</th>
+                    <th>{t('payments.colClient')}</th>
+                    <th>{t('payments.colSession')}</th>
+                    <th className={styles.right}>{t('payments.colPaid')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -100,9 +99,9 @@ export default function AdminPaymentsPage() {
                         </div>
                       </td>
                       <td>
-                        {formatShortDate(b.date)} {b.startTime}
+                        {formatShortDate(b.date, locale)} {b.startTime}
                       </td>
-                      <td className={styles.right}>{formatXof(b.totalXof)}</td>
+                      <td className={styles.right}>{money(b.totalXof)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -112,20 +111,20 @@ export default function AdminPaymentsPage() {
         )}
       </section>
 
-      <section className={styles.card} aria-label="Historique des paiements">
+      <section className={styles.card} aria-label={t('payments.history')}>
         <div className={styles.toolbar}>
           <Tabs
-            label="Filtrer les paiements"
+            label={t('payments.filter')}
             value={filter}
             onChange={(f) => {
               setFilter(f);
               setPage(1);
             }}
             options={[
-              { value: 'SUCCEEDED', label: 'Reçus' },
-              { value: 'PENDING', label: 'En attente' },
-              { value: 'FAILED', label: 'Échoués' },
-              { value: 'ALL', label: 'Tous' },
+              { value: 'SUCCEEDED', label: t('payments.received') },
+              { value: 'PENDING', label: t('payments.waiting') },
+              { value: 'FAILED', label: t('payments.failed') },
+              { value: 'ALL', label: t('payments.all') },
             ]}
           />
         </div>
@@ -134,19 +133,19 @@ export default function AdminPaymentsPage() {
         ) : !payments.data ? (
           <Loading />
         ) : payments.data.items.length === 0 ? (
-          <Empty>Aucun paiement dans cette vue.</Empty>
+          <Empty>{t('payments.none')}</Empty>
         ) : (
           <>
             <div className={styles.tableWrap}>
               <table className={styles.table} style={{ minWidth: 760 }}>
                 <thead>
                   <tr>
-                    <th>Date</th>
-                    <th>Réservation</th>
-                    <th>Client</th>
-                    <th>Moyen</th>
-                    <th className={styles.right}>Montant</th>
-                    <th>État</th>
+                    <th>{t('payments.colDate')}</th>
+                    <th>{t('payments.colBooking')}</th>
+                    <th>{t('payments.colClient')}</th>
+                    <th>{t('payments.colMethod')}</th>
+                    <th className={styles.right}>{t('payments.colAmount')}</th>
+                    <th>{t('payments.colState')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -156,7 +155,7 @@ export default function AdminPaymentsPage() {
                       className={styles.rowClickable}
                       onClick={() => setBookingId(p.booking.id)}
                     >
-                      <td>{formatDateTime(p.succeededAt ?? p.createdAt)}</td>
+                      <td>{formatDateTime(p.succeededAt ?? p.createdAt, undefined, locale)}</td>
                       <td className={styles.ref}>{p.booking.reference}</td>
                       <td>
                         <div className={styles.cellStack}>
@@ -166,18 +165,20 @@ export default function AdminPaymentsPage() {
                       </td>
                       <td>
                         <div className={styles.cellStack}>
-                          <span>{paymentMethodLabel(p.method, p.channel)}</span>
+                          <span>{paymentMethodLabel(p.method, p.channel, locale)}</span>
                           <span className={styles.cellSub}>
                             {p.provider === 'manual'
-                              ? `Enregistré par ${p.recordedBy ?? 'le studio'}`
-                              : 'En ligne'}
+                              ? t('payments.recordedBy', {
+                                  name: p.recordedBy ?? t('payments.theStudio'),
+                                })
+                              : t('payments.online')}
                           </span>
                         </div>
                       </td>
-                      <td className={styles.right}>{formatXof(p.amountXof)}</td>
+                      <td className={styles.right}>{money(p.amountXof)}</td>
                       <td>
-                        <Badge tone={PAYMENT_STATUS_LABELS[p.status].tone}>
-                          {PAYMENT_STATUS_LABELS[p.status].label}
+                        <Badge tone={paymentStatusLabel(p.status, t).tone}>
+                          {paymentStatusLabel(p.status, t).label}
                         </Badge>
                       </td>
                     </tr>

@@ -2,12 +2,13 @@
 
 import type { ScheduleSlotDto } from '@bovann/shared';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useI18n } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import { formatLongDate } from '@/lib/dates';
 import { useAdmin } from './AdminShell';
 import { Dialog, errorMessage, Field, Loading, adminStyles as styles, useToast } from './ui';
 
-const REASONS = ['Maintenance', 'Tournage privé', 'Événement du studio', 'Congé de l’équipe'];
+const REASONS = ['maintenance', 'private', 'event', 'leave'] as const;
 
 export interface BlockPreset {
   date: string;
@@ -25,6 +26,7 @@ export function BlockDialog({
   onDone: () => void;
 }) {
   const { space } = useAdmin();
+  const { t } = useI18n();
   const toast = useToast();
   const [date, setDate] = useState('');
   const [slots, setSlots] = useState<ScheduleSlotDto[] | null>(null);
@@ -57,18 +59,18 @@ export function BlockDialog({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (selected.length === 0) {
-      setError('Choisissez au moins un créneau.');
+      setError(t('slotActions.pickOne'));
       return;
     }
     if (!reason.trim()) {
-      setError('Indiquez le motif.');
+      setError(t('slotActions.reasonRequired'));
       return;
     }
     setBusy(true);
     setError(null);
     try {
       await adminApi.createBlock(space.id, selected, reason.trim());
-      toast(`${selected.length} créneau${selected.length > 1 ? 'x bloqués' : ' bloqué'}.`);
+      toast(t('slotActions.blockedToast', { count: selected.length }));
       onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -81,25 +83,22 @@ export function BlockDialog({
     <Dialog
       open={preset !== null}
       onClose={onClose}
-      title="Bloquer des créneaux"
+      title={t('slotActions.title')}
       variant="modal"
       footer={
         <>
           <button type="button" className={styles.btnSecondary} onClick={onClose}>
-            Annuler
+            {t('slotActions.cancel')}
           </button>
           <button type="submit" form="block-form" className={styles.btn} disabled={busy}>
-            {busy ? 'Blocage…' : 'Bloquer'}
+            {busy ? t('slotActions.blocking') : t('slotActions.block')}
           </button>
         </>
       }
     >
       <form id="block-form" className={styles.section} onSubmit={submit} noValidate>
-        <p className={styles.note}>
-          Les créneaux bloqués ne peuvent plus être réservés en ligne. Les clients les voient
-          simplement comme indisponibles.
-        </p>
-        <Field label="Date">
+        <p className={styles.note}>{t('slotActions.note')}</p>
+        <Field label={t('slotActions.date')}>
           {(p) => (
             <input
               {...p}
@@ -116,10 +115,10 @@ export function BlockDialog({
         {!slots ? (
           <Loading />
         ) : slots.length === 0 ? (
-          <p className={styles.note}>Le studio est fermé ce jour-là.</p>
+          <p className={styles.note}>{t('slotActions.closedDay')}</p>
         ) : (
           <fieldset className={styles.fieldset}>
-            <legend className={styles.legend}>Créneaux libres</legend>
+            <legend className={styles.legend}>{t('slotActions.freeSlots')}</legend>
             <div className={styles.chips}>
               {slots.map((s) => (
                 <button
@@ -142,7 +141,7 @@ export function BlockDialog({
             </div>
           </fieldset>
         )}
-        <Field label="Motif">
+        <Field label={t('slotActions.reason')}>
           {(p) => (
             <input
               {...p}
@@ -155,7 +154,7 @@ export function BlockDialog({
         </Field>
         <datalist id="block-reasons">
           {REASONS.map((r) => (
-            <option key={r} value={r} />
+            <option key={r} value={t(`slotActions.reasons.${r}`)} />
           ))}
         </datalist>
         {error ? (
@@ -188,6 +187,7 @@ export function SlotMenu({
   onUnblocked: () => void;
 }) {
   const toast = useToast();
+  const { t, locale } = useI18n();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -198,7 +198,7 @@ export function SlotMenu({
     setBusy(true);
     try {
       await adminApi.deleteBlock(slot.block.id);
-      toast(blockSize > 1 ? `${blockSize} créneaux débloqués.` : 'Créneau débloqué.');
+      toast(t('slotActions.unblockedToast', { count: Math.max(1, blockSize) }));
       onUnblocked();
     } catch (err) {
       setError(errorMessage(err));
@@ -212,13 +212,15 @@ export function SlotMenu({
       open={slot !== null}
       onClose={onClose}
       variant="modal"
-      title={slot ? `${formatLongDate(date)} · ${slot.startTime}–${slot.endTime}` : ''}
+      title={
+        slot ? `${formatLongDate(date, false, locale)} · ${slot.startTime}–${slot.endTime}` : ''
+      }
     >
       {slot?.state === 'BLOCKED' ? (
         <>
           <p>
-            Créneau bloqué&nbsp;: <strong>{slot.block?.reason}</strong>
-            {blockSize > 1 ? ` (blocage de ${blockSize} créneaux, débloqués ensemble)` : ''}
+            {t('slotActions.blockedSlot')} <strong>{slot.block?.reason}</strong>
+            {blockSize > 1 ? t('slotActions.blockGroup', { count: blockSize }) : ''}
           </p>
           {error ? (
             <div className={styles.banner} role="alert">
@@ -227,22 +229,22 @@ export function SlotMenu({
           ) : null}
           <div className={styles.formActions}>
             <button type="button" className={styles.btn} onClick={unblock} disabled={busy}>
-              {busy ? 'Déblocage…' : 'Débloquer'}
+              {busy ? t('slotActions.unblocking') : t('slotActions.unblock')}
             </button>
             <button type="button" className={styles.btnSecondary} onClick={onClose}>
-              Fermer
+              {t('slotActions.close')}
             </button>
           </div>
         </>
       ) : slot ? (
         <>
-          <p className={styles.muted}>Ce créneau est libre.</p>
+          <p className={styles.muted}>{t('slotActions.isFree')}</p>
           <div className={styles.formActions}>
             <button type="button" className={styles.btn} onClick={() => onBook(slot)}>
-              Réserver pour un client
+              {t('slotActions.bookForClient')}
             </button>
             <button type="button" className={styles.btnSecondary} onClick={() => onBlock(slot)}>
-              Bloquer
+              {t('slotActions.block')}
             </button>
           </div>
         </>

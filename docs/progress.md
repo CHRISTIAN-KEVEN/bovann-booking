@@ -408,6 +408,33 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 - Business sectors: shown in English, still stored as the French label; they become the shared category list with "Autre" right after.
 - The admin can't yet enter English names for packages and spaces (comes with the admin step); the seeded ones are in place.
 
+## French and English, step 2: the admin (in review)
+
+### Delivered
+
+- **Every admin screen in English** at `/en/admin/…`:
+  - sign-in and password change
+  - bookings, calendar, booking panel, studio booking form, blocks
+  - packages, spaces and hours, customers, payments, settings
+- **Switching language:** FR | EN under the account name in the sidebar, and on the sign-in page. A sign-in requested from an English page returns to the English page.
+- **English names:**
+  - packages get a "Name in English" field, and spaces a "Name in English" field
+  - empty means the French name is used
+  - the packages table shows both names
+- **From the API in the page's language:** booking history, email labels in the booking panel, package names in lists.
+- **Amounts:** typed amounts accept "15 000" and "15,000". "15,5" is still refused, so a decimal can't be read as thousands.
+
+### Tests
+
+- **Totals:** 274 automated tests (211 API, 6 shared, 57 web).
+- **API:** English names saved from the admin and shown to English customers; booking history, email labels and package names in English.
+- **Web:** the booking panel in English (dates, amounts, cancel form); amount parsing both ways; the sign-in and panel tests now run inside the language provider.
+- **In a real Chrome at 1440 px:**
+  - a new administrator signs in at `/en/admin`, chooses a password, and visits every page in English
+  - the package editor has the English name field
+  - switching to French keeps the page
+  - no browser errors
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.

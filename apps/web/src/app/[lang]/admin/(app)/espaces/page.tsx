@@ -18,42 +18,28 @@ import {
   useToast,
 } from '@/components/admin/ui';
 import { Icon } from '@/components/icons';
+import { useI18n, type T, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import { todayIn } from '@/lib/admin-format';
-import { formatDuration, formatLongDate } from '@/lib/dates';
+import { formatDuration, formatLongDate, weekdayNames } from '@/lib/dates';
 
-const WEEKDAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+const LEAD_OPTIONS = [0, 30, 60, 120, 240, 720, 1440, 2880];
+const HORIZON_OPTIONS = [14, 30, 60, 90, 180, 365];
 
-const LEAD_OPTIONS = [
-  { value: 0, label: 'Jusqu’au début du créneau' },
-  { value: 30, label: '30 min avant' },
-  { value: 60, label: '1 h avant' },
-  { value: 120, label: '2 h avant' },
-  { value: 240, label: '4 h avant' },
-  { value: 720, label: '12 h avant' },
-  { value: 1440, label: '24 h avant' },
-  { value: 2880, label: '48 h avant' },
-];
-const HORIZON_OPTIONS = [
-  { value: 14, label: '2 semaines à l’avance' },
-  { value: 30, label: '1 mois à l’avance' },
-  { value: 60, label: '2 mois à l’avance' },
-  { value: 90, label: '3 mois à l’avance' },
-  { value: 180, label: '6 mois à l’avance' },
-  { value: 365, label: '1 an à l’avance' },
-];
-
+/** The usual choices, plus the current value if it is another one. */
 function withCurrent(
-  options: Array<{ value: number; label: string }>,
+  options: number[],
   current: number,
-  unit: string,
-) {
-  return options.some((o) => o.value === current)
-    ? options
-    : [...options, { value: current, label: `${current} ${unit}` }].sort(
-        (a, b) => a.value - b.value,
-      );
+  label: (n: number) => string,
+): Array<{ value: number; label: string }> {
+  const values = options.includes(current) ? options : [...options, current].sort((a, b) => a - b);
+  return values.map((value) => ({ value, label: label(value) }));
 }
+
+const leadLabel = (t: T) => (n: number) =>
+  LEAD_OPTIONS.includes(n) ? t(`spaces.lead.${n}` as TKey) : t('spaces.leadOther', { n });
+const horizonLabel = (t: T) => (n: number) =>
+  HORIZON_OPTIONS.includes(n) ? t(`spaces.horizon.${n}` as TKey) : t('spaces.horizonOther', { n });
 
 /** Minutes between "HH:MM" times, for the slot count preview. */
 function slotCount(opensAt: string, closesAt: string, slotMin: number): number {
@@ -63,20 +49,16 @@ function slotCount(opensAt: string, closesAt: string, slotMin: number): number {
 
 export default function AdminSpacesPage() {
   const { spaces, space, setSpaceId, isOwner, reloadSpaces } = useAdmin();
+  const { t } = useI18n();
   const [creating, setCreating] = useState(false);
 
   return (
     <>
-      <PageHeader
-        title="Espaces & horaires"
-        sub="Chaque espace a son propre calendrier, ses horaires et ses modes."
-      />
-      {!isOwner ? (
-        <p className={styles.note}>Seul un administrateur peut modifier ces réglages.</p>
-      ) : null}
+      <PageHeader title={t('spaces.title')} sub={t('spaces.sub')} />
+      {!isOwner ? <p className={styles.note}>{t('spaces.ownerOnly')}</p> : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
         <section style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h2 className={styles.sectionTitle}>Espaces</h2>
+          <h2 className={styles.sectionTitle}>{t('spaces.list')}</h2>
           {spaces.map((s) => (
             <button
               key={s.id}
@@ -110,11 +92,14 @@ export default function AdminSpacesPage() {
                     s.isActive ? styles.badge_success : styles.badge_neutral,
                   )}
                 >
-                  {s.isActive ? 'Actif' : 'Désactivé'}
+                  {s.isActive ? t('spaces.active') : t('spaces.inactive')}
                 </span>
               </span>
               <span className={styles.cellSub}>
-                {[s.inPersonEnabled && 'En studio', s.virtualEnabled && 'Virtuel']
+                {[
+                  s.inPersonEnabled && t('spaces.inPerson'),
+                  s.virtualEnabled && t('spaces.virtual'),
+                ]
                   .filter(Boolean)
                   .join(' + ')}
               </span>
@@ -127,7 +112,7 @@ export default function AdminSpacesPage() {
               style={{ borderStyle: 'dashed', height: 56 }}
               onClick={() => setCreating(true)}
             >
-              <Icon name="plus" size={16} /> Ajouter un espace
+              <Icon name="plus" size={16} /> {t('spaces.add')}
             </button>
           ) : null}
         </section>
@@ -173,6 +158,7 @@ function SpaceInfo({
   onSaved: () => Promise<void>;
 }) {
   const toast = useToast();
+  const { t } = useI18n();
   const [form, setForm] = useState(space);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -183,11 +169,11 @@ function SpaceInfo({
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) {
-      setError('Indiquez le nom de l’espace.');
+      setError(t('spaces.nameRequired'));
       return;
     }
     if (!form.inPersonEnabled && !form.virtualEnabled) {
-      setError('Proposez au moins un mode\u00a0: en studio ou virtuel.');
+      setError(t('spaces.oneMode'));
       return;
     }
     setBusy(true);
@@ -195,6 +181,7 @@ function SpaceInfo({
     try {
       await adminApi.updateSpace(space.id, {
         name: form.name.trim(),
+        nameEn: form.nameEn?.trim() || null,
         address: form.address?.trim() || null,
         inPersonEnabled: form.inPersonEnabled,
         virtualEnabled: form.virtualEnabled,
@@ -205,7 +192,7 @@ function SpaceInfo({
         isActive: form.isActive,
       });
       await onSaved();
-      toast('Réglages enregistrés.');
+      toast(t('spaces.saved'));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -216,16 +203,16 @@ function SpaceInfo({
   return (
     <form className={cx(styles.card, styles.cardPad)} onSubmit={save}>
       <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>Informations</h2>
+        <h2 className={styles.cardTitle}>{t('spaces.info')}</h2>
         {canEdit && changed ? (
           <button type="submit" className={styles.btn} disabled={busy}>
-            {busy ? 'Enregistrement…' : 'Enregistrer'}
+            {busy ? t('spaces.saving') : t('spaces.save')}
           </button>
         ) : null}
       </div>
       <fieldset className={styles.fieldset} disabled={!canEdit} style={{ gap: 14 }}>
         <div className={styles.grid2}>
-          <Field label="Nom de l’espace">
+          <Field label={t('spaces.name')}>
             {(p) => (
               <input
                 {...p}
@@ -235,20 +222,32 @@ function SpaceInfo({
               />
             )}
           </Field>
-          <Field label="Adresse (en studio)">
+          <Field label={t('spaces.nameEn')}>
+            {(p) => (
+              <input
+                {...p}
+                lang="en"
+                maxLength={120}
+                className={styles.input}
+                value={form.nameEn ?? ''}
+                onChange={(e) => set('nameEn', e.target.value)}
+              />
+            )}
+          </Field>
+          <Field label={t('spaces.address')}>
             {(p) => (
               <input
                 {...p}
                 className={styles.input}
                 value={form.address ?? ''}
-                placeholder="Rue, quartier, Lomé"
+                placeholder={t('spaces.addressPlaceholder')}
                 onChange={(e) => set('address', e.target.value)}
               />
             )}
           </Field>
         </div>
         <div className={styles.field}>
-          <span className={styles.label}>Modes proposés</span>
+          <span className={styles.label}>{t('spaces.modes')}</span>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             <label className={styles.checkCard}>
               <input
@@ -256,7 +255,7 @@ function SpaceInfo({
                 checked={form.inPersonEnabled}
                 onChange={(e) => set('inPersonEnabled', e.target.checked)}
               />
-              En studio (Lomé)
+              {t('spaces.inPersonLome')}
             </label>
             <label className={styles.checkCard}>
               <input
@@ -264,16 +263,16 @@ function SpaceInfo({
                 checked={form.virtualEnabled}
                 onChange={(e) => set('virtualEnabled', e.target.checked)}
               />
-              Virtuel
+              {t('spaces.virtual')}
             </label>
           </div>
         </div>
         <div className={styles.grid2}>
           <div className={styles.field}>
-            <span className={styles.label}>Durée d’un créneau</span>
+            <span className={styles.label}>{t('spaces.slotLength')}</span>
             <span className={styles.readonly}>{formatDuration(space.slotDurationMin)}</span>
           </div>
-          <Field label="Réserver au plus tard">
+          <Field label={t('spaces.latest')}>
             {(p) => (
               <select
                 {...p}
@@ -281,7 +280,7 @@ function SpaceInfo({
                 value={form.minLeadMin}
                 onChange={(e) => set('minLeadMin', Number(e.target.value))}
               >
-                {withCurrent(LEAD_OPTIONS, form.minLeadMin, 'min avant').map((o) => (
+                {withCurrent(LEAD_OPTIONS, form.minLeadMin, leadLabel(t)).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -289,7 +288,7 @@ function SpaceInfo({
               </select>
             )}
           </Field>
-          <Field label="Ouvert à la réservation">
+          <Field label={t('spaces.open')}>
             {(p) => (
               <select
                 {...p}
@@ -297,7 +296,7 @@ function SpaceInfo({
                 value={form.horizonDays}
                 onChange={(e) => set('horizonDays', Number(e.target.value))}
               >
-                {withCurrent(HORIZON_OPTIONS, form.horizonDays, 'jours à l’avance').map((o) => (
+                {withCurrent(HORIZON_OPTIONS, form.horizonDays, horizonLabel(t)).map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -305,10 +304,7 @@ function SpaceInfo({
               </select>
             )}
           </Field>
-          <Field
-            label="Délai pour payer"
-            hint="Les créneaux sont libérés si le client n’a pas payé à temps."
-          >
+          <Field label={t('spaces.hold')} hint={t('spaces.holdHint')}>
             {(p) => (
               <select
                 {...p}
@@ -318,16 +314,13 @@ function SpaceInfo({
               >
                 {Array.from({ length: 14 }, (_, i) => i + 2).map((m) => (
                   <option key={m} value={m}>
-                    {m} minutes
+                    {t('spaces.minutes', { n: m })}
                   </option>
                 ))}
               </select>
             )}
           </Field>
-          <Field
-            label="Afficher «&nbsp;presque complet&nbsp;»"
-            hint="Dans le calendrier des clients."
-          >
+          <Field label={t('spaces.few')} hint={t('spaces.fewHint')}>
             {(p) => (
               <select
                 {...p}
@@ -335,10 +328,10 @@ function SpaceInfo({
                 value={form.fewSlotsThreshold}
                 onChange={(e) => set('fewSlotsThreshold', Number(e.target.value))}
               >
-                <option value={0}>Jamais</option>
+                <option value={0}>{t('spaces.never')}</option>
                 {[1, 2, 3, 4, 5].map((n) => (
                   <option key={n} value={n}>
-                    Dès {n} créneau{n > 1 ? 'x' : ''} restant{n > 1 ? 's' : ''}
+                    {t('spaces.fewFrom', { count: n })}
                   </option>
                 ))}
               </select>
@@ -351,7 +344,7 @@ function SpaceInfo({
             checked={form.isActive}
             onChange={(e) => set('isActive', e.target.checked)}
           />
-          Espace ouvert aux réservations en ligne
+          {t('spaces.online')}
         </label>
       </fieldset>
       {error ? (
@@ -365,6 +358,8 @@ function SpaceInfo({
 
 function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }) {
   const toast = useToast();
+  const { t, locale } = useI18n();
+  const weekdays = weekdayNames(locale);
   const hours = useAsync(() => adminApi.openingHours(space.id), `hours-${space.id}`);
   const [rows, setRows] = useState<OpeningHoursDayDto[] | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -392,7 +387,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
         })),
       });
       hours.setData(saved);
-      toast('Horaires enregistrés.');
+      toast(t('spaces.hoursSaved'));
     } catch (err) {
       setError(err);
     } finally {
@@ -403,10 +398,9 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
   return (
     <section className={cx(styles.card, styles.cardPad)}>
       <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>Horaires d’ouverture</h2>
+        <h2 className={styles.cardTitle}>{t('spaces.hours')}</h2>
         <span className={styles.cellSub}>
-          Les créneaux sont générés automatiquement toutes les{' '}
-          {formatDuration(space.slotDurationMin)}.
+          {t('spaces.hoursSub', { length: formatDuration(space.slotDurationMin) })}
         </span>
       </div>
       {hours.error ? (
@@ -419,17 +413,17 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
             <table className={styles.table} style={{ minWidth: 560 }}>
               <thead>
                 <tr>
-                  <th>Jour</th>
-                  <th>Ouvert</th>
-                  <th>Ouverture</th>
-                  <th>Fermeture</th>
-                  <th>Créneaux</th>
+                  <th>{t('spaces.colDay')}</th>
+                  <th>{t('spaces.colOpen')}</th>
+                  <th>{t('spaces.colOpens')}</th>
+                  <th>{t('spaces.colCloses')}</th>
+                  <th>{t('spaces.colSlots')}</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => {
                   const n = r.isOpen ? slotCount(r.opensAt, r.closesAt, space.slotDurationMin) : 0;
-                  const day = WEEKDAYS[r.weekday - 1]!;
+                  const day = weekdays[r.weekday - 1]!;
                   return (
                     <tr key={r.weekday}>
                       <td style={{ fontWeight: 600 }}>{day}</td>
@@ -437,7 +431,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
                         <input
                           type="checkbox"
                           role="switch"
-                          aria-label={`${day} ouvert`}
+                          aria-label={t('spaces.dayOpen', { day })}
                           checked={r.isOpen}
                           disabled={!canEdit}
                           onChange={(e) => update(r.weekday, { isOpen: e.target.checked })}
@@ -446,7 +440,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
                       </td>
                       <td>
                         <TimeSelect
-                          aria-label={`${day} : ouverture`}
+                          aria-label={t('spaces.dayOpens', { day })}
                           style={{ height: 38, width: 110 }}
                           value={r.opensAt}
                           disabled={!canEdit || !r.isOpen}
@@ -455,7 +449,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
                       </td>
                       <td>
                         <TimeSelect
-                          aria-label={`${day} : fermeture`}
+                          aria-label={t('spaces.dayCloses', { day })}
                           style={{ height: 38, width: 110 }}
                           value={r.closesAt}
                           disabled={!canEdit || !r.isOpen}
@@ -463,7 +457,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
                         />
                       </td>
                       <td className={styles.muted}>
-                        {r.isOpen ? `${n} créneau${n > 1 ? 'x' : ''}` : 'Fermé'}
+                        {r.isOpen ? t('spaces.slots', { count: n }) : t('spaces.closed')}
                       </td>
                     </tr>
                   );
@@ -484,7 +478,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
           {canEdit && changed ? (
             <div className={styles.actions}>
               <button type="button" className={styles.btn} onClick={save} disabled={busy}>
-                {busy ? 'Enregistrement…' : 'Enregistrer les horaires'}
+                {busy ? t('spaces.saving') : t('spaces.saveHours')}
               </button>
               <button
                 type="button"
@@ -494,7 +488,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
                   setError(null);
                 }}
               >
-                Annuler
+                {t('spaces.cancel')}
               </button>
             </div>
           ) : null}
@@ -506,6 +500,7 @@ function OpeningHours({ space, canEdit }: { space: AdminSpaceDto; canEdit: boole
 
 function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }) {
   const toast = useToast();
+  const { t, locale } = useI18n();
   const closures = useAsync(() => adminApi.closures(space.id), `closures-${space.id}`);
   const [adding, setAdding] = useState(false);
 
@@ -513,7 +508,7 @@ function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }
     try {
       await adminApi.deleteClosure(c.id);
       closures.reload();
-      toast('Fermeture supprimée\u00a0: les créneaux sont de nouveau réservables.');
+      toast(t('spaces.closureRemoved'));
     } catch (err) {
       toast(errorMessage(err), true);
     }
@@ -522,10 +517,10 @@ function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }
   return (
     <section className={cx(styles.card, styles.cardPad)}>
       <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>Fermetures exceptionnelles</h2>
+        <h2 className={styles.cardTitle}>{t('spaces.closures')}</h2>
         {canEdit ? (
           <button type="button" className={styles.btnSecondary} onClick={() => setAdding(true)}>
-            <Icon name="plus" size={16} /> Ajouter une fermeture
+            <Icon name="plus" size={16} /> {t('spaces.addClosure')}
           </button>
         ) : null}
       </div>
@@ -534,7 +529,7 @@ function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }
       ) : !closures.data ? (
         <Loading />
       ) : closures.data.length === 0 ? (
-        <p className={styles.note}>Aucune fermeture prévue.</p>
+        <p className={styles.note}>{t('spaces.noClosures')}</p>
       ) : (
         closures.data.map((c) => (
           <div
@@ -552,11 +547,14 @@ function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }
             <span className={styles.cellStack}>
               <span style={{ fontSize: 14, fontWeight: 600 }}>
                 {c.startDate === c.endDate
-                  ? formatLongDate(c.startDate, true)
-                  : `Du ${formatLongDate(c.startDate)} au ${formatLongDate(c.endDate, true)}`}
+                  ? formatLongDate(c.startDate, true, locale)
+                  : t('spaces.fromTo', {
+                      from: formatLongDate(c.startDate, false, locale),
+                      to: formatLongDate(c.endDate, true, locale),
+                    })}
               </span>
               <span className={styles.cellSub}>
-                {c.allDay ? 'Journée entière' : `${c.startTime} – ${c.endTime}`}
+                {c.allDay ? t('spaces.allDay') : `${c.startTime} – ${c.endTime}`}
                 {c.reason ? ` · ${c.reason}` : ''}
               </span>
             </span>
@@ -564,7 +562,7 @@ function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }
               <button
                 type="button"
                 className={styles.iconBtn}
-                aria-label="Supprimer la fermeture"
+                aria-label={t('spaces.removeClosure')}
                 onClick={() => remove(c)}
               >
                 <Icon name="trash" size={16} />
@@ -580,7 +578,7 @@ function Closures({ space, canEdit }: { space: AdminSpaceDto; canEdit: boolean }
         onCreated={() => {
           setAdding(false);
           closures.reload();
-          toast('Fermeture ajoutée.');
+          toast(t('spaces.closureAdded'));
         }}
       />
     </section>
@@ -598,6 +596,7 @@ function ClosureDialog({
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { t } = useI18n();
   const today = todayIn(space.timezone);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
@@ -641,21 +640,21 @@ function ClosureDialog({
       open={open}
       onClose={onClose}
       variant="modal"
-      title="Ajouter une fermeture"
+      title={t('spaces.addClosure')}
       footer={
         <>
           <button type="button" className={styles.btnSecondary} onClick={onClose}>
-            Annuler
+            {t('spaces.cancel')}
           </button>
           <button type="submit" form="closure-form" className={styles.btn} disabled={busy}>
-            {busy ? 'Enregistrement…' : 'Ajouter'}
+            {busy ? t('spaces.saving') : t('spaces.adding')}
           </button>
         </>
       }
     >
       <form id="closure-form" className={styles.section} onSubmit={submit} noValidate>
         <div className={styles.grid2}>
-          <Field label="Du">
+          <Field label={t('spaces.from')}>
             {(p) => (
               <input
                 {...p}
@@ -667,7 +666,7 @@ function ClosureDialog({
               />
             )}
           </Field>
-          <Field label="Au (inclus)">
+          <Field label={t('spaces.toIncl')}>
             {(p) => (
               <input
                 {...p}
@@ -682,30 +681,30 @@ function ClosureDialog({
         </div>
         <label className={styles.check}>
           <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
-          Journée entière
+          {t('spaces.allDay')}
         </label>
         {!allDay ? (
           <div className={styles.grid2}>
-            <Field label="De">
+            <Field label={t('spaces.timeFrom')}>
               {(p) => <TimeSelect {...p} value={startTime} onChange={setStartTime} />}
             </Field>
-            <Field label="À">
+            <Field label={t('spaces.timeTo')}>
               {(p) => <TimeSelect {...p} value={endTime} onChange={setEndTime} />}
             </Field>
           </div>
         ) : null}
-        <Field label="Motif (facultatif)">
+        <Field label={t('spaces.reason')}>
           {(p) => (
             <input
               {...p}
               className={styles.input}
               value={reason}
-              placeholder="Jour férié, travaux…"
+              placeholder={t('spaces.reasonPlaceholder')}
               onChange={(e) => setReason(e.target.value)}
             />
           )}
         </Field>
-        <p className={styles.note}>Les clients verront ces jours ou ces heures comme fermés.</p>
+        <p className={styles.note}>{t('spaces.closureNote')}</p>
         {error ? (
           <div
             className={styles.banner}
@@ -730,6 +729,7 @@ function NewSpaceDialog({
   onClose: () => void;
   onCreated: (space: AdminSpaceDto) => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [inPerson, setInPerson] = useState(true);
@@ -749,7 +749,7 @@ function NewSpaceDialog({
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Indiquez le nom de l’espace.');
+      setError(t('spaces.nameRequired'));
       return;
     }
     setBusy(true);
@@ -775,20 +775,20 @@ function NewSpaceDialog({
       open={open}
       onClose={onClose}
       variant="modal"
-      title="Ajouter un espace"
+      title={t('spaces.add')}
       footer={
         <>
           <button type="button" className={styles.btnSecondary} onClick={onClose}>
-            Annuler
+            {t('spaces.cancel')}
           </button>
           <button type="submit" form="space-form" className={styles.btn} disabled={busy}>
-            {busy ? 'Création…' : 'Créer l’espace'}
+            {busy ? t('spaces.creating') : t('spaces.create')}
           </button>
         </>
       }
     >
       <form id="space-form" className={styles.section} onSubmit={submit} noValidate>
-        <Field label="Nom">
+        <Field label={t('spaces.nameShort')}>
           {(p) => (
             <input
               {...p}
@@ -798,7 +798,7 @@ function NewSpaceDialog({
             />
           )}
         </Field>
-        <Field label="Adresse (facultatif)">
+        <Field label={t('spaces.addressOptional')}>
           {(p) => (
             <input
               {...p}
@@ -814,17 +814,13 @@ function NewSpaceDialog({
             checked={inPerson}
             onChange={(e) => setInPerson(e.target.checked)}
           />
-          En studio
+          {t('spaces.inPerson')}
         </label>
         <label className={styles.check}>
           <input type="checkbox" checked={virtual} onChange={(e) => setVirtual(e.target.checked)} />
-          Virtuel
+          {t('spaces.virtual')}
         </label>
-        <p className={styles.note}>
-          Le nouvel espace est ouvert de 08:00 à 21:30 tous les jours. Ajoutez ensuite ses forfaits
-          et ses prix&nbsp;: les clients ne peuvent pas réserver tant qu’il n’a pas de prix. Le site
-          de réservation affiche aujourd’hui un seul espace (le studio principal).
-        </p>
+        <p className={styles.note}>{t('spaces.newNote')}</p>
         {error ? (
           <div className={styles.banner} role="alert">
             {error}

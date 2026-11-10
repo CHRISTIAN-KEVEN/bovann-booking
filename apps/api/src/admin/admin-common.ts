@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { utcToLocalDate, utcToLocalTime } from '../availability/domain/time';
 import { ApiError, notFound, type BilingualText } from '../common/errors';
 import type { Database, Space } from '../database/schema';
+import { localized } from '../common/request-context';
 
 export async function loadSpace(db: Kysely<Database>, spaceId: number): Promise<Space> {
   const space = await db
@@ -100,6 +101,7 @@ export interface BookingRow {
   ends_at: Date;
   booking_type: BookingType;
   package_name: string | null;
+  package_name_en: string | null;
   slot_count: number;
   total_xof: number;
   hold_expires_at: Date | null;
@@ -148,7 +150,8 @@ export function toListItem(
     endTime: utcToLocalTime(row.ends_at, row.timezone),
     startsAt: row.starts_at.toISOString(),
     bookingType: row.booking_type,
-    packageName: row.package_name,
+    packageName:
+      row.package_name === null ? null : localized(row.package_name, row.package_name_en),
     slotCount: row.slot_count,
     totalXof: row.total_xof,
     paymentState: paymentState(row, payments, now),
@@ -178,6 +181,7 @@ export const BOOKING_ROW_COLUMNS = [
   'b.ends_at',
   'b.booking_type',
   'b.package_name',
+  'b.package_name_en',
   'b.slot_count',
   'b.total_xof',
   'b.hold_expires_at',

@@ -24,6 +24,7 @@ import {
   useToast,
 } from '@/components/admin/ui';
 import { Icon } from '@/components/icons';
+import { useI18n, type T, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import { formatAmountInput, parseAmount } from '@/lib/admin-format';
 import { ApiError } from '@/lib/api';
@@ -31,10 +32,9 @@ import { formatDuration } from '@/lib/dates';
 
 type Editing = { kind: 'new' } | { kind: 'edit'; pkg: AdminPackageDto } | null;
 
-const MODES: Array<{ mode: SessionMode; label: string }> = [
-  { mode: 'IN_PERSON', label: 'En studio' },
-  { mode: 'VIRTUAL', label: 'Virtuel' },
-];
+const MODES: SessionMode[] = ['IN_PERSON', 'VIRTUAL'];
+const modeLabel = (t: T, mode: SessionMode) => t(`packages.mode.${mode}` as TKey);
+const modeLower = (t: T, mode: SessionMode) => t(`packages.modeLower.${mode}` as TKey);
 
 function slotsOf(p: AdminPackageDto, fullDay: number): number {
   return p.isFullDay ? fullDay : (p.slotCount ?? 0);
@@ -42,6 +42,8 @@ function slotsOf(p: AdminPackageDto, fullDay: number): number {
 
 export default function AdminPackagesPage() {
   const { space, isOwner } = useAdmin();
+  const { t, locale } = useI18n();
+  const money = (n: number) => formatXof(n, locale);
   const toast = useToast();
   const catalog = useAsync(() => adminApi.packages(space.id), `pk-${space.id}`);
   const [editing, setEditing] = useState<Editing>(null);
@@ -56,8 +58,8 @@ export default function AdminPackagesPage() {
       catalog.setData(next);
       toast(
         p.isActive
-          ? `«\u00a0${p.name}\u00a0» n’est plus proposé.`
-          : `«\u00a0${p.name}\u00a0» est de nouveau proposé.`,
+          ? t('packages.withdrawn', { name: p.name })
+          : t('packages.offeredAgain', { name: p.name }),
       );
     } catch (err) {
       toast(errorMessage(err), true);
@@ -67,8 +69,8 @@ export default function AdminPackagesPage() {
   return (
     <>
       <PageHeader
-        title="Forfaits & prix"
-        sub="Les forfaits longs doivent rester moins chers que les créneaux à l’unité."
+        title={t('packages.title')}
+        sub={t('packages.sub')}
         actions={
           isOwner ? (
             <button
@@ -76,17 +78,13 @@ export default function AdminPackagesPage() {
               className={styles.btn}
               onClick={() => setEditing({ kind: 'new' })}
             >
-              <Icon name="plus" size={16} /> Nouveau forfait
+              <Icon name="plus" size={16} /> {t('packages.new')}
             </button>
           ) : null
         }
       />
 
-      {!isOwner ? (
-        <p className={styles.note}>
-          Seul un administrateur peut modifier les forfaits et les prix.
-        </p>
-      ) : null}
+      {!isOwner ? <p className={styles.note}>{t('packages.ownerOnly')}</p> : null}
 
       {catalog.error ? (
         <LoadError error={catalog.error} onRetry={catalog.reload} />
@@ -104,21 +102,18 @@ export default function AdminPackagesPage() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
             <section className={styles.card} style={{ flex: '999 1 520px', minWidth: 0 }}>
               {data.packages.length === 0 ? (
-                <Empty>
-                  Aucun forfait&nbsp;: ajoutez au moins le créneau unique pour ouvrir les
-                  réservations.
-                </Empty>
+                <Empty>{t('packages.empty')}</Empty>
               ) : (
                 <div className={styles.tableWrap}>
                   <table className={styles.table} style={{ minWidth: 620 }}>
                     <thead>
                       <tr>
-                        <th>Forfait</th>
-                        <th>Créneaux</th>
-                        <th>Prix</th>
-                        <th>Réduction</th>
-                        <th>Modes</th>
-                        <th>Proposé</th>
+                        <th>{t('packages.colPackage')}</th>
+                        <th>{t('packages.colSlots')}</th>
+                        <th>{t('packages.colPrice')}</th>
+                        <th>{t('packages.colDiscount')}</th>
+                        <th>{t('packages.colModes')}</th>
+                        <th>{t('packages.colOffered')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -143,26 +138,26 @@ export default function AdminPackagesPage() {
                             <td>
                               <div className={styles.cellStack}>
                                 <span style={{ fontWeight: 700 }}>{p.name}</span>
+                                {p.nameEn ? (
+                                  <span className={styles.cellSub} lang="en">
+                                    {p.nameEn}
+                                  </span>
+                                ) : null}
                                 <span className={styles.cellSub}>
                                   {p.isFullDay
-                                    ? 'Toute la journée'
+                                    ? t('packages.allDay')
                                     : formatDuration(n * space.slotDurationMin)}
                                 </span>
                               </div>
                             </td>
-                            <td>{p.isFullDay ? `${n} (tous)` : n}</td>
+                            <td>{p.isFullDay ? t('packages.allCount', { count: n }) : n}</td>
                             <td>
                               <div className={styles.cellStack}>
-                                {MODES.filter((m) => p.prices[m.mode]).map((m) => (
-                                  <span key={m.mode}>
-                                    <span style={{ fontWeight: 600 }}>
-                                      {formatXof(p.prices[m.mode]!)}
-                                    </span>
+                                {MODES.filter((m) => p.prices[m]).map((m) => (
+                                  <span key={m}>
+                                    <span style={{ fontWeight: 600 }}>{money(p.prices[m]!)}</span>
                                     {p.prices.IN_PERSON && p.prices.VIRTUAL ? (
-                                      <span className={styles.cellSub}>
-                                        {' '}
-                                        · {m.label.toLowerCase()}
-                                      </span>
+                                      <span className={styles.cellSub}> · {modeLower(t, m)}</span>
                                     ) : null}
                                   </span>
                                 ))}
@@ -171,14 +166,14 @@ export default function AdminPackagesPage() {
                                     className={styles.cellSub}
                                     style={{ textDecoration: 'line-through' }}
                                   >
-                                    {formatXof(u * n)}
+                                    {money(u * n)}
                                   </span>
                                 ) : null}
                               </div>
                             </td>
                             <td>
                               {n === 1 ? (
-                                <Badge tone="neutral">Prix de base</Badge>
+                                <Badge tone="neutral">{t('packages.basePrice')}</Badge>
                               ) : pct > 0 ? (
                                 <Badge tone="success">−{pct} %</Badge>
                               ) : (
@@ -186,15 +181,15 @@ export default function AdminPackagesPage() {
                               )}
                             </td>
                             <td className={styles.cellSub}>
-                              {MODES.filter((m) => p.prices[m.mode])
-                                .map((m) => m.label)
+                              {MODES.filter((m) => p.prices[m])
+                                .map((m) => modeLabel(t, m))
                                 .join(' · ') || '—'}
                             </td>
                             <td onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="checkbox"
                                 role="switch"
-                                aria-label={`${p.name} proposé aux clients`}
+                                aria-label={t('packages.offeredLabel', { name: p.name })}
                                 checked={p.isActive}
                                 disabled={!isOwner}
                                 onChange={() => toggleActive(p)}
@@ -247,8 +242,9 @@ function BasePrice({
   onSaved: (next: AdminPackagesResponse) => void;
 }) {
   const toast = useToast();
-  const [studio, setStudio] = useState(formatAmountInput(single?.prices.IN_PERSON));
-  const [virtual, setVirtual] = useState(formatAmountInput(single?.prices.VIRTUAL));
+  const { t, locale } = useI18n();
+  const [studio, setStudio] = useState(formatAmountInput(single?.prices.IN_PERSON, locale));
+  const [virtual, setVirtual] = useState(formatAmountInput(single?.prices.VIRTUAL, locale));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -262,7 +258,7 @@ function BasePrice({
     const s = studio.trim() ? parseAmount(studio) : null;
     const v = virtual.trim() ? parseAmount(virtual) : null;
     if ((studio.trim() && s === null) || (virtual.trim() && v === null)) {
-      setError('Prix invalide.');
+      setError(t('packages.badPrice'));
       return;
     }
     setBusy(true);
@@ -272,7 +268,7 @@ function BasePrice({
         prices: { IN_PERSON: s, VIRTUAL: v },
       });
       onSaved(next);
-      toast('Prix de base enregistré.');
+      toast(t('packages.baseSaved'));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -293,20 +289,18 @@ function BasePrice({
       }}
     >
       <div className={styles.cellStack} style={{ flex: '1 1 220px', alignSelf: 'center' }}>
-        <span style={{ fontSize: 15, fontWeight: 700 }}>Prix de base d’un créneau</span>
-        <span className={styles.cellSub}>
-          Sert de référence pour calculer les réductions des forfaits.
-        </span>
+        <span style={{ fontSize: 15, fontWeight: 700 }}>{t('packages.baseTitle')}</span>
+        <span className={styles.cellSub}>{t('packages.baseSub')}</span>
       </div>
-      <Field label="En studio">
+      <Field label={modeLabel(t, 'IN_PERSON')}>
         {(p) => <AmountInput {...p} value={studio} onChange={setStudio} disabled={!canEdit} />}
       </Field>
-      <Field label="Virtuel">
+      <Field label={modeLabel(t, 'VIRTUAL')}>
         {(p) => <AmountInput {...p} value={virtual} onChange={setVirtual} disabled={!canEdit} />}
       </Field>
       {canEdit && changed ? (
         <button type="submit" className={styles.btn} disabled={busy}>
-          {busy ? 'Enregistrement…' : 'Enregistrer'}
+          {busy ? t('packages.saving') : t('packages.save')}
         </button>
       ) : null}
       {error ? (
@@ -335,46 +329,49 @@ function PackageEditor({
   onSaved: (next: AdminPackagesResponse, message: string) => void;
   create: (input: Parameters<typeof adminApi.createPackage>[1]) => Promise<AdminPackagesResponse>;
 }) {
+  const { t, locale } = useI18n();
+  const money = (n: number) => formatXof(n, locale);
   const pkg = editing.kind === 'edit' ? editing.pkg : null;
   const isFullDay = pkg?.isFullDay ?? false;
   const [name, setName] = useState(pkg?.name ?? '');
+  const [nameEn, setNameEn] = useState(pkg?.nameEn ?? '');
   const [count, setCount] = useState(pkg?.slotCount ?? 3);
   const [offered, setOffered] = useState<Record<SessionMode, boolean>>({
     IN_PERSON: pkg ? pkg.prices.IN_PERSON !== undefined : true,
     VIRTUAL: pkg ? pkg.prices.VIRTUAL !== undefined : true,
   });
   const [prices, setPrices] = useState<Record<SessionMode, string>>({
-    IN_PERSON: formatAmountInput(pkg?.prices.IN_PERSON),
-    VIRTUAL: formatAmountInput(pkg?.prices.VIRTUAL),
+    IN_PERSON: formatAmountInput(pkg?.prices.IN_PERSON, locale),
+    VIRTUAL: formatAmountInput(pkg?.prices.VIRTUAL, locale),
   });
   const [error, setError] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => setError(null), [name, count, prices, offered]);
+  useEffect(() => setError(null), [name, nameEn, count, prices, offered]);
 
   const n = isFullDay ? catalog.fullDaySlotCount : count;
 
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
-      setError(['Indiquez le nom du forfait.']);
+      setError([t('packages.nameRequired')]);
       return;
     }
     const out: Partial<Record<SessionMode, number | null>> = {};
-    for (const { mode } of MODES) {
+    for (const mode of MODES) {
       if (!offered[mode]) {
         out[mode] = null;
         continue;
       }
       const v = parseAmount(prices[mode]);
       if (v === null || v < 100) {
-        setError([`Indiquez un prix valide (${mode === 'IN_PERSON' ? 'en studio' : 'virtuel'}).`]);
+        setError([t('packages.priceRequired', { mode: modeLower(t, mode) })]);
         return;
       }
       out[mode] = v;
     }
     if (!offered.IN_PERSON && !offered.VIRTUAL) {
-      setError(['Proposez ce forfait dans au moins un mode.']);
+      setError([t('packages.oneMode')]);
       return;
     }
     setBusy(true);
@@ -382,13 +379,21 @@ function PackageEditor({
       const next = pkg
         ? await adminApi.updatePackage(pkg.id, {
             name: name.trim(),
+            nameEn: nameEn.trim() || null,
             ...(isFullDay ? {} : { slotCount: count }),
             prices: out,
           })
-        : await create({ name: name.trim(), slotCount: count, prices: out });
+        : await create({
+            name: name.trim(),
+            nameEn: nameEn.trim() || null,
+            slotCount: count,
+            prices: out,
+          });
       onSaved(
         next,
-        pkg ? `«\u00a0${name.trim()}\u00a0» enregistré.` : `«\u00a0${name.trim()}\u00a0» créé.`,
+        pkg
+          ? t('packages.saved', { name: name.trim() })
+          : t('packages.created', { name: name.trim() }),
       );
     } catch (err) {
       const violations =
@@ -413,17 +418,22 @@ function PackageEditor({
         flexDirection: 'column',
         gap: 16,
       }}
-      aria-label={pkg ? `Modifier ${pkg.name}` : 'Nouveau forfait'}
+      aria-label={pkg ? t('packages.editLabel', { name: pkg.name }) : t('packages.new')}
     >
       <div className={styles.cardHeader}>
         <h2 className={styles.cardTitle}>
-          {pkg ? `Modifier\u00a0: ${pkg.name}` : 'Nouveau forfait'}
+          {pkg ? t('packages.editTitle', { name: pkg.name }) : t('packages.new')}
         </h2>
-        <button type="button" className={styles.iconBtn} aria-label="Fermer" onClick={onClose}>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          aria-label={t('packages.close')}
+          onClick={onClose}
+        >
           <Icon name="close" size={16} />
         </button>
       </div>
-      <Field label="Nom affiché">
+      <Field label={t('packages.name')}>
         {(p) => (
           <input
             {...p}
@@ -433,18 +443,30 @@ function PackageEditor({
           />
         )}
       </Field>
+      <Field label={t('packages.nameEn')} hint={t('packages.nameEnHint')}>
+        {(p) => (
+          <input
+            {...p}
+            lang="en"
+            className={styles.input}
+            maxLength={120}
+            value={nameEn}
+            onChange={(e) => setNameEn(e.target.value)}
+          />
+        )}
+      </Field>
       <div className={styles.grid2} style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <div className={styles.field}>
           <span className={styles.label} id="pk-count">
-            Nombre de créneaux
+            {t('packages.slotCount')}
           </span>
           {isFullDay ? (
-            <span className={styles.readonly}>Tous ({n})</span>
+            <span className={styles.readonly}>{t('packages.all', { count: n })}</span>
           ) : (
             <div className={styles.amount} role="group" aria-labelledby="pk-count">
               <button
                 type="button"
-                aria-label="Un créneau de moins"
+                aria-label={t('packages.less')}
                 onClick={() => setCount((c) => Math.max(1, c - 1))}
                 style={{
                   width: 44,
@@ -469,7 +491,7 @@ function PackageEditor({
               />
               <button
                 type="button"
-                aria-label="Un créneau de plus"
+                aria-label={t('packages.more')}
                 onClick={() => setCount((c) => Math.min(20, c + 1))}
                 style={{
                   width: 44,
@@ -486,14 +508,14 @@ function PackageEditor({
           )}
         </div>
         <div className={styles.field}>
-          <span className={styles.label}>Durée totale</span>
+          <span className={styles.label}>{t('packages.duration')}</span>
           <span className={styles.readonly}>
-            {isFullDay ? 'Journée' : formatDuration(n * slotDurationMin)}
+            {isFullDay ? t('packages.fullDay') : formatDuration(n * slotDurationMin)}
           </span>
         </div>
       </div>
 
-      {MODES.map(({ mode, label }) => {
+      {MODES.map((mode) => {
         const price = parseAmount(prices[mode]);
         const u = unit(mode);
         const list = u ? u * n : null;
@@ -506,12 +528,12 @@ function PackageEditor({
                 checked={offered[mode]}
                 onChange={(e) => setOffered((o) => ({ ...o, [mode]: e.target.checked }))}
               />
-              Proposé {label.toLowerCase()}
+              {t('packages.offeredIn', { mode: modeLower(t, mode) })}
             </label>
             {offered[mode] ? (
               <>
                 <AmountInput
-                  aria-label={`Prix ${label.toLowerCase()}`}
+                  aria-label={t('packages.priceIn', { mode: modeLower(t, mode) })}
                   value={prices[mode]}
                   onChange={(v) => setPrices((p) => ({ ...p, [mode]: v }))}
                 />
@@ -519,18 +541,16 @@ function PackageEditor({
                   <div
                     className={cx(styles.calc, saving !== null && saving <= 0 && styles.calcBad)}
                   >
-                    <span>
-                      {n} × {formatXof(u!)} = <strong>{formatXof(list)}</strong> à l’unité
-                    </span>
+                    <span>{t('packages.calc', { n, unit: money(u!), list: money(list) })}</span>
                     {saving !== null && saving > 0 ? (
-                      <span>
-                        Le client économise{' '}
-                        <strong>
-                          {formatXof(saving)} (−{discountPercent(price, u!, n)} %)
-                        </strong>
-                      </span>
+                      <strong>
+                        {t('packages.saves', {
+                          amount: money(saving),
+                          pct: discountPercent(price, u!, n),
+                        })}
+                      </strong>
                     ) : (
-                      <span>Ce prix n’est pas inférieur au total à l’unité.</span>
+                      <span>{t('packages.notLower')}</span>
                     )}
                   </div>
                 ) : null}
@@ -542,17 +562,10 @@ function PackageEditor({
 
       <div className={styles.note} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <Icon name="alert" size={14} style={{ flexShrink: 0, marginTop: 2 }} />
-        <span>
-          Enregistrement refusé si le prix est égal ou supérieur au total à l’unité, ou plus cher
-          par créneau qu’un forfait plus court. Un changement de prix s’applique aux nouvelles
-          réservations&nbsp;; les réservations existantes gardent leur prix.
-        </span>
+        <span>{t('packages.rules')}</span>
       </div>
       {pkg && pkg.upcomingBookings > 0 ? (
-        <p className={styles.note}>
-          {pkg.upcomingBookings} réservation{pkg.upcomingBookings > 1 ? 's' : ''} à venir avec ce
-          forfait (non concernée{pkg.upcomingBookings > 1 ? 's' : ''} par les modifications).
-        </p>
+        <p className={styles.note}>{t('packages.upcoming', { count: pkg.upcomingBookings })}</p>
       ) : null}
       {error ? (
         <div
@@ -567,10 +580,10 @@ function PackageEditor({
       ) : null}
       <div className={styles.formActions}>
         <button type="submit" className={styles.btn} disabled={busy}>
-          {busy ? 'Enregistrement…' : 'Enregistrer'}
+          {busy ? t('packages.saving') : t('packages.save')}
         </button>
         <button type="button" className={styles.btnSecondary} onClick={onClose}>
-          Annuler
+          {t('packages.cancel')}
         </button>
       </div>
     </form>

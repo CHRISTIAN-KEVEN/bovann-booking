@@ -1,13 +1,15 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { NEXT_KEY } from '@/components/admin/AdminShell';
 import { adminStyles as styles, errorMessage, Field } from '@/components/admin/ui';
+import { useI18n, useLocaleRouter } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
 
 export default function AdminSignInPage() {
-  const router = useRouter();
+  const router = useLocaleRouter();
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +18,7 @@ export default function AdminSignInPage() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (!email.trim() || !password) {
-      setError('Indiquez votre adresse e-mail et votre mot de passe.');
+      setError(t('adminAuth.missing'));
       return;
     }
     setBusy(true);
@@ -45,13 +47,13 @@ export default function AdminSignInPage() {
           <span className={styles.liveDot} aria-hidden="true" />
           Bovann OCD Live
         </span>
-        <h1 className={styles.authTitle}>Administration</h1>
+        <h1 className={styles.authTitle}>{t('adminAuth.title')}</h1>
         {error ? (
           <div className={styles.banner} role="alert">
             {error}
           </div>
         ) : null}
-        <Field label="Adresse e-mail">
+        <Field label={t('adminAuth.email')}>
           {(p) => (
             <input
               {...p}
@@ -63,7 +65,7 @@ export default function AdminSignInPage() {
             />
           )}
         </Field>
-        <Field label="Mot de passe">
+        <Field label={t('adminAuth.password')}>
           {(p) => (
             <input
               {...p}
@@ -76,11 +78,10 @@ export default function AdminSignInPage() {
           )}
         </Field>
         <button type="submit" className={styles.btn} disabled={busy}>
-          {busy ? 'Connexion…' : 'Se connecter'}
+          {busy ? t('adminAuth.signingIn') : t('adminAuth.signIn')}
         </button>
-        <p className={styles.hint}>
-          Mot de passe oublié ? Demandez à un administrateur de le réinitialiser.
-        </p>
+        <p className={styles.hint}>{t('adminAuth.forgot')}</p>
+        <LanguageSwitch tone="light" />
       </form>
     </div>
   );

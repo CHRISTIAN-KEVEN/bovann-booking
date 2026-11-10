@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { tFor } from '@/test/i18n';
 import { adminApi, setUnauthorizedHandler } from './admin-api';
 import {
   addDays,
@@ -73,32 +74,52 @@ describe('admin display helpers', () => {
     expect(formatPhone('not a phone')).toBe('not a phone');
   });
 
+  const fr = tFor('fr');
+
   it('gives each booking a status the studio can act on', () => {
     expect(
-      bookingStatus({ status: 'CONFIRMED', refundStatus: 'NONE', paymentState: 'PAID' }).label,
+      bookingStatus({ status: 'CONFIRMED', refundStatus: 'NONE', paymentState: 'PAID' }, fr, 'fr')
+        .label,
     ).toBe('Confirmée');
     expect(
-      bookingStatus({ status: 'CONFIRMED', refundStatus: 'NONE', paymentState: 'UNPAID' }),
+      bookingStatus(
+        { status: 'CONFIRMED', refundStatus: 'NONE', paymentState: 'UNPAID' },
+        fr,
+        'fr',
+      ),
     ).toEqual({
       label: 'Confirmée · à encaisser',
       tone: 'warning',
     });
     expect(
-      bookingStatus({ status: 'CANCELLED', refundStatus: 'DUE', paymentState: 'PAID' }).label,
+      bookingStatus({ status: 'CANCELLED', refundStatus: 'DUE', paymentState: 'PAID' }, fr, 'fr')
+        .label,
     ).toBe('À rembourser');
     expect(
-      bookingStatus({ status: 'EXPIRED', refundStatus: 'NONE', paymentState: 'NONE' }).label,
+      bookingStatus({ status: 'EXPIRED', refundStatus: 'NONE', paymentState: 'NONE' }, fr, 'fr')
+        .label,
     ).toBe('Abandonnée');
     expect(
-      bookingStatus({ status: 'PENDING_PAYMENT', refundStatus: 'NONE', paymentState: 'PENDING' })
-        .label,
+      bookingStatus(
+        { status: 'PENDING_PAYMENT', refundStatus: 'NONE', paymentState: 'PENDING' },
+        fr,
+        'fr',
+      ).label,
     ).toBe('Paiement en cours');
+    expect(
+      bookingStatus(
+        { status: 'CONFIRMED', refundStatus: 'NONE', paymentState: 'UNPAID' },
+        tFor('en'),
+        'en',
+      ).label,
+    ).toBe('Confirmed · to collect');
   });
 
   it('names payment methods, with the mobile money operator', () => {
-    expect(paymentMethodLabel('MOBILE_MONEY', 'TMONEY')).toBe('T-Money');
-    expect(paymentMethodLabel('CASH')).toBe('Espèces');
-    expect(paymentMethodLabel(null)).toBe('—');
+    expect(paymentMethodLabel('MOBILE_MONEY', 'TMONEY', 'fr')).toBe('T-Money');
+    expect(paymentMethodLabel('CASH', null, 'fr')).toBe('Espèces');
+    expect(paymentMethodLabel('CASH', null, 'en')).toBe('Cash');
+    expect(paymentMethodLabel(null, null, 'fr')).toBe('—');
   });
 
   it('reads amounts typed the French way', () => {
@@ -108,6 +129,9 @@ describe('admin display helpers', () => {
     expect(parseAmount('15,5')).toBeNull();
     expect(parseAmount('')).toBeNull();
     expect(formatAmountInput(108000)).toBe('108 000');
+    expect(formatAmountInput(108000, 'en')).toBe('108,000');
+    expect(parseAmount('108,000')).toBe(108000);
+    expect(parseAmount('1,08')).toBeNull();
   });
 
   it('works with studio-local dates', () => {

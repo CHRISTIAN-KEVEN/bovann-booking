@@ -3,11 +3,12 @@
 import {
   formatXof,
   PAYMENT_METHODS,
-  PAYMENT_METHOD_LABELS_FR,
+  PAYMENT_METHOD_LABELS,
   type AdminBookingDetail,
   type PaymentMethod,
 } from '@bovann/shared';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useI18n, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import {
   bookingStatus,
@@ -17,10 +18,11 @@ import {
   parseAmount,
   paymentMethodLabel,
   paymentStateLabel,
-  PAYMENT_STATUS_LABELS,
-  SESSION_MODE_LABELS_FR,
+  paymentStatusLabel,
+  SESSION_MODE_LABELS,
 } from '@/lib/admin-format';
 import { formatLongDate } from '@/lib/dates';
+import { selectionLabel } from '@/lib/selection';
 import {
   AmountInput,
   Badge,
@@ -36,11 +38,11 @@ import {
 
 type Mode = 'view' | 'pay' | 'cancel' | 'refund';
 
-const NOTIFICATION_STATUS = {
-  PENDING: { label: 'En attente', tone: 'warning' },
-  SENDING: { label: 'En cours', tone: 'warning' },
-  SENT: { label: 'Envoyé', tone: 'success' },
-  FAILED: { label: 'Échec', tone: 'danger' },
+const NOTIFICATION_TONE = {
+  PENDING: 'warning',
+  SENDING: 'warning',
+  SENT: 'success',
+  FAILED: 'danger',
 } as const;
 
 /** Booking detail in a side panel, with the actions the signed-in admin may take. */
@@ -54,6 +56,9 @@ export function BookingDrawer({
   onChanged: () => void;
 }) {
   const toast = useToast();
+  const { t, locale } = useI18n();
+  const money = (n: number) => formatXof(n, locale);
+  const when = (iso: string) => formatDateTime(iso, undefined, locale);
   const [booking, setBooking] = useState<AdminBookingDetail | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [mode, setMode] = useState<Mode>('view');
@@ -99,7 +104,7 @@ export function BookingDrawer({
     setFormError(null);
     if (next === 'cancel' && booking) {
       const paid = booking.payments.find((p) => p.status === 'SUCCEEDED')?.amountXof ?? 0;
-      setRefund(formatAmountInput(paid));
+      setRefund(formatAmountInput(paid, locale));
       setReason('');
     }
     setMode(next);
@@ -132,7 +137,7 @@ export function BookingDrawer({
           channel: method === 'MOBILE_MONEY' ? channel : null,
           note: payNote.trim() || null,
         }),
-      'Paiement enregistré.',
+      t('drawer.paymentSaved'),
     );
   }
 
@@ -140,17 +145,17 @@ export function BookingDrawer({
     e.preventDefault();
     if (!booking) return;
     if (!reason.trim()) {
-      setFormError('Indiquez le motif de l’annulation.');
+      setFormError(t('drawer.reasonRequired'));
       return;
     }
     const amount = refund.trim() === '' ? 0 : parseAmount(refund);
     if (amount === null) {
-      setFormError('Montant à rembourser invalide.');
+      setFormError(t('drawer.badRefund'));
       return;
     }
     void run(
       () => adminApi.cancelBooking(booking.id, { reason: reason.trim(), refundAmountXof: amount }),
-      'Réservation annulée, créneaux libérés.',
+      t('drawer.cancelled'),
     );
   }
 
@@ -159,7 +164,7 @@ export function BookingDrawer({
     if (!booking) return;
     void run(
       () => adminApi.markRefunded(booking.id, refundNote.trim() || null),
-      'Remboursement enregistré.',
+      t('drawer.refundSaved'),
     );
   }
 
@@ -167,7 +172,7 @@ export function BookingDrawer({
     setBusy(true);
     try {
       await adminApi.retryNotification(id);
-      toast('E-mail remis dans la file d’envoi.');
+      toast(t('drawer.emailQueued'));
       setReload((r) => r + 1);
     } catch (err) {
       toast(errorMessage(err), true);
@@ -178,10 +183,10 @@ export function BookingDrawer({
 
   function saveNote() {
     if (!booking) return;
-    void run(() => adminApi.updateNote(booking.id, note.trim() || null), 'Note enregistrée.');
+    void run(() => adminApi.updateNote(booking.id, note.trim() || null), t('drawer.noteSaved'));
   }
 
-  const status = booking ? bookingStatus(booking) : null;
+  const status = booking ? bookingStatus(booking, t, locale) : null;
   const paid = booking?.payments.find((p) => p.status === 'SUCCEEDED');
 
   const footer =
@@ -189,17 +194,17 @@ export function BookingDrawer({
       <>
         {booking.can.markRefunded ? (
           <button type="button" className={styles.btn} onClick={() => startMode('refund')}>
-            Marquer comme remboursée
+            {t('drawer.markRefunded')}
           </button>
         ) : null}
         {booking.can.recordPayment ? (
           <button type="button" className={styles.btn} onClick={() => startMode('pay')}>
-            Enregistrer le paiement
+            {t('drawer.recordPayment')}
           </button>
         ) : null}
         {booking.can.cancel ? (
           <button type="button" className={styles.btnSecondary} onClick={() => startMode('cancel')}>
-            Annuler la réservation
+            {t('drawer.cancelBooking')}
           </button>
         ) : null}
       </>
@@ -209,7 +214,7 @@ export function BookingDrawer({
     <Dialog
       open={bookingId !== null}
       onClose={onClose}
-      title={booking ? `Réservation ${booking.reference}` : 'Réservation'}
+      title={booking ? t('drawer.title', { ref: booking.reference }) : t('drawer.titleShort')}
       footer={footer}
     >
       {error ? (
@@ -221,16 +226,16 @@ export function BookingDrawer({
           <div className={styles.actions}>
             <Badge tone={status!.tone}>{status!.label}</Badge>
             <Badge tone="neutral">
-              {booking.source === 'ADMIN' ? 'Ajoutée par le studio' : 'En ligne'}
+              {booking.source === 'ADMIN' ? t('drawer.byStudio') : t('drawer.online')}
             </Badge>
           </div>
 
           {mode === 'pay' ? (
             <form className={styles.section} onSubmit={submitPayment}>
               <h3 className={styles.sectionTitle}>
-                Enregistrer le paiement · {formatXof(booking.totalXof)}
+                {t('drawer.recordTitle', { amount: money(booking.totalXof) })}
               </h3>
-              <Field label="Moyen de paiement">
+              <Field label={t('drawer.method')}>
                 {(p) => (
                   <select
                     {...p}
@@ -240,14 +245,14 @@ export function BookingDrawer({
                   >
                     {PAYMENT_METHODS.map((m) => (
                       <option key={m} value={m}>
-                        {PAYMENT_METHOD_LABELS_FR[m]}
+                        {PAYMENT_METHOD_LABELS[locale][m]}
                       </option>
                     ))}
                   </select>
                 )}
               </Field>
               {method === 'MOBILE_MONEY' ? (
-                <Field label="Opérateur">
+                <Field label={t('drawer.operator')}>
                   {(p) => (
                     <select
                       {...p}
@@ -257,15 +262,12 @@ export function BookingDrawer({
                     >
                       <option value="TMONEY">T-Money</option>
                       <option value="FLOOZ">Flooz</option>
-                      <option value="OTHER">Autre</option>
+                      <option value="OTHER">{t('drawer.other')}</option>
                     </select>
                   )}
                 </Field>
               ) : null}
-              <Field
-                label="Note (facultatif)"
-                hint="Par exemple&nbsp;: numéro de transaction, reçu…"
-              >
+              <Field label={t('drawer.noteOptional')} hint={t('drawer.noteHint')}>
                 {(p) => (
                   <input
                     {...p}
@@ -282,14 +284,14 @@ export function BookingDrawer({
               ) : null}
               <div className={styles.formActions}>
                 <button type="submit" className={styles.btn} disabled={busy}>
-                  {busy ? 'Enregistrement…' : 'Confirmer le paiement'}
+                  {busy ? t('drawer.saving') : t('drawer.confirmPayment')}
                 </button>
                 <button
                   type="button"
                   className={styles.btnSecondary}
                   onClick={() => setMode('view')}
                 >
-                  Retour
+                  {t('drawer.back')}
                 </button>
               </div>
             </form>
@@ -297,12 +299,12 @@ export function BookingDrawer({
 
           {mode === 'cancel' ? (
             <form className={styles.section} onSubmit={submitCancel}>
-              <h3 className={styles.sectionTitle}>Annuler la réservation</h3>
+              <h3 className={styles.sectionTitle}>{t('drawer.cancelBooking')}</h3>
               <p className={styles.note}>
-                Les créneaux seront libérés immédiatement.
-                {booking.customer.email ? ' Le client sera prévenu par e-mail.' : ''}
+                {t('drawer.cancelNote')}
+                {booking.customer.email ? t('drawer.cancelEmail') : ''}
               </p>
-              <Field label="Motif (visible dans l’historique)">
+              <Field label={t('drawer.reason')}>
                 {(p) => (
                   <textarea
                     {...p}
@@ -314,13 +316,13 @@ export function BookingDrawer({
               </Field>
               {paid ? (
                 <Field
-                  label="Montant à rembourser"
-                  hint={`Payé\u00a0: ${formatXof(paid.amountXof)}. Mettez 0 si rien n’est remboursé.`}
+                  label={t('drawer.refundAmount')}
+                  hint={t('drawer.refundHint', { amount: money(paid.amountXof) })}
                 >
                   {(p) => <AmountInput {...p} value={refund} onChange={setRefund} />}
                 </Field>
               ) : (
-                <p className={styles.note}>Aucun paiement reçu&nbsp;: rien à rembourser.</p>
+                <p className={styles.note}>{t('drawer.nothingPaid')}</p>
               )}
               {formError ? (
                 <div className={styles.banner} role="alert">
@@ -329,14 +331,14 @@ export function BookingDrawer({
               ) : null}
               <div className={styles.formActions}>
                 <button type="submit" className={styles.btnDanger} disabled={busy}>
-                  {busy ? 'Annulation…' : 'Confirmer l’annulation'}
+                  {busy ? t('drawer.cancelling') : t('drawer.confirmCancel')}
                 </button>
                 <button
                   type="button"
                   className={styles.btnSecondary}
                   onClick={() => setMode('view')}
                 >
-                  Retour
+                  {t('drawer.back')}
                 </button>
               </div>
             </form>
@@ -345,16 +347,15 @@ export function BookingDrawer({
           {mode === 'refund' ? (
             <form className={styles.section} onSubmit={submitRefund}>
               <h3 className={styles.sectionTitle}>
-                Remboursement de {formatXof(booking.refund.amountXof ?? 0)}
+                {t('drawer.refundTitle', { amount: money(booking.refund.amountXof ?? 0) })}
               </h3>
               <p className={styles.note}>
-                Confirmez une fois l’argent rendu au client ({booking.customer.fullName},{' '}
-                {formatPhone(booking.customer.phone)}).
+                {t('drawer.refundConfirm', {
+                  name: booking.customer.fullName,
+                  phone: formatPhone(booking.customer.phone),
+                })}
               </p>
-              <Field
-                label="Commentaire (facultatif)"
-                hint="Par exemple&nbsp;: «&nbsp;Renvoyé par T-Money, réf. 123&nbsp;»."
-              >
+              <Field label={t('drawer.comment')} hint={t('drawer.commentHint')}>
                 {(p) => (
                   <input
                     {...p}
@@ -371,14 +372,14 @@ export function BookingDrawer({
               ) : null}
               <div className={styles.formActions}>
                 <button type="submit" className={styles.btn} disabled={busy}>
-                  {busy ? 'Enregistrement…' : 'Remboursement effectué'}
+                  {busy ? t('drawer.saving') : t('drawer.refundDone')}
                 </button>
                 <button
                   type="button"
                   className={styles.btnSecondary}
                   onClick={() => setMode('view')}
                 >
-                  Retour
+                  {t('drawer.back')}
                 </button>
               </div>
             </form>
@@ -386,57 +387,54 @@ export function BookingDrawer({
 
           {booking.refund.status === 'DUE' && mode === 'view' ? (
             <div className={styles.banner}>
-              À rembourser : {formatXof(booking.refund.amountXof ?? 0)}
+              {t('drawer.toRefund', { amount: money(booking.refund.amountXof ?? 0) })}
             </div>
           ) : null}
 
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Séance</h3>
+            <h3 className={styles.sectionTitle}>{t('drawer.session')}</h3>
             <dl className={styles.dl}>
-              <dt>Date</dt>
-              <dd>{formatLongDate(booking.date, true)}</dd>
-              <dt>Horaire</dt>
+              <dt>{t('drawer.date')}</dt>
+              <dd>{formatLongDate(booking.date, true, locale)}</dd>
+              <dt>{t('drawer.time')}</dt>
               <dd>
                 {booking.bookingType === 'PACKAGE'
                   ? `${booking.startTime} – ${booking.endTime}`
                   : booking.slots.map((s) => `${s.startTime}–${s.endTime}`).join(', ')}
               </dd>
-              <dt>Formule</dt>
-              <dd>
-                {booking.packageName ??
-                  `${booking.slotCount} créneau${booking.slotCount > 1 ? 'x' : ''}`}
-              </dd>
-              <dt>Mode</dt>
-              <dd>{SESSION_MODE_LABELS_FR[booking.mode]}</dd>
-              <dt>Espace</dt>
+              <dt>{t('drawer.formula')}</dt>
+              <dd>{selectionLabel(booking, t)}</dd>
+              <dt>{t('drawer.mode')}</dt>
+              <dd>{SESSION_MODE_LABELS[locale][booking.mode]}</dd>
+              <dt>{t('drawer.space')}</dt>
               <dd>{booking.spaceName}</dd>
             </dl>
           </section>
 
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Client</h3>
+            <h3 className={styles.sectionTitle}>{t('drawer.client')}</h3>
             <dl className={styles.dl}>
-              <dt>Nom</dt>
+              <dt>{t('drawer.name')}</dt>
               <dd>{booking.customer.fullName}</dd>
-              <dt>Entreprise</dt>
+              <dt>{t('drawer.business')}</dt>
               <dd>
                 {booking.customer.businessName} · {booking.customer.businessSector}
               </dd>
-              <dt>Téléphone</dt>
+              <dt>{t('drawer.phone')}</dt>
               <dd>
                 <a href={`tel:${booking.customer.phone}`}>{formatPhone(booking.customer.phone)}</a>
               </dd>
-              <dt>E-mail</dt>
+              <dt>{t('drawer.email')}</dt>
               <dd>
                 {booking.customer.email ? (
                   <a href={`mailto:${booking.customer.email}`}>{booking.customer.email}</a>
                 ) : (
-                  <span className={styles.muted}>Non renseigné</span>
+                  <span className={styles.muted}>{t('drawer.notGiven')}</span>
                 )}
               </dd>
               {booking.liveDescription ? (
                 <>
-                  <dt>Le live</dt>
+                  <dt>{t('drawer.live')}</dt>
                   <dd>{booking.liveDescription}</dd>
                 </>
               ) : null}
@@ -444,36 +442,36 @@ export function BookingDrawer({
           </section>
 
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Paiement</h3>
+            <h3 className={styles.sectionTitle}>{t('drawer.payment')}</h3>
             <dl className={styles.dl}>
               {booking.discountXof > 0 ? (
                 <>
-                  <dt>Prix à l’unité</dt>
-                  <dd>{formatXof(booking.listPriceXof)}</dd>
-                  <dt>Réduction</dt>
-                  <dd>−{formatXof(booking.discountXof)}</dd>
+                  <dt>{t('drawer.unitPrice')}</dt>
+                  <dd>{money(booking.listPriceXof)}</dd>
+                  <dt>{t('drawer.discount')}</dt>
+                  <dd>−{money(booking.discountXof)}</dd>
                 </>
               ) : null}
-              <dt>Total</dt>
+              <dt>{t('drawer.total')}</dt>
               <dd>
-                <strong>{formatXof(booking.totalXof)}</strong>
+                <strong>{money(booking.totalXof)}</strong>
               </dd>
-              <dt>État</dt>
-              <dd>{paymentStateLabel(booking.paymentState)}</dd>
+              <dt>{t('drawer.state')}</dt>
+              <dd>{paymentStateLabel(booking.paymentState, t)}</dd>
             </dl>
             {booking.payments.length > 0 ? (
               <ul className={styles.timeline}>
                 {booking.payments.map((p) => (
                   <li key={p.id}>
                     <span>
-                      {paymentMethodLabel(p.method, p.channel)} · {formatXof(p.amountXof)} ·{' '}
-                      <Badge tone={PAYMENT_STATUS_LABELS[p.status].tone}>
-                        {PAYMENT_STATUS_LABELS[p.status].label}
+                      {paymentMethodLabel(p.method, p.channel, locale)} · {money(p.amountXof)} ·{' '}
+                      <Badge tone={paymentStatusLabel(p.status, t).tone}>
+                        {paymentStatusLabel(p.status, t).label}
                       </Badge>
                     </span>
                     <span className={styles.cellSub}>
-                      {formatDateTime(p.succeededAt ?? p.createdAt)}
-                      {p.recordedBy ? ` · enregistré par ${p.recordedBy}` : ''}
+                      {when(p.succeededAt ?? p.createdAt)}
+                      {p.recordedBy ? t('drawer.recordedBy', { name: p.recordedBy }) : ''}
                       {p.note ? ` · ${p.note}` : ''}
                     </span>
                   </li>
@@ -482,9 +480,9 @@ export function BookingDrawer({
             ) : null}
             {booking.refund.status === 'DONE' ? (
               <p className={styles.note}>
-                Remboursé : {formatXof(booking.refund.amountXof ?? 0)}
+                {t('drawer.refunded', { amount: money(booking.refund.amountXof ?? 0) })}
                 {booking.refund.refundedAt
-                  ? ` le ${formatDateTime(booking.refund.refundedAt)}`
+                  ? t('drawer.on', { when: when(booking.refund.refundedAt) })
                   : ''}
                 {booking.refund.note ? ` · ${booking.refund.note}` : ''}
               </p>
@@ -493,10 +491,10 @@ export function BookingDrawer({
 
           {booking.cancelledAt ? (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Annulation</h3>
+              <h3 className={styles.sectionTitle}>{t('drawer.cancellation')}</h3>
               <p className={styles.note}>
-                {formatDateTime(booking.cancelledAt)}
-                {booking.cancelledBy ? ` par ${booking.cancelledBy}` : ''}
+                {when(booking.cancelledAt)}
+                {booking.cancelledBy ? t('drawer.by', { name: booking.cancelledBy }) : ''}
                 {booking.cancelledBy && booking.cancelReason ? ` · ${booking.cancelReason}` : ''}
               </p>
             </section>
@@ -504,24 +502,24 @@ export function BookingDrawer({
 
           {booking.notifications.length > 0 ? (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>E-mails</h3>
+              <h3 className={styles.sectionTitle}>{t('drawer.emails')}</h3>
               <ul className={styles.timeline}>
                 {booking.notifications.map((n) => (
                   <li key={n.id}>
                     <span>
                       {n.label} · {n.recipient}{' '}
-                      <Badge tone={NOTIFICATION_STATUS[n.status].tone}>
-                        {NOTIFICATION_STATUS[n.status].label}
+                      <Badge tone={NOTIFICATION_TONE[n.status]}>
+                        {t(`drawer.notif.${n.status}` as TKey)}
                       </Badge>
                     </span>
                     <span className={styles.cellSub}>
                       {n.sentAt
-                        ? `Envoyé le ${formatDateTime(n.sentAt)}`
+                        ? t('drawer.sentOn', { when: when(n.sentAt) })
                         : n.status === 'FAILED'
-                          ? `Échec après ${n.attempts} tentative${n.attempts > 1 ? 's' : ''}`
+                          ? t('drawer.failedAfter', { count: n.attempts })
                           : n.attempts > 0
-                            ? `Nouvelle tentative prévue (${n.attempts} échec${n.attempts > 1 ? 's' : ''})`
-                            : 'En file d’attente'}
+                            ? t('drawer.retryPlanned', { count: n.attempts })
+                            : t('drawer.queued')}
                       {n.lastError && n.status !== 'SENT' ? ` · ${n.lastError}` : ''}
                     </span>
                     {n.status === 'FAILED' ? (
@@ -532,7 +530,7 @@ export function BookingDrawer({
                           onClick={() => retryEmail(n.id)}
                           disabled={busy}
                         >
-                          Renvoyer
+                          {t('drawer.resend')}
                         </button>
                       </span>
                     ) : null}
@@ -543,13 +541,13 @@ export function BookingDrawer({
           ) : null}
 
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Note interne</h3>
+            <h3 className={styles.sectionTitle}>{t('drawer.internalNote')}</h3>
             <textarea
               className={styles.textarea}
-              aria-label="Note interne (visible uniquement par le studio)"
+              aria-label={t('drawer.internalLabel')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Visible uniquement par l’équipe du studio"
+              placeholder={t('drawer.internalPlaceholder')}
             />
             {note !== (booking.adminNote ?? '') ? (
               <div>
@@ -559,25 +557,25 @@ export function BookingDrawer({
                   onClick={saveNote}
                   disabled={busy}
                 >
-                  Enregistrer la note
+                  {t('drawer.saveNote')}
                 </button>
               </div>
             ) : null}
           </section>
 
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Historique</h3>
+            <h3 className={styles.sectionTitle}>{t('drawer.history')}</h3>
             <ul className={styles.timeline}>
               {booking.history.map((h, i) => (
                 <li key={i}>
                   <span>{h.label}</span>
                   <span className={styles.cellSub}>
-                    {formatDateTime(h.at)} · {h.actor}
+                    {when(h.at)} · {h.actor}
                   </span>
                 </li>
               ))}
               {booking.createdBy && booking.history.length === 0 ? (
-                <li>Ajoutée par {booking.createdBy}</li>
+                <li>{t('drawer.addedBy', { name: booking.createdBy })}</li>
               ) : null}
             </ul>
           </section>

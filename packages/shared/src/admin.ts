@@ -48,6 +48,8 @@ export interface AdminSpaceDto {
   id: number;
   slug: string;
   name: string;
+  /** English name, shown on the English site (null: the French name is used). */
+  nameEn: string | null;
   address: string | null;
   timezone: string;
   slotDurationMin: number;
@@ -64,6 +66,7 @@ export type AdminSpaceUpdate = Partial<
   Pick<
     AdminSpaceDto,
     | 'name'
+    | 'nameEn'
     | 'address'
     | 'minLeadMin'
     | 'horizonDays'
@@ -77,6 +80,7 @@ export type AdminSpaceUpdate = Partial<
 
 export interface AdminSpaceCreate {
   name: string;
+  nameEn?: string | null;
   address?: string | null;
   inPersonEnabled: boolean;
   virtualEnabled: boolean;
@@ -148,6 +152,8 @@ export interface AdminPackageDto {
   id: number;
   code: string;
   name: string;
+  /** English name, shown on the English site (null: the French name is used). */
+  nameEn: string | null;
   description: string | null;
   isFullDay: boolean;
   /** Null for the full-day package (it covers the whole day). */
@@ -168,6 +174,7 @@ export interface AdminPackagesResponse {
 
 export interface AdminPackageInput {
   name: string;
+  nameEn?: string | null;
   description?: string | null;
   isFullDay?: boolean;
   slotCount?: number | null;

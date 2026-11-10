@@ -41,6 +41,7 @@ import type { AdminPrincipal } from './auth/admin-auth.service';
 
 const spaceCreateSchema = z.object({
   name: requiredText('Le nom de l’espace', 120),
+  nameEn: optionalText(120),
   address: optionalText(255),
   inPersonEnabled: z.boolean(),
   virtualEnabled: z.boolean(),
@@ -49,6 +50,7 @@ const spaceCreateSchema = z.object({
 const spaceUpdateSchema = z
   .object({
     name: requiredText('Le nom de l’espace', 120),
+    nameEn: optionalText(120),
     address: optionalText(255),
     minLeadMin: z
       .number()
@@ -132,6 +134,7 @@ const price = z
 const pricesSchema = z.object({ IN_PERSON: price.optional(), VIRTUAL: price.optional() }).strict();
 const packageCreateSchema = z.object({
   name: requiredText('Le nom du forfait', 120),
+  nameEn: optionalText(120),
   description: optionalText(255),
   isFullDay: z.boolean().optional(),
   slotCount: z.number().int().min(1).max(20).nullish(),

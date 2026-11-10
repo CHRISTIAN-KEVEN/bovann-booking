@@ -11,7 +11,9 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
+import { useI18n } from '@/i18n/I18nProvider';
 import { ApiError } from '@/lib/api';
+import { getApiLocale } from '@/lib/api-locale';
 import type { Tone } from '@/lib/admin-format';
 import { Icon } from '../icons';
 import styles from './admin.module.css';
@@ -205,6 +207,7 @@ export function Dialog({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   useEffect(() => {
@@ -239,7 +242,12 @@ export function Dialog({
             <h2 id={titleId} className={styles.dialogTitle}>
               {title}
             </h2>
-            <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Fermer">
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={onClose}
+              aria-label={t('adminUi.close')}
+            >
               <Icon name="close" size={16} />
             </button>
           </div>
@@ -262,15 +270,14 @@ export function Pagination({
   total: number;
   onPage: (page: number) => void;
 }) {
+  const { t } = useI18n();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (total <= pageSize) return null;
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(total, page * pageSize);
   return (
-    <nav className={styles.pagination} aria-label="Pages">
-      <span>
-        {from}–{to} sur {total}
-      </span>
+    <nav className={styles.pagination} aria-label={t('adminUi.pages')}>
+      <span>{t('adminUi.range', { from, to, total })}</span>
       <div className={styles.actions}>
         <button
           type="button"
@@ -278,7 +285,7 @@ export function Pagination({
           disabled={page <= 1}
           onClick={() => onPage(page - 1)}
         >
-          Précédent
+          {t('adminUi.previous')}
         </button>
         <button
           type="button"
@@ -286,7 +293,7 @@ export function Pagination({
           disabled={page >= pages}
           onClick={() => onPage(page + 1)}
         >
-          Suivant
+          {t('adminUi.next')}
         </button>
       </div>
     </nav>
@@ -303,27 +310,31 @@ export function Empty({ children, action }: { children: ReactNode; action?: Reac
 }
 
 export function LoadError({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  const { t } = useI18n();
   return (
     <div className={styles.empty} role="alert">
       <span>{errorMessage(error)}</span>
       <button type="button" className={styles.btnSecondary} onClick={onRetry}>
-        Réessayer
+        {t('adminUi.retry')}
       </button>
     </div>
   );
 }
 
-export function Loading({ label = 'Chargement…' }: { label?: string }) {
+export function Loading({ label }: { label?: string }) {
+  const { t } = useI18n();
   return (
     <div className={styles.empty} role="status">
-      {label}
+      {label ?? t('adminUi.loading')}
     </div>
   );
 }
 
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
-  return 'Une erreur est survenue. Réessayez.';
+  return getApiLocale() === 'en'
+    ? 'Something went wrong. Try again.'
+    : 'Une erreur est survenue. Réessayez.';
 }
 
 /** Bookings that stop a settings change (409 with details.bookings). */
