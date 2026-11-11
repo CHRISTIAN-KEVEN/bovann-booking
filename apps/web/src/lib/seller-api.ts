@@ -2,6 +2,9 @@ import {
   SELLER_CSRF_HEADER,
   type OtpChannel,
   type SellerCodeResponse,
+  type SellerLiveCreate,
+  type SellerLiveDto,
+  type SellerLivesResponse,
   type SellerMe,
 } from '@bovann/shared';
 import { apiFetch } from './api';
@@ -27,6 +30,10 @@ export const sellerApi = {
     apiFetch<SellerMe>('/seller/auth/verify', send('POST', { phone, code })),
   me: () => apiFetch<SellerMe>('/seller/me', { credentials: 'include' }),
   logout: () => apiFetch<null>('/seller/auth/logout', send('POST')),
+  lives: () => apiFetch<SellerLivesResponse>('/seller/lives', { credentials: 'include' }),
+  submit: (input: SellerLiveCreate) =>
+    apiFetch<SellerLiveDto>('/seller/lives', send('POST', input)),
+  end: (id: number) => apiFetch<SellerLiveDto>(`/seller/lives/${id}/end`, send('POST')),
 };
 
 /** Only paths on our own site are accepted as "where to go after sign-in". */

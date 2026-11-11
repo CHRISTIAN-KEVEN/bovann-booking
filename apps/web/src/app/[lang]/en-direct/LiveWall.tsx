@@ -6,6 +6,7 @@ import {
   type LiveCategoryDto,
   type LiveDto,
   type LivePlatform,
+  type ReviewStatus,
 } from '@bovann/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CategoryIcon } from '@/components/lives/CategoryIcon';
@@ -13,7 +14,7 @@ import { Flag } from '@/components/lives/Flag';
 import { LiveCard, LiveCardSkeleton } from '@/components/lives/LiveCard';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import { useI18n, type TKey } from '@/i18n/I18nProvider';
+import { Link, useI18n, type TKey } from '@/i18n/I18nProvider';
 import { api } from '@/lib/api';
 import {
   applyFilters,
@@ -21,6 +22,8 @@ import {
   filtersFromSearch,
   hasFilters,
   liveNow,
+  lomeTime,
+  nextOpening,
   NO_FILTERS,
   OTHER_CATEGORY,
   searchFromFilters,
@@ -34,7 +37,7 @@ const REFRESH_MS = 60_000;
 type Load =
   | { state: 'loading' }
   | { state: 'error' }
-  | { state: 'ready'; lives: LiveDto[]; categories: LiveCategoryDto[] };
+  | { state: 'ready'; lives: LiveDto[]; categories: LiveCategoryDto[]; review: ReviewStatus };
 
 /**
  * "En direct": every live on now. Filters by country, platform and category; the choice is kept
@@ -51,7 +54,12 @@ export function LiveWall() {
   const fetchWall = useCallback(async () => {
     try {
       const wall = await api.lives();
-      setLoad({ state: 'ready', lives: wall.lives, categories: wall.categories });
+      setLoad({
+        state: 'ready',
+        lives: wall.lives,
+        categories: wall.categories,
+        review: wall.review,
+      });
       setNow(Date.now());
     } catch {
       setLoad((current) => (current.state === 'ready' ? current : { state: 'error' }));
@@ -113,6 +121,20 @@ export function LiveWall() {
     closeSheet();
   };
 
+  const review = load.state === 'ready' ? load.review : null;
+  const reviewLine = !review
+    ? null
+    : review.open && review.closesAt
+      ? t('lives.reviewOpen', { time: lomeTime(review.closesAt, locale) })
+      : review.nextOpensAt
+        ? (() => {
+            const next = nextOpening(review.nextOpensAt, now, locale, t);
+            return t('lives.reviewClosed', {
+              when: next.day ? `${next.day} ${next.time}` : next.time,
+            });
+          })()
+        : t('lives.reviewNone');
+
   const heading = filters.country ? countryName(filters.country) : t('lives.everywhere');
 
   return (
@@ -121,17 +143,35 @@ export function LiveWall() {
       <main>
         <section className={styles.hero}>
           <div className={styles.heroInner}>
-            {lives.length > 0 && (
-              <p className={styles.count}>
-                <span className={styles.pulse} aria-hidden="true" />
-                {t('lives.liveCount', { count: lives.length })}
+            <div className={styles.heroText}>
+              {lives.length > 0 && (
+                <p className={styles.count}>
+                  <span className={styles.pulse} aria-hidden="true" />
+                  {t('lives.liveCount', { count: lives.length })}
+                </p>
+              )}
+              <h1 className={styles.title}>{t('lives.title')}</h1>
+              <p className={styles.lead}>
+                <span className={styles.narrowOnly}>{t('lives.lead')}</span>
+                <span className={styles.wideOnly}>{t('lives.leadWide')}</span>
               </p>
-            )}
-            <h1 className={styles.title}>{t('lives.title')}</h1>
-            <p className={styles.lead}>
-              <span className={styles.narrowOnly}>{t('lives.lead')}</span>
-              <span className={styles.wideOnly}>{t('lives.leadWide')}</span>
-            </p>
+            </div>
+            {/* Computers: a card in the hero. Phones: the sticky button at the bottom. */}
+            <aside className={styles.postCard}>
+              <div className={styles.postHead}>
+                <span className={styles.postIcon} aria-hidden="true">
+                  <BroadcastIcon />
+                </span>
+                <div>
+                  <strong className={styles.postTitle}>{t('lives.youLive')}</strong>
+                  <span className={styles.postText}>{t('lives.showEveryone')}</span>
+                </div>
+              </div>
+              <Link href="/en-direct/publier" className={styles.postButton}>
+                {t('lives.post')}
+              </Link>
+              {reviewLine ? <span className={styles.postReview}>{reviewLine}</span> : null}
+            </aside>
           </div>
         </section>
 
@@ -319,6 +359,12 @@ export function LiveWall() {
           )}
         </div>
       </main>
+      <div className={styles.stickyPost}>
+        <Link href="/en-direct/publier" className={styles.postButtonBig}>
+          <BroadcastIcon />
+          {t('lives.post')}
+        </Link>
+      </div>
       <SiteFooter />
 
       <dialog
@@ -398,5 +444,23 @@ export function LiveWall() {
         )}
       </dialog>
     </div>
+  );
+}
+
+function BroadcastIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="2.2" />
+      <path d="M7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2" />
+    </svg>
   );
 }

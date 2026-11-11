@@ -10,8 +10,9 @@ import {
   type AdminLiveDto,
   type AdminLiveTab,
   type LiveCategoryDto,
+  type ReviewPeriod,
 } from '@bovann/shared';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAdmin } from '@/components/admin/AdminShell';
 import {
   adminStyles as styles,
@@ -25,6 +26,7 @@ import {
   Loading,
   PageHeader,
   Tabs,
+  TimeSelect,
   useAsync,
   useToast,
 } from '@/components/admin/ui';
@@ -33,17 +35,81 @@ import { Flag } from '@/components/lives/Flag';
 import { Icon } from '@/components/icons';
 import { Link, useI18n, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
-import { CATEGORY_HUES, initialsOf, OTHER_CATEGORY } from '@/lib/lives';
+import { weekdayNames } from '@/lib/dates';
+import { formatPhone } from '@/lib/admin-format';
+import { CATEGORY_HUES, initialsOf, lomeTime, nextOpening, OTHER_CATEGORY } from '@/lib/lives';
 import local from './lives.module.css';
 
 /** "Lives": what is on the "En direct" page now, and listing a live for a seller. */
+type View = AdminLiveTab | 'hours';
+
 export default function AdminLivesPage() {
-  const { t } = useI18n();
-  const [tab, setTab] = useState<AdminLiveTab>('online');
+  const { t, locale } = useI18n();
+  const { refreshCounters } = useAdmin();
+  const toast = useToast();
+  const [tab, setTab] = useState<View>('pending');
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<AdminLiveDto | null>(null);
-  const list = useAsync(() => adminApi.lives(tab), tab);
+  const [rejecting, setRejecting] = useState<AdminLiveDto | null>(null);
+  const [approving, setApproving] = useState<number | null>(null);
+  const [loadedAt, setLoadedAt] = useState(() => Date.now());
+  const [now, setNow] = useState(() => Date.now());
+  const listTab: AdminLiveTab = tab === 'hours' ? 'pending' : tab;
+  const list = useAsync(() => adminApi.lives(listTab), listTab);
   const categories = useAsync(() => adminApi.liveCategories(), 'categories');
+  const { reload } = list;
+
+  useEffect(() => {
+    if (list.data) setLoadedAt(Date.now());
+  }, [list.data]);
+
+  // The review queue refreshes by itself (sellers post at any moment during review hours).
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 1000);
+    const refresh = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && listTab === 'pending') {
+        reload();
+        refreshCounters();
+      }
+    }, 20_000);
+    return () => {
+      window.clearInterval(tick);
+      window.clearInterval(refresh);
+    };
+  }, [listTab, reload, refreshCounters]);
+
+  async function approve(live: AdminLiveDto) {
+    setApproving(live.id);
+    try {
+      await adminApi.approveLive(live.id);
+      toast(t('adminLives.approved', { name: live.sellerName }));
+    } catch (error) {
+      toast(errorMessage(error), true);
+    } finally {
+      setApproving(null);
+      reload();
+      refreshCounters();
+    }
+  }
+
+  const review = list.data?.review;
+  const reviewChip = !review ? null : review.open && review.closesAt ? (
+    <span className={cx(local.reviewChip, local.reviewOpen)}>
+      <span className={local.reviewDot} />
+      {t('adminLives.reviewOpen', { time: lomeTime(review.closesAt, locale) })}
+    </span>
+  ) : (
+    <span className={local.reviewChip}>
+      {review.nextOpensAt
+        ? (() => {
+            const next = nextOpening(review.nextOpensAt, now, locale, t);
+            return t('adminLives.reviewClosed', {
+              when: next.day ? `${next.day} ${next.time}` : next.time,
+            });
+          })()
+        : t('adminLives.reviewNone')}
+    </span>
+  );
 
   return (
     <>
@@ -63,21 +129,38 @@ export default function AdminLivesPage() {
         }
       />
 
+      <div className={local.statusRow}>
+        {reviewChip}
+        {tab === 'pending' && list.data ? (
+          <span className={local.refreshed}>
+            {t('adminLives.refreshed', { s: Math.max(0, Math.round((now - loadedAt) / 1000)) })}
+          </span>
+        ) : null}
+      </div>
+
       <Tabs
         label={t('adminLives.tabs')}
         value={tab}
         onChange={setTab}
         options={[
           {
+            value: 'pending',
+            label: t('adminLives.pending'),
+            count: list.data?.pendingCount,
+          },
+          {
             value: 'online',
             label: t('adminLives.online'),
             count: tab === 'online' ? list.data?.lives.length : undefined,
           },
           { value: 'past', label: t('adminLives.past') },
+          { value: 'hours', label: t('adminLives.hours') },
         ]}
       />
 
-      {list.error ? (
+      {tab === 'hours' ? (
+        <ReviewHoursEditor />
+      ) : list.error ? (
         <LoadError error={list.error} onRetry={list.reload} />
       ) : !list.data ? (
         <Loading />
@@ -91,7 +174,11 @@ export default function AdminLivesPage() {
             ) : undefined
           }
         >
-          {tab === 'online' ? t('adminLives.empty') : t('adminLives.emptyPast')}
+          {tab === 'pending'
+            ? t('adminLives.emptyPending')
+            : tab === 'online'
+              ? t('adminLives.empty')
+              : t('adminLives.emptyPast')}
         </Empty>
       ) : (
         <ul className={local.list}>
@@ -99,8 +186,11 @@ export default function AdminLivesPage() {
             <LiveRow
               key={live.id}
               live={live}
-              online={tab === 'online'}
+              mode={tab}
+              busy={approving === live.id}
               onRemove={() => setRemoving(live)}
+              onApprove={() => void approve(live)}
+              onReject={() => setRejecting(live)}
             />
           ))}
         </ul>
@@ -122,6 +212,15 @@ export default function AdminLivesPage() {
         onRemoved={() => {
           setRemoving(null);
           list.reload();
+        }}
+      />
+      <RejectLiveDialog
+        live={rejecting}
+        onClose={() => setRejecting(null)}
+        onRejected={() => {
+          setRejecting(null);
+          list.reload();
+          refreshCounters();
         }}
       />
     </>
@@ -153,13 +252,21 @@ function useTime() {
 
 function LiveRow({
   live,
-  online,
+  mode,
+  busy,
   onRemove,
+  onApprove,
+  onReject,
 }: {
   live: AdminLiveDto;
-  online: boolean;
+  mode: AdminLiveTab;
+  busy: boolean;
   onRemove: () => void;
+  onApprove: () => void;
+  onReject: () => void;
 }) {
+  const online = mode === 'online';
+  const pending = mode === 'pending' && live.status === 'PENDING';
   const { t } = useI18n();
   const fmt = useTime();
   const platform = LIVE_PLATFORM_LABELS[live.platform];
@@ -171,9 +278,12 @@ function LiveRow({
       <div className={local.who}>
         <strong className={local.name}>{live.sellerName}</strong>
         <span className={local.sub}>
-          {online
-            ? `${t('adminLives.startedAt', { time: fmt.time(live.startedAt) })} · ${t('adminLives.until', { time: fmt.time(live.endsAt) })}`
-            : fmt.day(live.startedAt)}
+          {live.sellerPhone ? `${formatPhone(live.sellerPhone)} · ` : ''}
+          {pending
+            ? `${t('adminLives.sentAgo', { time: fmt.time(live.createdAt) })} · ${t('adminLives.durationLabel', { count: live.durationMin / 60 })}`
+            : online
+              ? `${t('adminLives.startedAt', { time: fmt.time(live.startedAt) })} · ${t('adminLives.until', { time: fmt.time(live.endsAt) })}`
+              : fmt.day(live.startedAt || live.createdAt)}
           {live.addedBy ? ` · ${t('adminLives.addedBy', { name: live.addedBy })}` : ''}
         </span>
       </div>
@@ -194,6 +304,17 @@ function LiveRow({
             {live.categoryLabel}
           </span>
         </span>
+        {pending && live.categoryCode === null ? (
+          <span className={local.newCategory}>
+            {t('adminLives.newCategory', { name: live.categoryLabel })}
+          </span>
+        ) : null}
+        {live.status === 'REJECTED' && live.rejectReason ? (
+          <span className={local.sub}>
+            {live.reviewedBy ? `${live.reviewedBy} · ` : ''}
+            {live.rejectReason}
+          </span>
+        ) : null}
         {!online && live.status !== 'APPROVED' && live.endedBy ? (
           <span className={local.sub}>
             {t('adminLives.removedBy', { name: live.endedBy })}
@@ -202,7 +323,7 @@ function LiveRow({
         ) : null}
       </div>
       <div className={local.actions}>
-        {!online && (
+        {mode === 'past' && (
           <Badge tone={live.status === 'REMOVED' ? 'danger' : 'neutral'}>
             {t(`adminLives.status.${live.status}` as TKey)}
           </Badge>
@@ -224,6 +345,26 @@ function LiveRow({
           >
             {t('adminLives.remove')}
           </button>
+        )}
+        {pending && (
+          <>
+            <button
+              type="button"
+              className={cx(styles.btnDanger, styles.btnSmall)}
+              onClick={onReject}
+              disabled={busy}
+            >
+              {t('adminLives.reject')}
+            </button>
+            <button
+              type="button"
+              className={cx(styles.btn, styles.btnSmall, local.approve)}
+              onClick={onApprove}
+              disabled={busy}
+            >
+              {t('adminLives.approve')}
+            </button>
+          </>
         )}
       </div>
     </li>
@@ -591,5 +732,236 @@ function RemoveLiveDialog({
         </div>
       )}
     </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------- reject
+
+const REJECT_REASONS = ['notStarted', 'broken', 'wrongAccount', 'forbidden'] as const;
+
+function RejectLiveDialog({
+  live,
+  onClose,
+  onRejected,
+}: {
+  live: AdminLiveDto | null;
+  onClose: () => void;
+  onRejected: () => void;
+}) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const [reason, setReason] = useState<(typeof REJECT_REASONS)[number] | null>(null);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const close = () => {
+    setReason(null);
+    setMessage('');
+    setError(null);
+    onClose();
+  };
+
+  async function confirm() {
+    if (!live) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await adminApi.rejectLive(live.id, message);
+      toast(t('adminLives.rejectDialog.done', { name: live.sellerName }));
+      setReason(null);
+      setMessage('');
+      onRejected();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={live !== null}
+      onClose={close}
+      variant="modal"
+      title={t('adminLives.rejectDialog.title')}
+      footer={
+        <>
+          <button type="button" className={styles.btnSecondary} onClick={close}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className={styles.btnDanger}
+            onClick={confirm}
+            disabled={saving || message.trim().length < 3}
+          >
+            {t('adminLives.rejectDialog.confirm')}
+          </button>
+        </>
+      }
+    >
+      {live && (
+        <div className={local.form}>
+          <fieldset className={styles.fieldset}>
+            <legend className={styles.legend}>{t('adminLives.rejectDialog.why')}</legend>
+            <div className={styles.chips}>
+              {REJECT_REASONS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={styles.chip}
+                  aria-pressed={reason === r}
+                  onClick={() => {
+                    setReason(r);
+                    setMessage(t(`adminLives.rejectDialog.messages.${r}` as TKey));
+                  }}
+                >
+                  {t(`adminLives.rejectDialog.reasons.${r}` as TKey)}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <Field
+            label={t('adminLives.rejectDialog.message')}
+            hint={t('adminLives.rejectDialog.messageHint')}
+          >
+            {(props) => (
+              <textarea
+                {...props}
+                className={styles.textarea}
+                rows={3}
+                maxLength={255}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+            )}
+          </Field>
+          {error ? (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------- review hours
+
+function ReviewHoursEditor() {
+  const { t, locale } = useI18n();
+  const { isOwner } = useAdmin();
+  const toast = useToast();
+  const hours = useAsync(() => adminApi.reviewHours(), 'review-hours');
+  const [periods, setPeriods] = useState<ReviewPeriod[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const days = weekdayNames(locale);
+
+  useEffect(() => {
+    if (hours.data) setPeriods(hours.data.periods);
+  }, [hours.data]);
+
+  if (hours.error) return <LoadError error={hours.error} onRetry={hours.reload} />;
+  if (!periods) return <Loading />;
+
+  const update = (index: number, patch: Partial<ReviewPeriod>) =>
+    setPeriods((list) => list!.map((p, i) => (i === index ? { ...p, ...patch } : p)));
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      const saved = await adminApi.setReviewHours(periods!);
+      setPeriods(saved.periods);
+      toast(t('adminLives.hoursEditor.saved'));
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={cx(styles.card, local.hours)}>
+      <p className={styles.note}>{t('adminLives.hoursEditor.intro')}</p>
+      {!isOwner ? <p className={styles.note}>{t('adminLives.hoursEditor.ownerOnly')}</p> : null}
+      <ul className={local.days}>
+        {[1, 2, 3, 4, 5, 6, 7].map((weekday) => {
+          const indexed = periods
+            .map((p, index) => ({ p, index }))
+            .filter(({ p }) => p.weekday === weekday);
+          return (
+            <li key={weekday} className={local.day}>
+              <strong className={local.dayName}>{days[weekday - 1]}</strong>
+              <div className={local.dayPeriods}>
+                {indexed.length === 0 ? (
+                  <span className={local.sub}>{t('adminLives.hoursEditor.closedDay')}</span>
+                ) : null}
+                {indexed.map(({ p, index }) => (
+                  <span key={index} className={local.period}>
+                    <TimeSelect
+                      value={p.opensAt}
+                      onChange={(v) => update(index, { opensAt: v })}
+                      disabled={!isOwner}
+                      aria-label={`${days[weekday - 1]} ${t('adminLives.hoursEditor.from')}`}
+                    />
+                    <span aria-hidden="true">{t('adminLives.hoursEditor.to')}</span>
+                    <TimeSelect
+                      value={p.closesAt}
+                      onChange={(v) => update(index, { closesAt: v })}
+                      disabled={!isOwner}
+                      aria-label={`${days[weekday - 1]} ${t('adminLives.hoursEditor.to')}`}
+                    />
+                    {isOwner ? (
+                      <button
+                        type="button"
+                        className={cx(styles.btnGhost, styles.btnSmall)}
+                        aria-label={t('adminLives.hoursEditor.removePeriod', {
+                          from: p.opensAt,
+                          to: p.closesAt,
+                        })}
+                        onClick={() => setPeriods((list) => list!.filter((_, i) => i !== index))}
+                      >
+                        <Icon name="close" size={16} />
+                      </button>
+                    ) : null}
+                  </span>
+                ))}
+                {isOwner ? (
+                  <button
+                    type="button"
+                    className={cx(styles.btnGhost, styles.btnSmall)}
+                    onClick={() =>
+                      setPeriods((list) => [
+                        ...list!,
+                        { weekday, opensAt: '08:00', closesAt: '11:00' },
+                      ])
+                    }
+                  >
+                    <Icon name="plus" size={14} />
+                    {t('adminLives.hoursEditor.addPeriod')}
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {isOwner ? (
+        <div>
+          <button type="button" className={styles.btn} onClick={save} disabled={saving}>
+            {t('adminLives.hoursEditor.save')}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }

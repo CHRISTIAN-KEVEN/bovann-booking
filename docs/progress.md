@@ -493,6 +493,36 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 
 Posting a live (link, country, category, duration), the staff review queue and review hours.
 
+## Live directory, part 3: posting and review (in review)
+
+### Delivered
+
+- **"Publier mon live"** on the wall (bottom of the screen on phones, a card on computers with "Validation ouverte · jusqu’à 18:00").
+- **Posting, one question per screen** (`/en-direct/publier`, sign-in first): paste the link (platform and account read from it, "Où trouver le lien ?" in pictures), the country (one tap, the phone's country pre-selected), the category (one tap, "Autre" opens a field), the duration (1–4 h) and the name, with a preview of the card. Then "C’est envoyé !" with the progress, updated by itself; approved → "Votre live est en ligne !".
+- **Outside review hours:** "L’équipe revient à 15:00", the wait, and today's hours on a bar.
+- **Seller space:** "Publier un live", my lives with their state (en vérification, en ligne jusqu’à…, refusé with the team's message, terminé), "J’ai terminé" and "Retirer".
+- **Admin "Lives":** "À valider" first (approve, or refuse with a ready-made message the seller sees), a counter in the menu, automatic refresh, a review-open chip; "Heures de validation" (administrators edit, the team sees).
+- **Rules:** one request waiting per seller, 5 lives a day, a link can't be waiting or online twice, typed categories flagged to staff.
+
+### Decisions taken in this step (to confirm)
+
+- **Until payment exists, an approved live goes on the wall at once** (the agreed "review first, then pay" comes with passes and payment).
+- **Default review hours:** Monday–Saturday 08:00–11:00 and 15:00–18:00; Sunday closed.
+- **5 lives a day** per seller; one request waiting at a time.
+- The seller sees the answer in the app (no WhatsApp message until there is a provider).
+
+### Tests
+
+- **API (14 new):** request → queue → approve → wall; refusal with message; closed hours and next opening (Sunday → Monday); one request at a time and withdrawal; daily limit; duplicate links; ending early and only one's own live; session and CSRF; review hours (roles, overlap, invalid times, empty week); review-hours rules as unit tests.
+- **Web (5 new):** the four steps with "Autre", link refused, closed screen with the wait, following a waiting request, signed-out seller sent to sign-in.
+- **Totals:** API 245, shared 12, web 78.
+- **In a real Chrome:** a seller on a phone sees the closed screen, then posts (link, country, "Pagnes et tissus", 2 h); staff approve from the queue; the seller's screen turns to "en ligne" by itself; a second request is refused with a ready-made message, shown in the seller's space; the wall on a computer shows the live and the "Publier mon live" card. No browser errors.
+
+### Next
+
+1. Categories: the booking form on the shared list with "Autre", admin list of typed categories.
+2. Passes and one-off payment.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.

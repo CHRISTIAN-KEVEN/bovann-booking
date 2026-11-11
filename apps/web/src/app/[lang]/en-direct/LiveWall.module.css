@@ -40,6 +40,104 @@
   gap: 10px;
 }
 
+.heroText {
+  flex: 1 1 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* "Vous êtes en live ?" card: computers only. */
+.postCard {
+  display: none;
+}
+
+.postHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.postHead > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.postIcon {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: rgba(242, 107, 29, 0.18);
+  color: #ff9a62;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.postTitle {
+  font-size: 16px;
+  color: #fff;
+}
+
+.postText {
+  font-size: 14px;
+  color: #d6cdc4;
+}
+
+.postButton,
+.postButtonBig {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 14px;
+  background: var(--color-accent);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.postButton {
+  height: 52px;
+  font-size: 16px;
+}
+
+.postButton:hover,
+.postButtonBig:hover {
+  background: var(--color-accent-hover);
+  color: #fff;
+}
+
+.postReview {
+  font-size: 13px;
+  color: #b9aea4;
+}
+
+/* Phones: the button stays at the bottom of the screen. */
+.stickyPost {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: 14px var(--page-gutter) calc(18px + env(safe-area-inset-bottom));
+  background: linear-gradient(rgba(247, 243, 238, 0), #f7f3ee 40%);
+}
+
+.postButtonBig {
+  height: 60px;
+  border-radius: 18px;
+  font-size: 18px;
+  box-shadow: 0 10px 24px -10px rgba(194, 65, 12, 0.7);
+}
+
+.postButton:focus-visible,
+.postButtonBig:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 6px var(--color-accent);
+}
+
 .count {
   align-self: flex-start;
   margin: 0;
@@ -466,9 +564,32 @@
   }
 
   .heroInner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
     padding-top: 44px;
     padding-bottom: 48px;
+  }
+
+  .heroText {
     gap: 12px;
+  }
+
+  .postCard {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    flex: 0 1 380px;
+    padding: 20px;
+    border-radius: 20px;
+    background: #241e19;
+    border: 1px solid #3a322b;
+  }
+
+  .stickyPost {
+    display: none;
   }
 
   .count {

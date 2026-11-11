@@ -10,8 +10,8 @@ import { formatPhone } from '@/lib/admin-format';
 import { ApiError } from '@/lib/api';
 import { COUNTRY_CODES, composePhone, isValidE164 } from '@/lib/details';
 import { safeNext, sellerApi } from '@/lib/seller-api';
-import { SellerShell } from '../SellerShell';
-import styles from '../seller.module.css';
+import { SellerShell } from '@/components/seller/SellerShell';
+import styles from '@/components/seller/seller.module.css';
 
 type Step =
   | { name: 'phone' }

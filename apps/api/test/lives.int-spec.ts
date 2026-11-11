@@ -232,11 +232,27 @@ describe('database rules', () => {
   };
 
   it('refuses a listed live without times, a non-https link, both or neither category', async () => {
+    await db
+      .insertInto('t_sellers')
+      .values({ phone_e164: '+22899000001' })
+      .onDuplicateKeyUpdate({ locale: 'fr' })
+      .execute();
+    const { id: sellerId } = await db
+      .selectFrom('t_sellers')
+      .select('id')
+      .where('phone_e164', '=', '+22899000001')
+      .executeTakeFirstOrThrow();
     const insert = (values: Record<string, unknown>) =>
       db
         .insertInto('t_lives')
-        .values({ ...base, ...values } as never)
+        .values({ seller_id: sellerId, ...base, ...values } as never)
         .execute();
+    // Every live comes from a seller or from staff.
+    await expect(insert({ seller_id: null })).rejects.toMatchObject({ errno: 3819 });
+    // A refusal keeps its reason.
+    await expect(insert({ status: 'REJECTED', reviewed_at: new Date() })).rejects.toMatchObject({
+      errno: 3819,
+    });
     await expect(insert({ status: 'APPROVED' })).rejects.toMatchObject({ errno: 3819 });
     await expect(insert({ url: 'http://www.tiktok.com/@afi' })).rejects.toMatchObject({
       errno: 3819,

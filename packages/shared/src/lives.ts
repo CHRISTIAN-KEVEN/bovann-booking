@@ -12,11 +12,18 @@ export const LIVE_PLATFORM_LABELS: Record<LivePlatform, string> = {
 };
 
 /**
- * PENDING → APPROVED | REJECTED by staff. An approved live is on the wall until `ends_at`,
- * or until the seller ends it (ENDED) or staff take it down (REMOVED).
- * Values mirror the CHECK constraint on t_lives.status.
+ * PENDING → APPROVED | REJECTED by staff, or CANCELLED by the seller before review.
+ * An approved live is on the wall until `ends_at`, or until the seller ends it (ENDED)
+ * or staff take it down (REMOVED). Values mirror the ENUM of t_lives.status.
  */
-export const LIVE_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'ENDED', 'REMOVED'] as const;
+export const LIVE_STATUSES = [
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+  'CANCELLED',
+  'ENDED',
+  'REMOVED',
+] as const;
 export type LiveStatus = (typeof LIVE_STATUSES)[number];
 
 /** Icons drawn by the web app for categories (t_categories.icon). */
@@ -223,16 +230,74 @@ export interface LiveDto {
   endsAt: string;
 }
 
+// ------------------------------------------------------------------ review hours
+
+/** Lives are submitted and reviewed only during these hours (Lomé time). */
+export const REVIEW_TIMEZONE = 'Africa/Lome';
+/** A seller can post at most this many lives a day. */
+export const SELLER_LIVES_PER_DAY = 5;
+
+export interface ReviewPeriod {
+  /** ISO weekday: 1 = Monday … 7 = Sunday. */
+  weekday: number;
+  /** "08:00" */
+  opensAt: string;
+  /** "11:00" */
+  closesAt: string;
+}
+
+/** Where review stands right now: shown on the wall and the posting screens. */
+export interface ReviewStatus {
+  open: boolean;
+  /** When the current period ends (if open). */
+  closesAt: string | null;
+  /** Start of the next period (if closed), within the coming week. */
+  nextOpensAt: string | null;
+  /** Today's periods, local times, for the day bar. */
+  today: Array<{ opensAt: string; closesAt: string }>;
+  timezone: string;
+}
+
 /** GET /lives: everything on the wall right now, most recent first, plus the filter options. */
 export interface LiveWallResponse {
   now: string;
   lives: LiveDto[];
   categories: LiveCategoryDto[];
+  review: ReviewStatus;
+}
+
+// ------------------------------------------------------------------ sellers' lives
+
+/** A seller's own request or listing, as shown in their space. */
+export interface SellerLiveDto extends LiveDto {
+  status: LiveStatus;
+  durationMin: number;
+  createdAt: string;
+  /** The message staff wrote when refusing. */
+  rejectReason: string | null;
+  reviewedAt: string | null;
+}
+
+/** POST /seller/lives: goes to staff for review. */
+export interface SellerLiveCreate {
+  sellerName: string;
+  url: string;
+  countryCode: string;
+  categoryCode: string | null;
+  categoryOther: string | null;
+  durationMin: number;
+}
+
+export interface SellerLivesResponse {
+  now: string;
+  lives: SellerLiveDto[];
+  review: ReviewStatus;
+  categories: LiveCategoryDto[];
 }
 
 // Admin
 
-export const ADMIN_LIVE_TABS = ['online', 'past'] as const;
+export const ADMIN_LIVE_TABS = ['pending', 'online', 'past'] as const;
 export type AdminLiveTab = (typeof ADMIN_LIVE_TABS)[number];
 
 export interface AdminLiveDto extends LiveDto {
@@ -244,11 +309,29 @@ export interface AdminLiveDto extends LiveDto {
   endedAt: string | null;
   endedBy: string | null;
   endReason: string | null;
+  /** Seller's phone when the seller posted it. */
+  sellerPhone: string | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  rejectReason: string | null;
 }
 
 export interface AdminLiveListResponse {
   now: string;
   lives: AdminLiveDto[];
+  /** Requests waiting for review (for the tab and the menu counter). */
+  pendingCount: number;
+  review: ReviewStatus;
+}
+
+export interface AdminLiveReject {
+  /** Sent to the seller (shown in their space). */
+  reason: string;
+}
+
+/** GET/PUT /admin/review-hours: the whole week. */
+export interface AdminReviewHours {
+  periods: ReviewPeriod[];
 }
 
 /** Staff list a live for a seller (phone call, walk-in): it goes on the wall at once. */

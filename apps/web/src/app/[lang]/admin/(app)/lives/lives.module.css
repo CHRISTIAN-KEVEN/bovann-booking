@@ -157,3 +157,103 @@
   outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+.statusRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: -4px 0 12px;
+}
+
+.reviewChip {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--color-surface-muted, #f1ebe3);
+  color: var(--color-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.reviewOpen {
+  background: #e7f3ea;
+  color: #1f5b36;
+}
+
+.reviewDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2f7a4a;
+}
+
+.refreshed {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.approve {
+  background: #1f5b36;
+}
+
+.approve:hover:not(:disabled) {
+  background: #17462a;
+}
+
+.newCategory {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: #fff6e0;
+  color: #6b4a00;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hours {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+}
+
+.days {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.day {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.dayName {
+  flex: 0 0 110px;
+  padding-top: 8px;
+  text-transform: capitalize;
+}
+
+.dayPeriods {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.period {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

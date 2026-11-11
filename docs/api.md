@@ -426,3 +426,26 @@ Sellers sign in with a one-time code sent to their phone; no password. Every POS
 | `POST /seller/auth/logout` | 204                                                                                                                                                                                                                                      |
 
 `devCode` is only present with simulated sending (development); the API refuses to start in production with it.
+
+## Posting and reviewing lives (2026-11-11)
+
+`GET /lives` now also returns `review` (`ReviewStatus`): `{open, closesAt, nextOpensAt, today: [{opensAt, closesAt}], timezone}`.
+
+### Seller (session cookie + `X-Bovann-Seller` on POST)
+
+| Method & path                | Notes                                                                                                                                                                                                                                                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /seller/lives`          | Their lives of the last 30 days (`SellerLiveDto`: status, duration, `rejectReason`…), `review`, `categories`                                                                                                                                                                                                |
+| `POST /seller/lives`         | Same body as the admin's `POST /admin/lives`. Creates a `PENDING` request. 409 `REVIEW_CLOSED` (`details.nextOpensAt`), 409 `LIVE_PENDING_EXISTS` (`details.liveId`: one request at a time), 429 `LIVE_DAILY_LIMIT` (5 a day), 409 `LIVE_ALREADY_PENDING` / `LIVE_ALREADY_ONLINE`, 400 `CATEGORY_NOT_FOUND` |
+| `POST /seller/lives/:id/end` | Withdraws a request (`CANCELLED`) or ends an online live early (`ENDED`). 409 `LIVE_NOT_ONLINE`; 404 for someone else's live                                                                                                                                                                                |
+
+### Admin (both roles unless noted)
+
+| Method & path               | Notes                                                                                                       |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `GET /lives?tab=pending`    | Requests waiting, oldest first, with the seller's phone. Every list now has `pendingCount` and `review`     |
+| `GET /lives/pending-count`  | `{count}`, for the menu badge                                                                               |
+| `POST /lives/:id/approve`   | On the wall from now for the chosen duration. 409 `LIVE_NOT_PENDING`, `LIVE_ALREADY_ONLINE`                 |
+| `POST /lives/:id/reject`    | `{reason}` (3–255 characters, shown to the seller). 409 `LIVE_NOT_PENDING`                                  |
+| `GET /review-hours`         | `{periods: [{weekday 1–7, opensAt, closesAt}]}` (Lomé time)                                                 |
+| `PUT /review-hours` (OWNER) | Replaces the whole week. 400 `REVIEW_HOURS_INVALID` (a period ending before it starts, overlapping periods) |
