@@ -44,6 +44,13 @@ const live = (over: Partial<LiveDto>): LiveDto => ({
 
 const WALL: LiveWallResponse = {
   now: new Date(NOW).toISOString(),
+  review: {
+    open: true,
+    closesAt: '2026-11-11T18:00:00.000Z',
+    nextOpensAt: null,
+    today: [{ opensAt: '15:00', closesAt: '18:00' }],
+    timezone: 'Africa/Lome',
+  },
   categories: [
     { code: 'MODE', name: 'Mode', icon: 'mode' },
     { code: 'ELECTRONIQUE', name: 'Téléphones & électronique', icon: 'elec' },

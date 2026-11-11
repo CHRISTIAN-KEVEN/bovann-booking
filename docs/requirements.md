@@ -139,7 +139,8 @@ Sellers who are live on TikTok or Facebook list their live on the OCD Live site.
 
 ### Built so far (2026-11-10)
 
-- The public wall at `/en-direct` with filters, and an admin "Lives" page where staff list a live for a seller (approved at once) or take one down. Sellers' own posting comes next.
+- The public wall at `/en-direct` with filters, and an admin "Lives" page where staff list a live for a seller (approved at once) or take one down.
+- Seller sign-in with a code (simulated until a provider is chosen), posting a live during review hours, the staff review queue and the review hours editor. Until payment exists, an approved live goes on the wall at once.
 
 ### Open questions
 

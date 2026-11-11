@@ -13,6 +13,8 @@ import {
   type AdminLiveDto,
   type AdminLiveListResponse,
   type AdminLiveTab,
+  type AdminReviewHours,
+  type ReviewPeriod,
   type LiveCategoryDto,
   type AdminMe,
   type AdminPackageInput,
@@ -183,6 +185,13 @@ export const adminApi = {
   lives: (tab: AdminLiveTab) => adminFetch<AdminLiveListResponse>(`/lives?tab=${tab}`),
   liveCategories: () => adminFetch<LiveCategoryDto[]>('/lives/categories'),
   createLive: (input: AdminLiveCreate) => adminFetch<AdminLiveDto>('/lives', send('POST', input)),
+  livesPendingCount: () => adminFetch<{ count: number }>('/lives/pending-count'),
+  approveLive: (id: number) => adminFetch<AdminLiveDto>(`/lives/${id}/approve`, send('POST')),
+  rejectLive: (id: number, reason: string) =>
+    adminFetch<AdminLiveDto>(`/lives/${id}/reject`, send('POST', { reason })),
+  reviewHours: () => adminFetch<AdminReviewHours>('/review-hours'),
+  setReviewHours: (periods: ReviewPeriod[]) =>
+    adminFetch<AdminReviewHours>('/review-hours', send('PUT', { periods })),
   removeLive: (id: number, reason: string | null) =>
     adminFetch<AdminLiveDto>(`/lives/${id}/remove`, send('POST', { reason })),
 };

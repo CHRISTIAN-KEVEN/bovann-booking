@@ -21,11 +21,22 @@
   gap: 22px;
 }
 
+.topRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  margin: 4px 0 -8px -10px;
+}
+
+.topRow:empty {
+  display: none;
+}
+
 .back {
-  align-self: flex-start;
+  flex: none;
   width: 44px;
   height: 44px;
-  margin: 4px 0 -8px -10px;
   border: 0;
   border-radius: 50%;
   background: transparent;

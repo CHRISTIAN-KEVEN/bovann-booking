@@ -301,6 +301,7 @@ export interface CategoriesTable {
 /** A live listed on the "En direct" wall (visible while APPROVED and starts_at <= now < ends_at). */
 export interface LivesTable {
   id: Generated<number>;
+  seller_id: number | null;
   seller_name: string;
   platform: LivePlatform;
   url: string;
@@ -312,10 +313,14 @@ export interface LivesTable {
   starts_at: Date | null;
   ends_at: Date | null;
   created_by_admin_id: number | null;
+  reviewed_by_admin_id: number | null;
+  reviewed_at: Date | null;
+  reject_reason: string | null;
   ended_at: Date | null;
   ended_by_admin_id: number | null;
   end_reason: string | null;
-  created_at: CreatedAt;
+  /** Set from the app clock (daily limits and history use it). */
+  created_at: ColumnType<Date, Date | undefined, never>;
   updated_at: UpdatedAt;
 }
 
@@ -354,6 +359,15 @@ export interface SellerSessionsTable {
   user_agent: string | null;
 }
 
+/** Weekly periods when lives are submitted and reviewed (Lomé time, "HH:MM:SS"). */
+export interface ReviewHoursTable {
+  id: Generated<number>;
+  weekday: number;
+  opens_at: string;
+  closes_at: string;
+  created_at: CreatedAt;
+}
+
 export interface Database {
   t_admin_users: AdminUsersTable;
   t_admin_sessions: AdminSessionsTable;
@@ -378,6 +392,7 @@ export interface Database {
   t_sellers: SellersTable;
   t_seller_otps: SellerOtpsTable;
   t_seller_sessions: SellerSessionsTable;
+  t_review_hours: ReviewHoursTable;
 }
 
 export type Space = Selectable<SpacesTable>;

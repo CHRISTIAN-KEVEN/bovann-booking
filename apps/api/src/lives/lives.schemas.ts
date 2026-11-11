@@ -91,6 +91,38 @@ export const liveRemoveSchema = z
   })
   .strict();
 
+export const liveRejectSchema = z
+  .object({
+    reason: z
+      .string({ message: 'Écrivez au vendeur pourquoi son live est refusé.' })
+      .transform(cleanShortText)
+      .pipe(
+        z
+          .string()
+          .min(3, 'Écrivez au vendeur pourquoi son live est refusé.')
+          .max(255, 'Texte trop long (255 caractères maximum).'),
+      ),
+  })
+  .strict();
+
+const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Heure invalide (HH:MM).');
+
+export const reviewHoursSchema = z
+  .object({
+    periods: z
+      .array(
+        z
+          .object({
+            weekday: z.number().int().min(1, 'Jour invalide.').max(7, 'Jour invalide.'),
+            opensAt: time,
+            closesAt: time,
+          })
+          .strict(),
+      )
+      .max(42, 'Trop de périodes.'),
+  })
+  .strict();
+
 export const adminLiveListSchema = z.object({
   tab: z.enum(ADMIN_LIVE_TABS, { message: 'Onglet invalide.' }).default('online'),
 });

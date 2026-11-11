@@ -116,3 +116,51 @@ export const CATEGORY_HUES: Record<CategoryIcon, string> = {
   event: '#6b2f7a',
   autre: '#4d443c',
 };
+
+// ------------------------------------------------------------------ review hours (Lomé time)
+
+const REVIEW_TZ = 'Africa/Lome';
+
+/** "15:00" in Lomé. */
+export function lomeTime(iso: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: REVIEW_TZ,
+  }).format(new Date(iso));
+}
+
+function lomeDay(ms: number): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: REVIEW_TZ }).format(new Date(ms));
+}
+
+/**
+ * When the next review period opens, as the reader says it: "15:00" today, "demain à 08:00",
+ * "lundi à 08:00". `day` is empty for today.
+ */
+export function nextOpening(
+  iso: string,
+  now: number,
+  locale: string,
+  t: T,
+): { day: string; time: string } {
+  const time = lomeTime(iso, locale);
+  const target = lomeDay(Date.parse(iso));
+  if (target === lomeDay(now)) return { day: '', time };
+  if (target === lomeDay(now + 86_400_000)) return { day: t('common.tomorrow'), time };
+  const day = new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    weekday: 'long',
+    timeZone: REVIEW_TZ,
+  }).format(new Date(iso));
+  return { day, time };
+}
+
+/** "2 h 20" / "35 min" until an instant. */
+export function waitLabel(iso: string, now: number, t: T): string {
+  const minutes = Math.max(1, Math.ceil((Date.parse(iso) - now) / 60_000));
+  if (minutes < 60) return t('post.waitMinutes', { m: minutes });
+  return t('post.waitHours', {
+    h: Math.floor(minutes / 60),
+    mm: String(minutes % 60).padStart(2, '0'),
+  });
+}

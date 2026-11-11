@@ -12,10 +12,13 @@ export function SellerShell({
   children,
   back,
   onBack,
+  top,
 }: {
   children: ReactNode;
   back?: string;
   onBack?: () => void;
+  /** Shown next to the back button (e.g. a step progress bar). */
+  top?: ReactNode;
 }) {
   const { t } = useI18n();
   return (
@@ -23,20 +26,23 @@ export function SellerShell({
       <SiteHeader />
       <main className={styles.main}>
         <div className={styles.column}>
-          {onBack ? (
-            <button
-              type="button"
-              className={styles.back}
-              onClick={onBack}
-              aria-label={t('steps.back')}
-            >
-              <Icon name="back" size={24} />
-            </button>
-          ) : back ? (
-            <Link href={back} className={styles.back} aria-label={t('steps.back')}>
-              <Icon name="back" size={24} />
-            </Link>
-          ) : null}
+          <div className={styles.topRow}>
+            {onBack ? (
+              <button
+                type="button"
+                className={styles.back}
+                onClick={onBack}
+                aria-label={t('steps.back')}
+              >
+                <Icon name="back" size={24} />
+              </button>
+            ) : back ? (
+              <Link href={back} className={styles.back} aria-label={t('steps.back')}>
+                <Icon name="back" size={24} />
+              </Link>
+            ) : null}
+            {top}
+          </div>
           {children}
         </div>
       </main>

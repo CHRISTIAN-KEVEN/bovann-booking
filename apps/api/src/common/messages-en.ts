@@ -215,4 +215,18 @@ export const MESSAGES_EN: Readonly<Record<string, string>> = {
   'Trop d’essais. Demandez un nouveau code.': 'Too many tries. Ask for a new code.',
   'Ce numéro ne peut plus publier de lives. Contactez le studio.':
     'This number can no longer post lives. Contact the studio.',
+
+  // Posting and reviewing lives
+  'Écrivez au vendeur pourquoi son live est refusé.': 'Tell the seller why their live is refused.',
+  'Heure invalide (HH:MM).': 'Invalid time (HH:MM).',
+  'Jour invalide.': 'Invalid day.',
+  'Trop de périodes.': 'Too many periods.',
+  'Chaque période doit finir après son début.': 'Each period must end after it starts.',
+  'Deux périodes du même jour se chevauchent.': 'Two periods on the same day overlap.',
+  'Les lives sont vérifiés seulement pendant les heures de validation. Revenez à la prochaine ouverture.':
+    'Lives are reviewed only during review hours. Come back at the next opening.',
+  'Vous avez déjà un live en vérification. Attendez la réponse avant d’en envoyer un autre.':
+    'You already have a live being reviewed. Wait for the answer before sending another one.',
+  'Ce live est déjà en vérification.': 'This live is already being reviewed.',
+  'Ce live a déjà été traité.': 'This live has already been handled.',
 };

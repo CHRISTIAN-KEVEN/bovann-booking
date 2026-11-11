@@ -29,6 +29,8 @@ interface AdminContextValue {
   reloadSpaces: () => Promise<void>;
   /** Refunds still to handle, shown as a badge in the menu. */
   refundsDue: number;
+  /** Lives waiting for review, shown as a badge in the menu (refreshed every 30 s). */
+  livesPending: number;
   refreshCounters: () => void;
 }
 
@@ -43,10 +45,10 @@ export function useAdmin(): AdminContextValue {
 const SPACE_KEY = 'bovann.admin.space';
 export const NEXT_KEY = 'bovann.admin.next';
 
-const NAV: Array<{ href: string; label: TKey; icon: IconName; badge?: 'refunds' }> = [
+const NAV: Array<{ href: string; label: TKey; icon: IconName; badge?: 'refunds' | 'lives' }> = [
   { href: '/admin', label: 'adminShell.nav.bookings', icon: 'bookings' },
   { href: '/admin/calendrier', label: 'adminShell.nav.calendar', icon: 'calendar' },
-  { href: '/admin/lives', label: 'adminShell.nav.lives', icon: 'broadcast' },
+  { href: '/admin/lives', label: 'adminShell.nav.lives', icon: 'broadcast', badge: 'lives' },
   { href: '/admin/forfaits', label: 'adminShell.nav.packages', icon: 'tag' },
   { href: '/admin/espaces', label: 'adminShell.nav.spaces', icon: 'video' },
   { href: '/admin/clients', label: 'adminShell.nav.clients', icon: 'users' },
@@ -77,6 +79,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [spaces, setSpaces] = useState<AdminSpaceDto[] | null>(null);
   const [spaceId, setSpaceIdState] = useState<number | null>(null);
   const [refundsDue, setRefundsDue] = useState(0);
+  const [livesPending, setLivesPending] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -132,11 +135,28 @@ export function AdminShell({ children }: { children: ReactNode }) {
       .stats(spaceId)
       .then((s) => setRefundsDue(s.refundsDueCount))
       .catch(() => {});
+    adminApi
+      .livesPendingCount()
+      .then((c) => setLivesPending(c.count))
+      .catch(() => {});
   }, [spaceId]);
 
   useEffect(() => {
     refreshCounters();
   }, [refreshCounters, pathname]);
+
+  // Sellers post lives at any moment during review hours: keep the counter fresh.
+  useEffect(() => {
+    if (!me) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      adminApi
+        .livesPendingCount()
+        .then((c) => setLivesPending(c.count))
+        .catch(() => {});
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [me]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -163,10 +183,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
             setSpaceId,
             reloadSpaces,
             refundsDue,
+            livesPending,
             refreshCounters,
           }
         : null,
-    [me, spaces, space, setSpaceId, reloadSpaces, refundsDue, refreshCounters],
+    [me, spaces, space, setSpaceId, reloadSpaces, refundsDue, livesPending, refreshCounters],
   );
 
   async function logout() {
@@ -268,6 +289,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
                       aria-label={t('adminShell.refundsDue', { count: refundsDue })}
                     >
                       {refundsDue}
+                    </span>
+                  ) : null}
+                  {item.badge === 'lives' && livesPending > 0 ? (
+                    <span
+                      className={styles.navBadge}
+                      aria-label={t('adminShell.livesPending', { count: livesPending })}
+                    >
+                      {livesPending}
                     </span>
                   ) : null}
                 </Link>
