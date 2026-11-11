@@ -10,6 +10,7 @@ import type { Env } from './config/env';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { LivesModule } from './lives/lives.module';
+import { SellersModule } from './sellers/sellers.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { LivesModule } from './lives/lives.module';
     AdminModule,
     NotificationModule,
     LivesModule,
+    SellersModule,
   ],
 })
 export class AppModule {}

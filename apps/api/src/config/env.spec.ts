@@ -1,3 +1,4 @@
+import { otpTransport } from '../sellers/otp-sender';
 import { loadEnv } from './env';
 
 describe('loadEnv', () => {
@@ -58,6 +59,14 @@ describe('loadEnv', () => {
       EMAIL_FROM: 'Bovann <a@b.tg>',
     });
     expect(env).toMatchObject({ SMTP_PORT: 465, SMTP_SECURE: true });
+  });
+
+  it('never sends simulated sign-in codes in production, and closes seller sign-in by default', () => {
+    expect(() => loadEnv({ ...base, NODE_ENV: 'production', OTP_TRANSPORT: 'simulated' })).toThrow(
+      /OTP_TRANSPORT/,
+    );
+    expect(otpTransport(loadEnv(base))).toBe('simulated');
+    expect(otpTransport({ ...loadEnv(base), NODE_ENV: 'production' })).toBe('disabled');
   });
 
   it('refuses to run production without sending emails', () => {

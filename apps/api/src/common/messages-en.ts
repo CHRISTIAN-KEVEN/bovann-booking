@@ -196,4 +196,23 @@ export const MESSAGES_EN: Readonly<Record<string, string>> = {
   'Ce live est déjà sur le mur.': 'This live is already on the wall.',
   'Ce live est introuvable.': 'This live can’t be found.',
   'Ce live n’est plus sur le mur.': 'This live is no longer on the wall.',
+
+  // Seller sign-in
+  'Indiquez votre numéro de téléphone.': 'Enter your phone number.',
+  'Numéro de téléphone invalide.': 'Invalid phone number.',
+  'Choisissez WhatsApp ou SMS.': 'Choose WhatsApp or SMS.',
+  'Entrez le code reçu.': 'Enter the code you received.',
+  'Le code a 6 chiffres.': 'The code has 6 digits.',
+  'Trop de demandes depuis cette connexion. Réessayez plus tard.':
+    'Too many requests from this connection. Try again later.',
+  'Connectez-vous avec votre numéro pour continuer.': 'Sign in with your number to continue.',
+  'Le code n’a pas pu être envoyé. Réessayez dans un instant.':
+    'The code couldn’t be sent. Try again in a moment.',
+  'La connexion des vendeurs n’est pas encore ouverte. Revenez bientôt.':
+    'Seller sign-in isn’t open yet. Come back soon.',
+  'Ce code ne marche plus. Demandez un nouveau code.':
+    'This code no longer works. Ask for a new code.',
+  'Trop d’essais. Demandez un nouveau code.': 'Too many tries. Ask for a new code.',
+  'Ce numéro ne peut plus publier de lives. Contactez le studio.':
+    'This number can no longer post lives. Contact the studio.',
 };

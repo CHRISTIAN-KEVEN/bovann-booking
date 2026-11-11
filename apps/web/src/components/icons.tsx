@@ -2,6 +2,12 @@ import type { SVGProps } from 'react';
 
 /** Stroke icons used across the screens (decorative: hidden from screen readers). */
 const paths = {
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+    </>
+  ),
   broadcast: (
     <>
       <circle cx="12" cy="12" r="2.2" />

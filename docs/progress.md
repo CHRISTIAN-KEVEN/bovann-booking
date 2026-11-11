@@ -469,6 +469,30 @@ Under heavy contention, MySQL deadlocks made some losing requests fail with a 50
 3. Categories: the booking form uses the shared list, "Autre" everywhere, admin list of typed categories.
 4. Passes and one-off payment.
 
+## Live directory, part 2: seller sign-in (in review)
+
+**Product owner, 2026-11-11:** build the code sign-in first; real sending waits for Bovann's provider.
+
+### Delivered
+
+- **Sign-in at `/vendeur/connexion`** (French and English), from the approved design: phone number with country, WhatsApp or SMS, then the 6-digit code (fills in from the SMS on phones), resend after a minute, switch to SMS or WhatsApp, "Changer" to fix the number.
+- **Test mode:** with simulated sending (development) no message leaves; the code is shown on the screen with a "Remplir" button.
+- **Closed until a provider exists:** in production, without a provider, the page says posting opens soon and points to the wall.
+- **Seller space `/vendeur`:** the signed-in number and sign-out. Reached from "Espace vendeur" in the wall's header.
+- **Security:** codes hashed with a server key, 5 tries, 10 minutes, one use; limits per phone and per connection; sessions in an httpOnly cookie; blocked sellers are signed out.
+- **Settings:** `OTP_TRANSPORT` (`simulated` / `disabled`), `OTP_SECRET`, `OTP_RATE_LIMIT_PER_HOUR` (see `apps/api/.env.example`).
+
+### Tests
+
+- **API (10 new):** sign-in and seller created once, wrong tries counted then the code stopped, one use / 10 minutes / latest code only, one-minute wait and 5 per hour, phone and code checks, CSRF, sign-out, 30 days without activity, blocked seller, sign-in closed without a provider; production refuses simulated codes.
+- **Web (7 new):** the two steps, number check and SMS, wrong code message, test-mode code, closed state, already signed in, safe return address.
+- **Totals:** API 231, shared 12, web 73.
+- **In a real Chrome:** sign-in from the wall at 390 px (French) and 1440 px (English), code typed in the boxes, seller space shown.
+
+### Next
+
+Posting a live (link, country, category, duration), the staff review queue and review hours.
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.

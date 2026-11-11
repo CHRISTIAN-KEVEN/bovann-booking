@@ -72,6 +72,17 @@ const envSchema = z
     STUDIO_CONTACT_PHONE: z.string().min(3).optional(),
     /** How often queued emails are sent, in seconds (0 = worker off). */
     NOTIFICATION_INTERVAL_SEC: z.coerce.number().int().min(0).max(3600).default(15),
+    /**
+     * How seller sign-in codes are sent: `simulated` (development: the code is logged and shown
+     * on the sign-in screen), `disabled` (seller sign-in is closed: no provider yet).
+     * WhatsApp/SMS providers are added here once Bovann chooses one.
+     * Default: simulated in development and tests, disabled in production.
+     */
+    OTP_TRANSPORT: z.enum(['simulated', 'disabled']).optional(),
+    /** Key for hashing sign-in codes (32+ characters). Required in production when codes are sent. */
+    OTP_SECRET: z.string().min(32).optional(),
+    /** Sign-in codes one connection may ask for per hour (on top of 5 per phone per hour). */
+    OTP_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).max(10_000).default(20),
     /** Payment provider adapter. "mock" simulates payments (never allowed in production). */
     PAYMENT_PROVIDER: z.enum(['mock']).default('mock'),
   })
@@ -105,6 +116,20 @@ const envSchema = z
         code: 'custom',
         path: ['EMAIL_TRANSPORT'],
         message: 'production must send emails (owners are notified of every booking)',
+      });
+    }
+    if (env.OTP_TRANSPORT === 'simulated') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['OTP_TRANSPORT'],
+        message: 'simulated sign-in codes are not allowed in production',
+      });
+    }
+    if (env.OTP_TRANSPORT && env.OTP_TRANSPORT !== 'disabled' && !env.OTP_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['OTP_SECRET'],
+        message: 'required in production when sign-in codes are sent',
       });
     }
     if (env.PAYMENT_PROVIDER === 'mock') {
