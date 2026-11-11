@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api';
+import type * as SellerApiModule from '@/lib/seller-api';
 import { safeNext } from '@/lib/seller-api';
 import { renderI18n } from '@/test/i18n';
 import { SellerSignIn } from './SellerSignIn';
@@ -20,7 +21,7 @@ const api = vi.hoisted(() => ({
   logout: vi.fn(),
 }));
 vi.mock('@/lib/seller-api', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/seller-api')>()),
+  ...(await importOriginal<typeof SellerApiModule>()),
   sellerApi: api,
 }));
 
