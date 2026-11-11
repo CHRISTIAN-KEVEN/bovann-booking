@@ -4,8 +4,8 @@
   "private": true,
   "description": "Bovann customer booking site and admin (Next.js)",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
+    "dev": "pnpm --filter @bovann/shared build && next dev --port 3000",
+    "build": "pnpm --filter @bovann/shared build && next build",
     "start": "next start --port 3000",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"

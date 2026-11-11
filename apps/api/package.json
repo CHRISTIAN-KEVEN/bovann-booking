@@ -4,9 +4,9 @@
   "private": true,
   "description": "Bovann booking REST API (NestJS + MySQL)",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "pnpm --filter @bovann/shared build && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "dev": "tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --env-file-if-exists=.env --watch-path=dist dist/main.js)",
+    "dev": "pnpm --filter @bovann/shared build && tsc -p tsconfig.build.json && (tsc -p tsconfig.build.json --watch --preserveWatchOutput & node --env-file-if-exists=.env --watch-path=dist dist/main.js)",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --runInBand",
     "test:unit": "jest --selectProjects unit",
