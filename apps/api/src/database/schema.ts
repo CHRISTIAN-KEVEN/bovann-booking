@@ -5,6 +5,9 @@ import type {
   LivePlatform,
   LiveStatus,
   OtpChannel,
+  PassPlan,
+  SellerPaymentPurpose,
+  SellerPaymentStatus,
   BookingSource,
   BookingStatus,
   BookingType,
@@ -316,6 +319,7 @@ export interface LivesTable {
   reviewed_by_admin_id: number | null;
   reviewed_at: Date | null;
   reject_reason: string | null;
+  payment_due_at: Date | null;
   ended_at: Date | null;
   ended_by_admin_id: number | null;
   end_reason: string | null;
@@ -368,6 +372,51 @@ export interface ReviewHoursTable {
   created_at: CreatedAt;
 }
 
+/** One row (id = 1): prices of passes and of a single live, set by administrators. */
+export interface LivePricesTable {
+  id: number;
+  pass_month_xof: number;
+  pass_year_xof: number;
+  live_xof: number;
+  updated_by_admin_id: number | null;
+  updated_at: UpdatedAt;
+}
+
+/** A seller's online payment attempt (a live, or a pass). */
+export interface SellerPaymentsTable {
+  id: Generated<number>;
+  seller_id: number;
+  purpose: SellerPaymentPurpose;
+  live_id: number | null;
+  amount_xof: number;
+  method: 'MOBILE_MONEY' | 'CARD';
+  channel: string | null;
+  payer_phone: string | null;
+  status: Generated<SellerPaymentStatus>;
+  provider: string;
+  provider_ref: string | null;
+  idempotency_key: string;
+  instructions: string | null;
+  failure_reason: string | null;
+  created_at: Date;
+  completed_at: Date | null;
+  succeeded_live_id: ColumnType<number | null, never, never>;
+}
+
+/** A pass: all the seller's approved lives go online without paying each one. */
+export interface SellerPassesTable {
+  id: Generated<number>;
+  seller_id: number;
+  plan: PassPlan;
+  starts_at: Date;
+  ends_at: Date;
+  price_xof: number;
+  payment_id: number | null;
+  granted_by_admin_id: number | null;
+  note: string | null;
+  created_at: Date;
+}
+
 export interface Database {
   t_admin_users: AdminUsersTable;
   t_admin_sessions: AdminSessionsTable;
@@ -393,6 +442,9 @@ export interface Database {
   t_seller_otps: SellerOtpsTable;
   t_seller_sessions: SellerSessionsTable;
   t_review_hours: ReviewHoursTable;
+  t_live_prices: LivePricesTable;
+  t_seller_payments: SellerPaymentsTable;
+  t_seller_passes: SellerPassesTable;
 }
 
 export type Space = Selectable<SpacesTable>;

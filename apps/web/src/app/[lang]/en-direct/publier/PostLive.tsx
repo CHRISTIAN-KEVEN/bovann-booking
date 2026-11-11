@@ -9,8 +9,11 @@ import {
   LIVE_PLATFORM_LABELS,
   SELLER_NAME_MAX,
   SELLER_NAME_MIN,
+  formatXof,
   type LiveCategoryDto,
   type LiveDto,
+  type LivePrices,
+  type SellerPassDto,
   type ReviewStatus,
   type SellerLiveDto,
   type SellerMe,
@@ -19,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CategoryIcon } from '@/components/lives/CategoryIcon';
 import { Flag } from '@/components/lives/Flag';
 import { LiveCard } from '@/components/lives/LiveCard';
+import { SellerPayPanel } from '@/components/seller/SellerPayPanel';
 import { SellerShell } from '@/components/seller/SellerShell';
 import { SiteHeader } from '@/components/SiteHeader';
 import seller from '@/components/seller/seller.module.css';
@@ -63,6 +67,8 @@ export function PostLive() {
   const [review, setReview] = useState<ReviewStatus | null>(null);
   const [categories, setCategories] = useState<LiveCategoryDto[]>([]);
   const [lives, setLives] = useState<SellerLiveDto[]>([]);
+  const [pass, setPass] = useState<SellerPassDto | null>(null);
+  const [prices, setPrices] = useState<LivePrices | null>(null);
   const [draft, setDraft] = useState<Draft>({
     url: '',
     countryCode: null,
@@ -84,6 +90,8 @@ export function PostLive() {
       setReview(mine.review);
       setCategories(mine.categories);
       setLives(mine.lives);
+      setPass(mine.pass);
+      setPrices(mine.prices);
       setNow(Date.now());
       return { account, mine };
     } catch (err) {
@@ -103,7 +111,9 @@ export function PostLive() {
     started.current = true;
     void load().then((result) => {
       if (!result) return;
-      const pending = result.mine.lives.find((l) => l.status === 'PENDING');
+      const pending = result.mine.lives.find(
+        (l) => l.status === 'PENDING' || l.status === 'AWAITING_PAYMENT',
+      );
       if (pending) setView({ name: 'tracking', liveId: pending.id });
       else if (!result.mine.review.open) setView({ name: 'closed' });
       else {
@@ -529,6 +539,20 @@ export function PostLive() {
           </div>
         </section>
 
+        {pass ? (
+          <p className={styles.passOn}>
+            <strong>
+              {t('pay.passActive', {
+                plan: t(`pay.planName.${pass.plan}` as TKey),
+                date: longDate(pass.endsAt),
+              })}
+            </strong>
+          </p>
+        ) : prices ? (
+          <p className={styles.passOff}>
+            {t('pay.noPass', { amount: formatXof(prices.liveXof, locale) })}
+          </p>
+        ) : null}
         {error ? (
           <p className={seller.error} role="alert">
             {error}
@@ -569,7 +593,39 @@ export function PostLive() {
     );
   }
 
+  function longDate(iso: string) {
+    return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Africa/Lome',
+    }).format(new Date(iso));
+  }
+
   function trackingScreen(live: SellerLiveDto) {
+    if (live.status === 'AWAITING_PAYMENT' && prices && me) {
+      return (
+        <SellerShell back="/vendeur">
+          <span className={styles.approvedChip}>
+            <span className={styles.approvedTick} aria-hidden="true">
+              <CheckIcon size={12} />
+            </span>
+            {t('pay.approvedChip')}
+          </span>
+          <h1 className={seller.title}>{t('pay.title')}</h1>
+          <SellerPayPanel
+            plans={['LIVE', 'PASS_MONTH', 'PASS_YEAR']}
+            liveId={live.id}
+            durationMin={live.durationMin}
+            prices={prices}
+            pass={pass}
+            phone={me.phone}
+            dueAt={live.paymentDueAt}
+            onPaid={() => void load()}
+          />
+        </SellerShell>
+      );
+    }
     const working = busy;
     const problem = error;
     const onWithdraw = () => void withdraw(live.id);
@@ -584,13 +640,17 @@ export function PostLive() {
             ? t('post.rejectedTitle')
             : live.status === 'CANCELLED'
               ? t('post.cancelledTitle')
-              : t(
-                  `seller.status.${live.status === 'APPROVED' ? 'APPROVED_DONE' : live.status}` as TKey,
-                );
+              : live.status === 'EXPIRED'
+                ? t('pay.expiredTitle')
+                : t(
+                    `seller.status.${live.status === 'APPROVED' ? 'APPROVED_DONE' : live.status}` as TKey,
+                  );
     return (
       <div className={seller.page}>
         <SiteHeader />
-        <section className={`${styles.hero} ${live.status === 'REJECTED' ? styles.heroMuted : ''}`}>
+        <section
+          className={`${styles.hero} ${live.status === 'REJECTED' || live.status === 'EXPIRED' ? styles.heroMuted : ''}`}
+        >
           <div className={styles.rings} aria-hidden="true">
             {live.status === 'PENDING' ? (
               <>
@@ -599,7 +659,9 @@ export function PostLive() {
               </>
             ) : null}
             <span className={styles.heroIcon}>
-              {live.status === 'REJECTED' || live.status === 'CANCELLED' ? (
+              {live.status === 'REJECTED' ||
+              live.status === 'CANCELLED' ||
+              live.status === 'EXPIRED' ? (
                 <CrossIcon />
               ) : online ? (
                 <CheckIcon size={44} />
@@ -617,6 +679,8 @@ export function PostLive() {
             <p className={styles.heroText}>
               {t('post.approvedText', { time: lomeTime(live.endsAt, locale) })}
             </p>
+          ) : live.status === 'EXPIRED' ? (
+            <p className={styles.heroText}>{t('pay.expiredText')}</p>
           ) : null}
         </section>
 

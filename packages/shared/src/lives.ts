@@ -12,18 +12,25 @@ export const LIVE_PLATFORM_LABELS: Record<LivePlatform, string> = {
 };
 
 /**
- * PENDING → APPROVED | REJECTED by staff, or CANCELLED by the seller before review.
- * An approved live is on the wall until `ends_at`, or until the seller ends it (ENDED)
- * or staff take it down (REMOVED). Values mirror the ENUM of t_lives.status.
+ * PENDING → staff review → APPROVED (seller with a valid pass: on the wall at once) or
+ * AWAITING_PAYMENT (no pass: 30 minutes to pay, then APPROVED; EXPIRED if unpaid) or REJECTED.
+ * CANCELLED: withdrawn by the seller before review. An approved live is on the wall until
+ * `ends_at`, or until the seller ends it (ENDED) or staff take it down (REMOVED).
+ * Values mirror the ENUM of t_lives.status.
  */
 export const LIVE_STATUSES = [
   'PENDING',
+  'AWAITING_PAYMENT',
   'APPROVED',
   'REJECTED',
   'CANCELLED',
+  'EXPIRED',
   'ENDED',
   'REMOVED',
 ] as const;
+
+/** After approval, a seller without a pass has this long to pay. */
+export const LIVE_PAYMENT_WINDOW_MIN = 30;
 export type LiveStatus = (typeof LIVE_STATUSES)[number];
 
 /** Icons drawn by the web app for categories (t_categories.icon). */
@@ -276,6 +283,61 @@ export interface SellerLiveDto extends LiveDto {
   /** The message staff wrote when refusing. */
   rejectReason: string | null;
   reviewedAt: string | null;
+  /** AWAITING_PAYMENT: pay before this time. */
+  paymentDueAt: string | null;
+}
+
+// ------------------------------------------------------------------ passes and prices
+
+export const PASS_PLANS = ['MONTH', 'YEAR'] as const;
+export type PassPlan = (typeof PASS_PLANS)[number];
+export const PASS_DAYS: Record<PassPlan, number> = { MONTH: 30, YEAR: 365 };
+
+/** What a seller pays for: one live, or a pass (which also puts an approved live online). */
+export const SELLER_PAYMENT_PURPOSES = ['LIVE', 'PASS_MONTH', 'PASS_YEAR'] as const;
+export type SellerPaymentPurpose = (typeof SELLER_PAYMENT_PURPOSES)[number];
+
+export const SELLER_PAYMENT_STATUSES = ['PENDING', 'SUCCEEDED', 'FAILED', 'CANCELLED'] as const;
+export type SellerPaymentStatus = (typeof SELLER_PAYMENT_STATUSES)[number];
+
+export interface LivePrices {
+  passMonthXof: number;
+  passYearXof: number;
+  /** One live without a pass: must stay above the monthly price ÷ 30. */
+  liveXof: number;
+}
+
+export interface SellerPassDto {
+  plan: PassPlan;
+  /** The pass in force now (or the next one, when bought ahead). */
+  startsAt: string;
+  /** End of the last pass bought (passes bought ahead follow each other). */
+  endsAt: string;
+}
+
+/** POST /seller/payments */
+export interface SellerPaymentCreate {
+  purpose: SellerPaymentPurpose;
+  /** The approved live to put online once paid (required for LIVE, optional for a pass). */
+  liveId: number | null;
+  method: 'MOBILE_MONEY' | 'CARD';
+  channel: 'TMONEY' | 'FLOOZ' | null;
+  /** E.164, for Mobile Money. */
+  payerPhone: string | null;
+}
+
+export interface SellerPaymentDto {
+  id: number;
+  purpose: SellerPaymentPurpose;
+  liveId: number | null;
+  amountXof: number;
+  method: 'MOBILE_MONEY' | 'CARD';
+  channel: string | null;
+  status: SellerPaymentStatus;
+  /** Shown while the seller approves on their phone. */
+  instructions: string | null;
+  failureReason: string | null;
+  createdAt: string;
 }
 
 /** POST /seller/lives: goes to staff for review. */
@@ -293,11 +355,14 @@ export interface SellerLivesResponse {
   lives: SellerLiveDto[];
   review: ReviewStatus;
   categories: LiveCategoryDto[];
+  /** Null when the seller has no pass in force. */
+  pass: SellerPassDto | null;
+  prices: LivePrices;
 }
 
 // Admin
 
-export const ADMIN_LIVE_TABS = ['pending', 'online', 'past'] as const;
+export const ADMIN_LIVE_TABS = ['pending', 'awaiting', 'online', 'past'] as const;
 export type AdminLiveTab = (typeof ADMIN_LIVE_TABS)[number];
 
 export interface AdminLiveDto extends LiveDto {
@@ -314,6 +379,7 @@ export interface AdminLiveDto extends LiveDto {
   reviewedBy: string | null;
   reviewedAt: string | null;
   rejectReason: string | null;
+  paymentDueAt: string | null;
 }
 
 export interface AdminLiveListResponse {
@@ -327,6 +393,23 @@ export interface AdminLiveListResponse {
 export interface AdminLiveReject {
   /** Sent to the seller (shown in their space). */
   reason: string;
+}
+
+export interface AdminSellerDto {
+  id: number;
+  phone: string;
+  createdAt: string;
+  lastSignInAt: string | null;
+  /** Lives sent in the last 30 days. */
+  livesCount: number;
+  pass: SellerPassDto | null;
+  blocked: boolean;
+}
+
+/** POST /admin/sellers/:id/pass: staff activate a pass paid in cash or by another way. */
+export interface AdminPassGrant {
+  plan: PassPlan;
+  note: string | null;
 }
 
 /** GET/PUT /admin/review-hours: the whole week. */

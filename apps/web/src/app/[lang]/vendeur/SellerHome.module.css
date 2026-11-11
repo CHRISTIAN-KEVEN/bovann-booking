@@ -119,3 +119,31 @@
   color: #1f5b36;
   font-weight: 600;
 }
+
+.passCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid #ebe3d9;
+}
+
+.passText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.action {
+  text-decoration: none;
+}
+
+.payAction {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}

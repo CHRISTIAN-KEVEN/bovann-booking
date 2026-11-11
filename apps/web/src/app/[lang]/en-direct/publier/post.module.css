@@ -611,3 +611,46 @@
     opacity: 0;
   }
 }
+
+.passOn,
+.passOff {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.passOn {
+  background: #e7f3ea;
+  color: #1f5b36;
+}
+
+.passOff {
+  background: #f1ebe3;
+  color: #4d443c;
+}
+
+.approvedChip {
+  align-self: flex-start;
+  height: 32px;
+  padding: 0 12px 0 6px;
+  border-radius: 999px;
+  background: #e7f3ea;
+  color: #1f5b36;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.approvedTick {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2f7a4a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

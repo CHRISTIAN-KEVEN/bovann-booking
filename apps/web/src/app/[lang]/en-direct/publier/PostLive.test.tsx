@@ -18,6 +18,9 @@ const api = vi.hoisted(() => ({
   lives: vi.fn(),
   submit: vi.fn(),
   end: vi.fn(),
+  pay: vi.fn(),
+  payment: vi.fn(),
+  simulatePayment: vi.fn(),
 }));
 vi.mock('@/lib/seller-api', async (importOriginal) => ({
   ...(await importOriginal<typeof SellerApiModule>()),
@@ -41,6 +44,8 @@ const response = (over: Partial<SellerLivesResponse> = {}): SellerLivesResponse 
     { code: 'MODE', name: 'Mode', icon: 'mode' },
     { code: 'BEAUTE', name: 'Beauté', icon: 'beaute' },
   ],
+  pass: null,
+  prices: { passMonthXof: 10_000, passYearXof: 100_000, liveXof: 1_500 },
   ...over,
 });
 
@@ -60,6 +65,7 @@ const sellerLive = (over: Partial<SellerLiveDto> = {}): SellerLiveDto => ({
   createdAt: new Date(NOW).toISOString(),
   rejectReason: null,
   reviewedAt: null,
+  paymentDueAt: null,
   ...over,
 });
 
@@ -91,6 +97,7 @@ describe('posting a live', () => {
 
     await user.click(await screen.findByRole('button', { name: '3 h' }));
     expect(screen.getByLabelText('Votre nom')).toHaveValue('afimode');
+    expect(screen.getByText(/Sans pass : 1\u202f?\s?500 FCFA par live/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Envoyer' }));
 
     expect(api.submit).toHaveBeenCalledWith({
@@ -154,5 +161,70 @@ describe('posting a live', () => {
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith('/vendeur/connexion?suite=/en-direct/publier'),
     );
+  });
+
+  it('shows the pass on the last step when the seller has one', async () => {
+    api.lives.mockResolvedValue(
+      response({
+        pass: { plan: 'MONTH', startsAt: '2026-11-11T09:00:00Z', endsAt: '2026-12-09T09:00:00Z' },
+      }),
+    );
+    const user = userEvent.setup();
+    renderI18n(<PostLive />);
+    await user.type(await screen.findByLabelText('Lien du live'), 'tiktok.com/@afimode/live');
+    await user.click(screen.getByRole('button', { name: /Continuer/ }));
+    await user.click(screen.getByRole('button', { name: 'Togo' }));
+    await user.click(await screen.findByRole('button', { name: 'Mode' }));
+    expect(await screen.findByText('Pass mensuel · jusqu’au 9 décembre 2026')).toBeInTheDocument();
+  });
+
+  it('asks to pay once approved without a pass: this live, or a pass', async () => {
+    api.lives.mockResolvedValue(
+      response({
+        lives: [
+          sellerLive({
+            status: 'AWAITING_PAYMENT',
+            paymentDueAt: '2026-11-11T09:30:00.000Z',
+            reviewedAt: '2026-11-11T09:00:00.000Z',
+          }),
+        ],
+      }),
+    );
+    api.pay.mockResolvedValue({
+      id: 3,
+      purpose: 'PASS_MONTH',
+      liveId: 7,
+      amountXof: 10_000,
+      method: 'MOBILE_MONEY',
+      channel: 'FLOOZ',
+      status: 'PENDING',
+      instructions: 'Paiement simulé',
+      failureReason: null,
+      createdAt: new Date(NOW).toISOString(),
+    });
+    const user = userEvent.setup();
+    renderI18n(<PostLive />);
+    expect(
+      await screen.findByRole('heading', { name: 'Payez pour mettre votre live en ligne' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Payez avant 09:30/)).toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: /Pass mensuel/ }));
+    await user.click(screen.getByRole('button', { name: 'Flooz' }));
+    await user.click(screen.getByRole('button', { name: /Payer 10\s?000 FCFA/ }));
+    expect(api.pay).toHaveBeenCalledWith({
+      purpose: 'PASS_MONTH',
+      liveId: 7,
+      method: 'MOBILE_MONEY',
+      channel: 'FLOOZ',
+      payerPhone: '+22890123456',
+    });
+    expect(await screen.findByText('Validez le paiement sur votre téléphone')).toBeInTheDocument();
+  });
+
+  it('says when the time to pay has passed', async () => {
+    api.lives.mockResolvedValue(response({ lives: [sellerLive({ status: 'EXPIRED' })] }));
+    renderI18n(<PostLive />);
+    // An expired approval isn't followed: the form opens again.
+    expect(await screen.findByLabelText('Lien du live')).toBeInTheDocument();
   });
 });

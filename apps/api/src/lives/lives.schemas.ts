@@ -1,5 +1,8 @@
 import {
   ADMIN_LIVE_TABS,
+  MOBILE_MONEY_CHANNELS,
+  PASS_PLANS,
+  SELLER_PAYMENT_PURPOSES,
   CATEGORY_OTHER_MAX,
   checkLiveLink,
   cleanShortText,
@@ -122,6 +125,53 @@ export const reviewHoursSchema = z
       .max(42, 'Trop de périodes.'),
   })
   .strict();
+
+export const sellerPaymentSchema = z
+  .object({
+    purpose: z.enum(SELLER_PAYMENT_PURPOSES, { message: 'Choisissez ce que vous payez.' }),
+    liveId: z.number().int().positive().nullable().default(null),
+    method: z.enum(['MOBILE_MONEY', 'CARD'], { message: 'Choisissez un moyen de paiement.' }),
+    channel: z.enum(MOBILE_MONEY_CHANNELS).nullable().default(null),
+    payerPhone: z
+      .string()
+      .transform((v) => v.replace(/[\s.-]/g, ''))
+      .pipe(z.string().regex(/^\+[1-9]\d{6,14}$/, 'Numéro de téléphone invalide.'))
+      .nullable()
+      .default(null),
+  })
+  .strict()
+  .refine((v) => v.purpose !== 'LIVE' || v.liveId !== null, {
+    message: 'Indiquez le live à payer.',
+    path: ['liveId'],
+  })
+  .refine((v) => v.method !== 'MOBILE_MONEY' || (v.channel !== null && v.payerPhone !== null), {
+    message: 'Choisissez l’opérateur et le numéro Mobile Money.',
+    path: ['channel'],
+  });
+
+const amount = z
+  .number({ message: 'Montant invalide.' })
+  .int('Montant invalide.')
+  .min(100, 'Montant trop petit (100 FCFA minimum).')
+  .max(10_000_000, 'Montant trop grand.');
+
+export const livePricesSchema = z
+  .object({ passMonthXof: amount, passYearXof: amount, liveXof: amount })
+  .strict();
+
+export const passGrantSchema = z
+  .object({
+    plan: z.enum(PASS_PLANS, { message: 'Choisissez un pass mensuel ou annuel.' }),
+    note: z
+      .string()
+      .transform(cleanShortText)
+      .pipe(z.string().max(255, 'Texte trop long (255 caractères maximum).'))
+      .nullish()
+      .transform((v) => v || null),
+  })
+  .strict();
+
+export const devPaymentFailSchema = z.object({ reason: z.string().max(255).default('DECLINED') });
 
 export const adminLiveListSchema = z.object({
   tab: z.enum(ADMIN_LIVE_TABS, { message: 'Onglet invalide.' }).default('online'),

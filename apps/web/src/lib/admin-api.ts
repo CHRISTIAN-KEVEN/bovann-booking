@@ -14,6 +14,9 @@ import {
   type AdminLiveListResponse,
   type AdminLiveTab,
   type AdminReviewHours,
+  type AdminSellerDto,
+  type LivePrices,
+  type PassPlan,
   type ReviewPeriod,
   type LiveCategoryDto,
   type AdminMe,
@@ -190,6 +193,12 @@ export const adminApi = {
   rejectLive: (id: number, reason: string) =>
     adminFetch<AdminLiveDto>(`/lives/${id}/reject`, send('POST', { reason })),
   reviewHours: () => adminFetch<AdminReviewHours>('/review-hours'),
+  sellers: () => adminFetch<AdminSellerDto[]>('/sellers'),
+  grantPass: (sellerId: number, plan: PassPlan, note: string | null) =>
+    adminFetch<AdminSellerDto>(`/sellers/${sellerId}/pass`, send('POST', { plan, note })),
+  livePrices: () => adminFetch<LivePrices>('/live-prices'),
+  setLivePrices: (prices: LivePrices) =>
+    adminFetch<LivePrices>('/live-prices', send('PUT', prices)),
   setReviewHours: (periods: ReviewPeriod[]) =>
     adminFetch<AdminReviewHours>('/review-hours', send('PUT', { periods })),
   removeLive: (id: number, reason: string | null) =>

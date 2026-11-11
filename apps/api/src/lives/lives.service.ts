@@ -1,5 +1,6 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
+  LIVE_PAYMENT_WINDOW_MIN,
   REVIEW_TIMEZONE,
   SELLER_LIVES_PER_DAY,
   type AdminLiveDto,
@@ -16,7 +17,7 @@ import {
   type SellerLiveDto,
   type SellerLivesResponse,
 } from '@bovann/shared';
-import type { Kysely, Transaction } from 'kysely';
+import type { ExpressionBuilder, Kysely, Transaction } from 'kysely';
 import { auditAdmin } from '../admin/admin-audit';
 import type { AdminPrincipal } from '../admin/auth/admin-auth.service';
 import { localToUtc, utcToLocalDate } from '../availability/domain/time';
@@ -26,6 +27,7 @@ import { ApiError, badRequest, notFound } from '../common/errors';
 import { localized } from '../common/request-context';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
+import { PassesService } from './passes.service';
 import { reviewHoursProblems, reviewStatus } from './review-hours';
 
 /** The wall shows at most this many lives (far above what is expected at once). */
@@ -66,7 +68,12 @@ interface FullRow extends LiveRow {
   created_at: Date;
   reviewed_at: Date | null;
   reject_reason: string | null;
+  payment_due_at: Date | null;
 }
+
+/** A live approved for a seller without a pass is still waiting for payment (not expired). */
+const awaitingPayment = (now: Date) => (eb: ExpressionBuilder<Database, 't_lives'>) =>
+  eb.and([eb('status', '=', 'AWAITING_PAYMENT'), eb('payment_due_at', '>', now)]);
 
 /**
  * Live directory ("En direct").
@@ -82,6 +89,7 @@ export class LivesService {
   constructor(
     @Inject(DB) private readonly db: Kysely<Database>,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly passes: PassesService,
   ) {}
 
   // ------------------------------------------------------------------ public
@@ -168,7 +176,7 @@ export class LivesService {
   async sellerLives(sellerId: number): Promise<SellerLivesResponse> {
     const now = this.clock.now();
     const since = new Date(now.getTime() - PAST_DAYS * 86_400_000);
-    const [rows, review, categories] = await Promise.all([
+    const [rows, review, categories, pass, prices] = await Promise.all([
       this.fullQuery()
         .where('l.seller_id', '=', sellerId)
         .where('l.created_at', '>=', since)
@@ -178,8 +186,17 @@ export class LivesService {
         .execute(),
       this.review(now),
       this.categories(),
+      this.passes.activePass(sellerId, now),
+      this.passes.prices(),
     ]);
-    return { now: now.toISOString(), lives: rows.map(toSellerLiveDto), review, categories };
+    return {
+      now: now.toISOString(),
+      lives: rows.map((r) => toSellerLiveDto(r, now)),
+      review,
+      categories,
+      pass,
+      prices,
+    };
   }
 
   /** A seller posts their live: it waits for staff review. Only during review hours. */
@@ -204,11 +221,12 @@ export class LivesService {
         );
       }
 
+      // One live at a time between sending and going online (review, then payment).
       const pending = await trx
         .selectFrom('t_lives')
         .select('id')
         .where('seller_id', '=', sellerId)
-        .where('status', '=', 'PENDING')
+        .where((eb) => eb.or([eb('status', '=', 'PENDING'), awaitingPayment(now)(eb)]))
         .executeTakeFirst();
       if (pending) {
         throw new ApiError(
@@ -262,13 +280,15 @@ export class LivesService {
       const now = this.clock.now();
       const live = await trx
         .selectFrom('t_lives')
-        .select(['id', 'status', 'ends_at'])
+        .select(['id', 'status', 'ends_at', 'payment_due_at'])
         .where('id', '=', liveId)
         .where('seller_id', '=', sellerId)
         .forUpdate()
         .executeTakeFirst();
       if (!live) throw notFound('LIVE_NOT_FOUND', 'Ce live est introuvable.');
-      if (live.status === 'PENDING') {
+      const unpaid =
+        live.status === 'AWAITING_PAYMENT' && live.payment_due_at && live.payment_due_at > now;
+      if (live.status === 'PENDING' || unpaid) {
         await trx
           .updateTable('t_lives')
           .set({ status: 'CANCELLED', ended_at: now })
@@ -297,7 +317,7 @@ export class LivesService {
       .where('l.seller_id', '=', sellerId)
       .executeTakeFirst();
     if (!row) throw notFound('LIVE_NOT_FOUND', 'Ce live est introuvable.');
-    return toSellerLiveDto(row);
+    return toSellerLiveDto(row, this.clock.now());
   }
 
   // ------------------------------------------------------------------ admin
@@ -307,6 +327,11 @@ export class LivesService {
     let query = this.adminQuery();
     if (tab === 'pending') {
       query = query.where('l.status', '=', 'PENDING').orderBy('l.created_at', 'asc');
+    } else if (tab === 'awaiting') {
+      query = query
+        .where('l.status', '=', 'AWAITING_PAYMENT')
+        .where('l.payment_due_at', '>', now)
+        .orderBy('l.payment_due_at', 'asc');
     } else if (tab === 'online') {
       query = query
         .where('l.status', '=', 'APPROVED')
@@ -318,6 +343,9 @@ export class LivesService {
         .where('l.created_at', '>=', since)
         .where('l.status', '!=', 'PENDING')
         .where((eb) => eb.or([eb('l.status', '!=', 'APPROVED'), eb('l.ends_at', '<=', now)]))
+        .where((eb) =>
+          eb.or([eb('l.status', '!=', 'AWAITING_PAYMENT'), eb('l.payment_due_at', '<=', now)]),
+        )
         .orderBy('l.created_at', 'desc')
         .limit(PAST_LIMIT);
     }
@@ -326,7 +354,12 @@ export class LivesService {
       this.pendingCount(),
       this.review(now),
     ]);
-    return { now: now.toISOString(), lives: rows.map(toAdminLiveDto), pendingCount, review };
+    return {
+      now: now.toISOString(),
+      lives: rows.map((r) => toAdminLiveDto(r, now)),
+      pendingCount,
+      review,
+    };
   }
 
   async pendingCount(): Promise<number> {
@@ -371,26 +404,80 @@ export class LivesService {
     return this.adminGet(id);
   }
 
-  /** Approves a request: on the wall from now, for the duration the seller chose. */
+  /**
+   * Approves a request. A seller with a pass in force goes on the wall at once, for the
+   * duration chosen; otherwise the live waits for payment (30 minutes).
+   */
   async approve(id: number, admin: AdminPrincipal): Promise<AdminLiveDto> {
     await inTransaction(this.db, async (trx) => {
       const now = this.clock.now();
       const live = await this.lockPending(trx, id);
       await this.assertLinkFree(trx, live.url, now, id);
-      await trx
-        .updateTable('t_lives')
-        .set({
-          status: 'APPROVED',
-          starts_at: now,
-          ends_at: new Date(now.getTime() + live.duration_min * 60_000),
-          reviewed_by_admin_id: admin.id,
-          reviewed_at: now,
-        })
-        .where('id', '=', id)
-        .execute();
-      await auditAdmin(trx, admin.id, 'LIVE_APPROVE', 'live', id, {});
+      const pass = live.seller_id ? await this.passes.activePass(live.seller_id, now, trx) : null;
+      const reviewed = { reviewed_by_admin_id: admin.id, reviewed_at: now };
+      if (pass || !live.seller_id) {
+        await trx
+          .updateTable('t_lives')
+          .set({
+            ...reviewed,
+            status: 'APPROVED',
+            starts_at: now,
+            ends_at: new Date(now.getTime() + live.duration_min * 60_000),
+          })
+          .where('id', '=', id)
+          .execute();
+      } else {
+        await trx
+          .updateTable('t_lives')
+          .set({
+            ...reviewed,
+            status: 'AWAITING_PAYMENT',
+            payment_due_at: new Date(now.getTime() + LIVE_PAYMENT_WINDOW_MIN * 60_000),
+          })
+          .where('id', '=', id)
+          .execute();
+      }
+      await auditAdmin(trx, admin.id, 'LIVE_APPROVE', 'live', id, { pass: Boolean(pass) });
     });
     return this.adminGet(id);
+  }
+
+  /**
+   * Payment received for an approved live: it goes on the wall from now, for the duration
+   * chosen. A payment that arrives after the 30 minutes still puts it online (the seller paid),
+   * unless the same link is on the wall again meanwhile. Called inside the payment transaction.
+   */
+  async putOnlineAfterPayment(
+    trx: Transaction<Database>,
+    liveId: number,
+    now: Date,
+  ): Promise<boolean> {
+    const live = await trx
+      .selectFrom('t_lives')
+      .select(['id', 'status', 'url', 'duration_min'])
+      .where('id', '=', liveId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (!live || (live.status !== 'AWAITING_PAYMENT' && live.status !== 'EXPIRED')) return false;
+    const online = await trx
+      .selectFrom('t_lives')
+      .select('id')
+      .where('url', '=', live.url)
+      .where('id', '!=', liveId)
+      .where('status', '=', 'APPROVED')
+      .where('ends_at', '>', now)
+      .executeTakeFirst();
+    if (online) return false;
+    await trx
+      .updateTable('t_lives')
+      .set({
+        status: 'APPROVED',
+        starts_at: now,
+        ends_at: new Date(now.getTime() + live.duration_min * 60_000),
+      })
+      .where('id', '=', liveId)
+      .execute();
+    return true;
   }
 
   /** Refuses a request; the reason is shown to the seller. */
@@ -444,7 +531,7 @@ export class LivesService {
   private async adminGet(id: number): Promise<AdminLiveDto> {
     const row = await this.adminQuery().where('l.id', '=', id).executeTakeFirst();
     if (!row) throw notFound('LIVE_NOT_FOUND', 'Ce live est introuvable.');
-    return toAdminLiveDto(row);
+    return toAdminLiveDto(row, this.clock.now());
   }
 
   // ------------------------------------------------------------------ shared steps
@@ -452,7 +539,7 @@ export class LivesService {
   private async lockPending(trx: Transaction<Database>, id: number) {
     const live = await trx
       .selectFrom('t_lives')
-      .select(['id', 'status', 'url', 'duration_min'])
+      .select(['id', 'status', 'url', 'duration_min', 'seller_id'])
       .where('id', '=', id)
       .forUpdate()
       .executeTakeFirst();
@@ -500,6 +587,7 @@ export class LivesService {
       .where((eb) =>
         eb.or([
           eb('status', '=', 'PENDING'),
+          awaitingPayment(now)(eb),
           eb.and([eb('status', '=', 'APPROVED'), eb('ends_at', '>', now)]),
         ]),
       );
@@ -550,6 +638,7 @@ export class LivesService {
       'l.created_at',
       'l.reviewed_at',
       'l.reject_reason',
+      'l.payment_due_at',
     ]);
   }
 
@@ -589,10 +678,18 @@ function toLiveDto(row: LiveRow): LiveDto {
   };
 }
 
-function toSellerLiveDto(row: FullRow): SellerLiveDto {
+/** An unpaid approval past its 30 minutes reads as EXPIRED (no job needed). */
+function effectiveStatus(row: FullRow, now: Date): LiveStatus {
+  return row.status === 'AWAITING_PAYMENT' && row.payment_due_at && row.payment_due_at <= now
+    ? 'EXPIRED'
+    : row.status;
+}
+
+function toSellerLiveDto(row: FullRow, now: Date): SellerLiveDto {
   return {
     ...toLiveDto(row),
-    status: row.status,
+    status: effectiveStatus(row, now),
+    paymentDueAt: row.payment_due_at?.toISOString() ?? null,
     durationMin: row.duration_min,
     createdAt: row.created_at.toISOString(),
     rejectReason: row.reject_reason,
@@ -609,10 +706,12 @@ function toAdminLiveDto(
     reviewed_by: string | null;
     seller_phone: string | null;
   },
+  now: Date,
 ): AdminLiveDto {
   return {
     ...toLiveDto(row),
-    status: row.status,
+    status: effectiveStatus(row, now),
+    paymentDueAt: row.payment_due_at?.toISOString() ?? null,
     durationMin: row.duration_min,
     createdAt: row.created_at.toISOString(),
     addedBy: row.added_by,

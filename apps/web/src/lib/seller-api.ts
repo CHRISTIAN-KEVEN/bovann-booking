@@ -6,6 +6,8 @@ import {
   type SellerLiveDto,
   type SellerLivesResponse,
   type SellerMe,
+  type SellerPaymentCreate,
+  type SellerPaymentDto,
 } from '@bovann/shared';
 import { apiFetch } from './api';
 
@@ -34,6 +36,13 @@ export const sellerApi = {
   submit: (input: SellerLiveCreate) =>
     apiFetch<SellerLiveDto>('/seller/lives', send('POST', input)),
   end: (id: number) => apiFetch<SellerLiveDto>(`/seller/lives/${id}/end`, send('POST')),
+  pay: (input: SellerPaymentCreate) =>
+    apiFetch<SellerPaymentDto>('/seller/payments', send('POST', input)),
+  payment: (id: number) =>
+    apiFetch<SellerPaymentDto>(`/seller/payments/${id}`, { credentials: 'include' }),
+  /** Development only: decide the outcome of a simulated payment. */
+  simulatePayment: (id: number, outcome: 'succeed' | 'fail') =>
+    apiFetch<unknown>(`/dev/seller-payments/${id}/${outcome}`, { method: 'POST', body: '{}' }),
 };
 
 /** Only paths on our own site are accepted as "where to go after sign-in". */
