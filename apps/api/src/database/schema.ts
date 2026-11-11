@@ -4,6 +4,7 @@ import type {
   CategoryIcon,
   LivePlatform,
   LiveStatus,
+  OtpChannel,
   BookingSource,
   BookingStatus,
   BookingType,
@@ -318,6 +319,41 @@ export interface LivesTable {
   updated_at: UpdatedAt;
 }
 
+/** A seller of the live directory (one per phone number), created at the first sign-in. */
+export interface SellersTable {
+  id: Generated<number>;
+  phone_e164: string;
+  locale: Generated<string>;
+  blocked_at: Date | null;
+  blocked_reason: string | null;
+  last_sign_in_at: Date | null;
+  created_at: CreatedAt;
+  updated_at: UpdatedAt;
+}
+
+/** A one-time sign-in code sent to a phone (keyed hash only). */
+export interface SellerOtpsTable {
+  id: Generated<number>;
+  phone_e164: string;
+  channel: OtpChannel;
+  code_hash: string;
+  attempts: Generated<number>;
+  expires_at: Date;
+  consumed_at: Date | null;
+  created_at: Date;
+}
+
+export interface SellerSessionsTable {
+  id: Generated<number>;
+  seller_id: number;
+  token_hash: string;
+  created_at: Date;
+  last_seen_at: Date;
+  expires_at: Date;
+  revoked_at: Date | null;
+  user_agent: string | null;
+}
+
 export interface Database {
   t_admin_users: AdminUsersTable;
   t_admin_sessions: AdminSessionsTable;
@@ -339,6 +375,9 @@ export interface Database {
   t_audit_log: AuditLogTable;
   t_categories: CategoriesTable;
   t_lives: LivesTable;
+  t_sellers: SellersTable;
+  t_seller_otps: SellerOtpsTable;
+  t_seller_sessions: SellerSessionsTable;
 }
 
 export type Space = Selectable<SpacesTable>;

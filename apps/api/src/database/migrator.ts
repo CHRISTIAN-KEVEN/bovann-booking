@@ -7,6 +7,7 @@ import * as admin from './migrations/2026_11_09_005_admin';
 import * as bookingAccessTokens from './migrations/2026_11_09_006_booking_access_tokens';
 import * as english from './migrations/2026_11_10_007_english';
 import * as lives from './migrations/2026_11_10_008_lives';
+import * as sellers from './migrations/2026_11_11_009_sellers';
 
 /**
  * Migrations are registered explicitly (not discovered from the file system),
@@ -23,6 +24,7 @@ const migrations: Record<string, Migration> = {
   '2026_11_09_006_booking_access_tokens': bookingAccessTokens,
   '2026_11_10_007_english': english,
   '2026_11_10_008_lives': lives,
+  '2026_11_11_009_sellers': sellers,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the migrator works on any schema

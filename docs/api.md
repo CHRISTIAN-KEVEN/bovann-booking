@@ -412,3 +412,17 @@ A live is shown while it is approved and `startedAt <= now < endsAt`. The web pa
 - **Seller name** (2–60) and **typed category** (2–40): invisible and control characters removed, spaces collapsed.
 - **Country:** one of the supported countries (`LIVE_COUNTRIES`, the same list as the phone picker).
 - **Category:** exactly one of `categoryCode` or `categoryOther`.
+
+## Seller sign-in (2026-11-11)
+
+Sellers sign in with a one-time code sent to their phone; no password. Every POST needs the header `X-Bovann-Seller: 1` (CSRF); the session travels in the httpOnly cookie `bovann_seller_session` (call with `credentials: 'include'`).
+
+| Method & path              | Notes                                                                                                                                                                                                                                    |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /seller/auth/status`  | `{available}`: false until a WhatsApp/SMS provider is set up                                                                                                                                                                             |
+| `POST /seller/auth/code`   | `{phone, channel: WHATSAPP\|SMS}` → `{phone, channel, expiresInSec: 600, resendInSec: 60, devCode?}`. 429 `OTP_TOO_SOON` (`details.retryInSec`), 429 `OTP_TOO_MANY` (5 per phone per hour), 503 `OTP_UNAVAILABLE`, 502 `OTP_SEND_FAILED` |
+| `POST /seller/auth/verify` | `{phone, code}` → `SellerMe` + cookie. 400 `OTP_INVALID` (`details.attemptsLeft`), 400 `OTP_EXPIRED` (used, expired, replaced by a newer code, or 5 wrong tries), 403 `SELLER_BLOCKED`                                                   |
+| `GET /seller/me`           | `{id, phone}`; 401 `NOT_AUTHENTICATED`                                                                                                                                                                                                   |
+| `POST /seller/auth/logout` | 204                                                                                                                                                                                                                                      |
+
+`devCode` is only present with simulated sending (development); the API refuses to start in production with it.

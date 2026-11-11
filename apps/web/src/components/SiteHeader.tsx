@@ -50,10 +50,18 @@ export function SiteHeader({
             <span className={styles.liveDot} aria-hidden="true" />
             {t('header.place')}
           </span>
-          <Link href="/mes-reservations" className={styles.mine}>
-            <Icon name="bookings" size={18} />
-            <span className={styles.mineLabel}>{t('header.myBooking')}</span>
-          </Link>
+          {/* On the lives wall the account that matters is the seller's; elsewhere, the booking. */}
+          {section === 'lives' ? (
+            <Link href="/vendeur" className={styles.mine}>
+              <Icon name="user" size={18} />
+              <span className={styles.mineLabel}>{t('seller.account')}</span>
+            </Link>
+          ) : (
+            <Link href="/mes-reservations" className={styles.mine}>
+              <Icon name="bookings" size={18} />
+              <span className={styles.mineLabel}>{t('header.myBooking')}</span>
+            </Link>
+          )}
           <LanguageSwitch />
         </div>
       </div>
