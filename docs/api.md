@@ -450,25 +450,24 @@ Sellers sign in with a one-time code sent to their phone; no password. Every POS
 | `GET /review-hours`         | `{periods: [{weekday 1–7, opensAt, closesAt}]}` (Lomé time)                                                 |
 | `PUT /review-hours` (OWNER) | Replaces the whole week. 400 `REVIEW_HOURS_INVALID` (a period ending before it starts, overlapping periods) |
 
-## Passes and payment for lives (2026-11-11)
+## Passes (2026-11-12)
 
-Approval now checks the seller's pass: with one in force the live goes online at once; without, it becomes `AWAITING_PAYMENT` with `paymentDueAt` (30 minutes), then reads as `EXPIRED` if unpaid. `GET /seller/lives` also returns `pass` (`{plan, startsAt, endsAt}` or null) and `prices` (`{passMonthXof, passYearXof, liveXof}`).
+Posting a live needs a pass in force: `POST /seller/lives` answers **402 `PASS_REQUIRED`** without one. Staff approval then puts the live online at once (the pass is not checked again, so a pass that ends during review doesn't lose the live). Paying for a single live is switched off for now. `GET /seller/lives` also returns `pass` (`{plan, startsAt, endsAt}` or null) and `prices` (`{passMonthXof, passYearXof}`).
 
 ### Seller payments (session cookie + `X-Bovann-Seller`)
 
-| Method & path              | Notes                                                                                                                                                                                                                                                                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `POST /seller/payments`    | `{purpose: LIVE\|PASS_MONTH\|PASS_YEAR, liveId, method: MOBILE_MONEY\|CARD, channel, payerPhone}`. `liveId` is required for `LIVE`, optional for a pass (the approved live then goes online too). A new attempt cancels the seller's unfinished one. 409 `LIVE_NOT_PAYABLE` after the 30 minutes; 502 `PAYMENT_PROVIDER_UNAVAILABLE` |
-| `GET /seller/payments/:id` | `SellerPaymentDto`: `status` `PENDING`, `SUCCEEDED`, `FAILED` or `CANCELLED`, `instructions`, `amountXof`                                                                                                                                                                                                                            |
+| Method & path              | Notes                                                                                                                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /seller/payments`    | `{purpose: PASS_MONTH\|PASS_YEAR, method: MOBILE_MONEY\|CARD, channel, payerPhone}`. A new attempt cancels the seller's unfinished one (`SUPERSEDED`). 502 `PAYMENT_PROVIDER_UNAVAILABLE` |
+| `GET /seller/payments/:id` | `SellerPaymentDto`: `status` `PENDING`, `SUCCEEDED`, `FAILED` or `CANCELLED`, `instructions`, `amountXof`                                                                                 |
 
-**Development only:** `POST /dev/seller-payments/:id/succeed` | `/fail` decides a simulated payment (404 unless `PAYMENT_PROVIDER=mock` outside production). Success adds the pass and/or puts the live online; it is idempotent (`ALREADY_DONE`). A second success for the same live answers 409 `PAYMENT_DUPLICATE`.
+**Development only:** `POST /dev/seller-payments/:id/succeed` | `/fail` decides a simulated payment (404 unless `PAYMENT_PROVIDER=mock` outside production). Success adds the pass; it is idempotent (`ALREADY_DONE`).
 
 ### Admin
 
-| Method & path             | Who   | Notes                                                                                                             |
-| ------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------- |
-| `GET /lives?tab=awaiting` | any   | Approved lives waiting for payment (not expired)                                                                  |
-| `GET /sellers`            | any   | Sellers with lives of the last 30 days, pass in force, blocked                                                    |
-| `POST /sellers/:id/pass`  | any   | `{plan: MONTH\|YEAR, note?}`: activates a pass paid outside the site (cash…). Starts now or after the current one |
-| `GET /live-prices`        | any   | `{passMonthXof, passYearXof, liveXof}`                                                                            |
-| `PUT /live-prices`        | OWNER | Same body. 400 `LIVE_PRICE_TOO_LOW` when one live ≤ month ÷ 30                                                    |
+| Method & path            | Who   | Notes                                                                                                             |
+| ------------------------ | ----- | ----------------------------------------------------------------------------------------------------------------- |
+| `GET /sellers`           | any   | Sellers with lives of the last 30 days, pass in force, blocked                                                    |
+| `POST /sellers/:id/pass` | any   | `{plan: MONTH\|YEAR, note?}`: activates a pass paid outside the site (cash…). Starts now or after the current one |
+| `GET /live-prices`       | any   | `{passMonthXof, passYearXof}`                                                                                     |
+| `PUT /live-prices`       | OWNER | Same body. 400 `PASS_YEAR_TOO_HIGH` when the year costs 12 months or more                                         |

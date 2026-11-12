@@ -44,8 +44,12 @@ const response = (over: Partial<SellerLivesResponse> = {}): SellerLivesResponse 
     { code: 'MODE', name: 'Mode', icon: 'mode' },
     { code: 'BEAUTE', name: 'Beauté', icon: 'beaute' },
   ],
-  pass: null,
-  prices: { passMonthXof: 10_000, passYearXof: 100_000, liveXof: 1_500 },
+  pass: {
+    plan: 'MONTH',
+    startsAt: new Date(NOW).toISOString(),
+    endsAt: '2026-12-09T12:00:00.000Z',
+  },
+  prices: { passMonthXof: 10_000, passYearXof: 100_000 },
   ...over,
 });
 
@@ -65,7 +69,6 @@ const sellerLive = (over: Partial<SellerLiveDto> = {}): SellerLiveDto => ({
   createdAt: new Date(NOW).toISOString(),
   rejectReason: null,
   reviewedAt: null,
-  paymentDueAt: null,
   ...over,
 });
 
@@ -97,7 +100,7 @@ describe('posting a live', () => {
 
     await user.click(await screen.findByRole('button', { name: '3 h' }));
     expect(screen.getByLabelText('Votre nom')).toHaveValue('afimode');
-    expect(screen.getByText(/Sans pass : 1\u202f?\s?500 FCFA par live/)).toBeInTheDocument();
+    expect(screen.getByText('Pass mensuel · jusqu’au 9 décembre 2026')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Envoyer' }));
 
     expect(api.submit).toHaveBeenCalledWith({
@@ -178,22 +181,11 @@ describe('posting a live', () => {
     expect(await screen.findByText('Pass mensuel · jusqu’au 9 décembre 2026')).toBeInTheDocument();
   });
 
-  it('asks to pay once approved without a pass: this live, or a pass', async () => {
-    api.lives.mockResolvedValue(
-      response({
-        lives: [
-          sellerLive({
-            status: 'AWAITING_PAYMENT',
-            paymentDueAt: '2026-11-11T09:30:00.000Z',
-            reviewedAt: '2026-11-11T09:00:00.000Z',
-          }),
-        ],
-      }),
-    );
+  it('asks for a pass first when the seller has none, then opens the form once paid', async () => {
+    api.lives.mockResolvedValue(response({ pass: null }));
     api.pay.mockResolvedValue({
       id: 3,
       purpose: 'PASS_MONTH',
-      liveId: 7,
       amountXof: 10_000,
       method: 'MOBILE_MONEY',
       channel: 'FLOOZ',
@@ -202,29 +194,60 @@ describe('posting a live', () => {
       failureReason: null,
       createdAt: new Date(NOW).toISOString(),
     });
+    api.payment.mockResolvedValue({
+      id: 3,
+      purpose: 'PASS_MONTH',
+      amountXof: 10_000,
+      method: 'MOBILE_MONEY',
+      channel: 'FLOOZ',
+      status: 'SUCCEEDED',
+      instructions: null,
+      failureReason: null,
+      createdAt: new Date(NOW).toISOString(),
+    });
     const user = userEvent.setup();
     renderI18n(<PostLive />);
     expect(
-      await screen.findByRole('heading', { name: 'Payez pour mettre votre live en ligne' }),
+      await screen.findByRole('heading', { name: 'Prenez un pass pour publier' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Payez avant 09:30/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Lien du live')).not.toBeInTheDocument();
+    // No single-live option.
+    expect(screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual([
+      expect.stringContaining('Pass annuel'),
+      expect.stringContaining('Pass mensuel'),
+    ]);
+
     await user.click(screen.getByRole('radio', { name: /Pass mensuel/ }));
     await user.click(screen.getByRole('button', { name: 'Flooz' }));
+    // Once paid, the next load has the pass.
+    api.lives.mockResolvedValue(response());
     await user.click(screen.getByRole('button', { name: /Payer 10\s?000 FCFA/ }));
     expect(api.pay).toHaveBeenCalledWith({
       purpose: 'PASS_MONTH',
-      liveId: 7,
       method: 'MOBILE_MONEY',
       channel: 'FLOOZ',
       payerPhone: '+22890123456',
     });
     expect(await screen.findByText('Validez le paiement sur votre téléphone')).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText('Lien du live', undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
   });
 
-  it('says when the time to pay has passed', async () => {
-    api.lives.mockResolvedValue(response({ lives: [sellerLive({ status: 'EXPIRED' })] }));
+  it('goes back to the pass if it ran out while filling in the form', async () => {
+    api.submit.mockRejectedValue(
+      new ApiError(402, 'PASS_REQUIRED', 'Prenez un pass pour publier vos lives.'),
+    );
+    const user = userEvent.setup();
     renderI18n(<PostLive />);
-    // An expired approval isn't followed: the form opens again.
-    expect(await screen.findByLabelText('Lien du live')).toBeInTheDocument();
+    await user.type(await screen.findByLabelText('Lien du live'), 'tiktok.com/@afimode/live');
+    await user.click(screen.getByRole('button', { name: /Continuer/ }));
+    await user.click(screen.getByRole('button', { name: 'Togo' }));
+    await user.click(await screen.findByRole('button', { name: 'Mode' }));
+    api.lives.mockResolvedValue(response({ pass: null }));
+    await user.click(await screen.findByRole('button', { name: 'Envoyer' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Prenez un pass pour publier' }),
+    ).toBeInTheDocument();
   });
 });

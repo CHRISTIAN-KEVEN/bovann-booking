@@ -14,7 +14,6 @@ import { ButtonSpinner, Spinner } from '@/components/ui';
 import { useI18n } from '@/i18n/I18nProvider';
 import { PAYMENT_SIMULATION } from '@/lib/api';
 import { COUNTRY_CODES, composePhone, isValidE164, splitPhone } from '@/lib/details';
-import { lomeTime } from '@/lib/lives';
 import { sellerApi } from '@/lib/seller-api';
 import seller from './seller.module.css';
 import styles from './SellerPayPanel.module.css';
@@ -25,28 +24,21 @@ type Phase =
   | { kind: 'waiting'; payment: SellerPaymentDto };
 
 /**
- * Pay for an approved live, or for a pass (which also puts the approved live online).
+ * Pay for a pass (monthly or annual): needed to post lives.
  * Mobile Money (T-Money, Flooz) or card, through the same provider contract as bookings.
  * While payments are simulated, two buttons decide the outcome, as in the booking flow.
  */
 export function SellerPayPanel({
-  plans,
-  liveId,
-  durationMin,
+  plans = ['PASS_YEAR', 'PASS_MONTH'],
   prices,
   pass,
   phone,
-  dueAt,
   onPaid,
 }: {
-  plans: SellerPaymentPurpose[];
-  liveId: number | null;
-  durationMin?: number;
+  plans?: SellerPaymentPurpose[];
   prices: LivePrices;
   pass: SellerPassDto | null;
   phone: string;
-  /** Approved live: pay before this time. */
-  dueAt?: string | null;
   onPaid: (payment: SellerPaymentDto) => void;
 }) {
   const { t, locale } = useI18n();
@@ -62,7 +54,7 @@ export function SellerPayPanel({
   const payerValid = method === 'CARD' || isValidE164(payer);
 
   const amount = (p: SellerPaymentPurpose) =>
-    p === 'LIVE' ? prices.liveXof : p === 'PASS_MONTH' ? prices.passMonthXof : prices.passYearXof;
+    p === 'PASS_MONTH' ? prices.passMonthXof : prices.passYearXof;
 
   // Follow the payment until the provider answers.
   useEffect(() => {
@@ -93,7 +85,6 @@ export function SellerPayPanel({
     try {
       const payment = await sellerApi.pay({
         purpose: plan,
-        liveId,
         method,
         channel: method === 'MOBILE_MONEY' ? channel : null,
         payerPhone: method === 'MOBILE_MONEY' ? payer : null,
@@ -162,11 +153,6 @@ export function SellerPayPanel({
   }
 
   const planText: Record<SellerPaymentPurpose, { title: string; sub: string; per: string }> = {
-    LIVE: {
-      title: t('pay.planLive'),
-      sub: t('pay.planLiveSub', { hours: (durationMin ?? 60) / 60 }),
-      per: t('pay.once'),
-    },
     PASS_MONTH: { title: t('pay.planMonth'), sub: t('pay.planMonthSub'), per: t('pay.perMonth') },
     PASS_YEAR: { title: t('pay.planYear'), sub: t('pay.planYearSub'), per: t('pay.perYear') },
   };
@@ -217,7 +203,7 @@ export function SellerPayPanel({
           ))}
         </div>
       </fieldset>
-      {pass && plan !== 'LIVE' ? (
+      {pass ? (
         <p className={seller.hint}>
           {t('pay.extends', { date: dateFmt.format(new Date(pass.endsAt)) })}
         </p>
@@ -281,12 +267,6 @@ export function SellerPayPanel({
         </div>
       ) : null}
 
-      {dueAt ? (
-        <p className={styles.deadline}>
-          <Icon name="clock" size={16} />
-          {t('pay.deadline', { time: lomeTime(dueAt, locale) })}
-        </p>
-      ) : null}
       {phase.kind === 'choose' && phase.error ? (
         <p className={seller.error} role="alert">
           {phase.error}

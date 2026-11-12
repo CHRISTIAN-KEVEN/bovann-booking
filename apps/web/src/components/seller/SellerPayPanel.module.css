@@ -183,15 +183,6 @@
   outline-offset: 2px;
 }
 
-.deadline {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #6b6157;
-}
-
 .waitCard {
   padding: 24px 18px;
   border-radius: 20px;

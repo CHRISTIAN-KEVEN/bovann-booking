@@ -523,33 +523,34 @@ Posting a live (link, country, category, duration), the staff review queue and r
 1. Categories: the booking form on the shared list with "Autre", admin list of typed categories.
 2. Passes and one-off payment.
 
-## Live directory, part 4: passes and payment (in review)
+## Live directory, part 4: passes (in review)
 
-**Product owner, 2026-11-11:** posting must check the seller's pass and simulate payment like slot bookings; only the payment provider and WhatsApp/SMS remain.
+**Product owner, 2026-11-12:** posting must check that the seller has a valid subscription, with payment simulated like slot bookings; only the payment provider and WhatsApp/SMS remain. After discussing how to keep jokers out (free sending invites them; paying per live before review needs refunds or credits), the decision is: **everyone who posts must have a pass**, and the single-live payment is switched off for now.
 
 ### Delivered
 
-- **Approval checks the pass:** with a pass in force, the live goes online at once; without, the seller has 30 minutes to pay.
-- **Payment after approval:** "Live approuvé — Payez pour mettre votre live en ligne": this live only (1 500 FCFA), monthly pass or annual pass; Mobile Money (T-Money, Flooz, the seller's number pre-filled) or card; waiting screen with "Simuler un paiement réussi / un échec" in demo mode. Success puts the live online; failure lets the seller try again; after 30 minutes the live must be sent again.
-- **Passes:** bought from the seller space (`/vendeur/pass`) or at the payment step; a new pass follows the current one. The seller space shows "Pass annuel · jusqu’au …"; the last posting step shows the pass or the price of one live.
-- **Admin "Lives":** "Paiement attendu"; "Vendeurs et pass" with "Activer un pass" for cash payments; "Prix" (administrators) with the rule one live > month ÷ 30.
+- **No pass, no posting:** "Publier mon live" first checks the pass. Without one: "Prenez un pass pour publier", annual (marked "Le moins cher") or monthly, Mobile Money (T-Money, Flooz, the seller's number pre-filled) or card, a waiting screen and, in demo mode, "Simuler un paiement réussi / un échec". Success opens the form; a failure lets the seller try again.
+- The API refuses a live sent without a pass (402 `PASS_REQUIRED`), so the rule holds whatever the screens do.
+- **Approval** puts the live online at once.
+- **Passes:** shown on the last posting step and in the seller space ("Pass mensuel · jusqu’au …", "Prolonger mon pass"); a new pass follows the current one.
+- **Admin "Lives":** "Vendeurs et pass" with "Activer un pass" for cash payments; "Prix" (administrators) with the rule "a year costs less than 12 months".
 
 ### Decisions taken in this step (to confirm)
 
-- 30 minutes to pay after approval; a payment confirmed later still puts the live online.
-- Example prices until Bovann sets its own: 10 000 FCFA a month, 100 000 FCFA a year, 1 500 FCFA a live.
+- Example prices until Bovann sets its own: 10 000 FCFA a month, 100 000 FCFA a year.
 - Staff (both roles) can activate a pass after a cash payment; only administrators change prices.
+- A live sent while the pass was valid still goes online if the pass ends during review.
 
 ### Tests
 
-- **API (10 new):** pay for one live then online; failure then retry, replaced attempt, duplicate success refused; expiry after 30 minutes; pass taken at the payment step and next live online at approval; passes bought ahead chain; a pass running out; staff activation; prices (roles, rule, amounts used); request checks; database rules. The posting tests now give their sellers a pass.
-- **Web (3 new):** pass shown on the last step, the payment step (pass chosen, Flooz, request sent, waiting screen), expired approval.
-- **Totals:** API 255, shared 12, web 81.
-- **In a real Chrome:** a seller without a pass is approved, a first payment fails, the second succeeds and the live goes online; another takes an annual pass by card at the payment step and their next live goes online at approval; a third buys a monthly pass from their space; staff see "Paiement attendu", activate a pass and open the prices. No browser errors.
+- **API (10 new):** sending refused without a pass; monthly pass by Mobile Money then send, approve, online; failure then retry and replaced attempt; pass ending during review; passes bought ahead chain; a pass running out; staff activation; prices (roles, rule, amounts used); request checks; database rules. The posting tests give their sellers a pass.
+- **Web:** the pass screen when the seller has none (no single-live option), paying then the form; back to the pass when it ran out while filling in the form; the pass on the last step.
+- **Totals:** API 254, shared 12, web 81.
+- **In a real Chrome at phone size:** a new seller signs in from "Publier mon live", gets the pass screen, a first payment fails, the second succeeds, the form opens, the live is sent, staff approve it, it goes online; the seller space shows the pass; staff open "Vendeurs et pass" and "Prix". No browser errors.
 
 ## Then: Phase 4 — Payments
 
-Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow, for bookings and for sellers' payments (lives and passes). Needs: the provider's sandbox credentials.
+Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow, for bookings and for sellers' passes. Needs: the provider's sandbox credentials.
 
 ## Known issues / technical debt
 
@@ -561,5 +562,4 @@ Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's ch
 - The seed dates prices from the moment it runs (`valid_from = now`). Fine in practice; tests backdate them because they freeze the clock earlier.
 - Admin sign-in limits per connection are kept in memory: fine for one API instance; move them to the database or Redis if the API ever runs on several machines.
 - Customers cancel by contacting the studio (48 h rule); there is no self-service cancellation after payment. Possible later, inside Mes réservations.
-- A seller who pays twice for the same live (a replaced attempt confirmed late by the provider) gets 409 `PAYMENT_DUPLICATE` and the payment stays pending: refund it by hand until Phase 4.
 - A studio cancellation of an online payment in progress only marks it cancelled on our side; with a real provider (Phase 4) the payment must also be cancelled or refunded at the provider.

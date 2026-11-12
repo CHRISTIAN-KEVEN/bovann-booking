@@ -46,7 +46,7 @@ import local from './lives.module.css';
 
 /** "Lives": what is on the "En direct" page now, and listing a live for a seller. */
 type View = AdminLiveTab | 'sellers' | 'prices' | 'hours';
-const LIST_TABS: AdminLiveTab[] = ['pending', 'awaiting', 'online', 'past'];
+const LIST_TABS: AdminLiveTab[] = ['pending', 'online', 'past'];
 
 export default function AdminLivesPage() {
   const { t, locale } = useI18n();
@@ -156,11 +156,6 @@ export default function AdminLivesPage() {
             count: list.data?.pendingCount,
           },
           {
-            value: 'awaiting',
-            label: t('adminLives.awaiting'),
-            count: tab === 'awaiting' ? list.data?.lives.length : undefined,
-          },
-          {
             value: 'online',
             label: t('adminLives.online'),
             count: tab === 'online' ? list.data?.lives.length : undefined,
@@ -194,11 +189,9 @@ export default function AdminLivesPage() {
         >
           {tab === 'pending'
             ? t('adminLives.emptyPending')
-            : tab === 'awaiting'
-              ? t('adminLives.emptyAwaiting')
-              : tab === 'online'
-                ? t('adminLives.empty')
-                : t('adminLives.emptyPast')}
+            : tab === 'online'
+              ? t('adminLives.empty')
+              : t('adminLives.emptyPast')}
         </Empty>
       ) : (
         <ul className={local.list}>
@@ -301,11 +294,9 @@ function LiveRow({
           {live.sellerPhone ? `${formatPhone(live.sellerPhone)} · ` : ''}
           {pending
             ? `${t('adminLives.sentAgo', { time: fmt.time(live.createdAt) })} · ${t('adminLives.durationLabel', { count: live.durationMin / 60 })}`
-            : mode === 'awaiting' && live.paymentDueAt
-              ? t('adminLives.payBefore', { time: fmt.time(live.paymentDueAt) })
-              : online
-                ? `${t('adminLives.startedAt', { time: fmt.time(live.startedAt) })} · ${t('adminLives.until', { time: fmt.time(live.endsAt) })}`
-                : fmt.day(live.startedAt || live.createdAt)}
+            : online
+              ? `${t('adminLives.startedAt', { time: fmt.time(live.startedAt) })} · ${t('adminLives.until', { time: fmt.time(live.endsAt) })}`
+              : fmt.day(live.startedAt || live.createdAt)}
           {live.addedBy ? ` · ${t('adminLives.addedBy', { name: live.addedBy })}` : ''}
         </span>
       </div>
@@ -347,11 +338,7 @@ function LiveRow({
       <div className={local.actions}>
         {mode === 'past' && (
           <Badge
-            tone={
-              live.status === 'REMOVED' || live.status === 'REJECTED' || live.status === 'EXPIRED'
-                ? 'danger'
-                : 'neutral'
-            }
+            tone={live.status === 'REMOVED' || live.status === 'REJECTED' ? 'danger' : 'neutral'}
           >
             {t(`adminLives.status.${live.status}` as TKey)}
           </Badge>
@@ -1190,7 +1177,6 @@ function PricesEditor() {
       setDraft({
         passMonthXof: formatAmountInput(prices.data.passMonthXof, locale),
         passYearXof: formatAmountInput(prices.data.passYearXof, locale),
-        liveXof: formatAmountInput(prices.data.liveXof, locale),
       });
     }
   }, [prices.data, locale]);
@@ -1201,14 +1187,11 @@ function PricesEditor() {
   const month = parseAmount(draft.passMonthXof);
   const fields: Array<{ key: keyof LivePrices; label: string; hint?: string }> = [
     { key: 'passMonthXof', label: t('adminLives.pricesEditor.month') },
-    { key: 'passYearXof', label: t('adminLives.pricesEditor.year') },
     {
-      key: 'liveXof',
-      label: t('adminLives.pricesEditor.live'),
+      key: 'passYearXof',
+      label: t('adminLives.pricesEditor.year'),
       hint: month
-        ? t('adminLives.pricesEditor.liveHint', {
-            min: formatXof(Math.floor(month / 30) + 1, locale),
-          })
+        ? t('adminLives.pricesEditor.yearHint', { max: formatXof(month * 12 - 1, locale) })
         : undefined,
     },
   ];
@@ -1217,7 +1200,6 @@ function PricesEditor() {
     const values = {
       passMonthXof: parseAmount(draft!.passMonthXof),
       passYearXof: parseAmount(draft!.passYearXof),
-      liveXof: parseAmount(draft!.liveXof),
     };
     if (Object.values(values).some((v) => v === null)) {
       setError(t('adminLives.pricesEditor.invalid'));

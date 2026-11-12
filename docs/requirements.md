@@ -112,8 +112,8 @@ Sellers who are live on TikTok or Facebook list their live on the OCD Live site.
 - **Every live is reviewed by staff** (approve or reject), for sellers with a pass too (decided 2026-11-10, knowing that subscribers can then post only during review hours).
 - **Review hours:** configurable per weekday, several periods per day (e.g. 08:00–11:00 and 15:00–18:00). Outside them the form is closed and shows the next opening time.
 - **Visitors:** see all lives, filter by country, platform and category, and tap a live to open it on the platform. No sign-in for visitors.
-- **Paid:** a monthly or an annual pass, or a one-off payment for one live, priced above the monthly price ÷ 30.
-- **One-off payment: review first, then pay.** Submitting is free; once approved, the seller pays and the live is listed. A rejected request costs nothing, so there are no refunds.
+- **Paid (changed 2026-11-12): a monthly or an annual pass is required to post.** Without a pass in force, a seller can't send a live; with one, every approved live goes online at once.
+- _Switched off for now (2026-11-12):_ the one-off payment for a single live ("review first, then pay", priced above the monthly price ÷ 30). Reason: free sending invites jokers to flood staff, and paying per live before review would need refunds or credits; a pass keeps it simple early on.
 - **Seller accounts:** sign-in with a phone number and a one-time code sent by WhatsApp or SMS. Needs an SMS/WhatsApp provider (to be chosen by Bovann); development uses a simulated sender.
 - **Staff alerts:** for now the admin review page refreshes by itself and shows a counter; real-time notifications later.
 - **Category "Autre":** choosing it shows a field to type the category, on every form (booking and live). See "Business categories".
@@ -141,7 +141,7 @@ Sellers who are live on TikTok or Facebook list their live on the OCD Live site.
 
 - The public wall at `/en-direct` with filters, and an admin "Lives" page where staff list a live for a seller (approved at once) or take one down.
 - Seller sign-in with a code (simulated until a provider is chosen), posting a live during review hours, the staff review queue and the review hours editor.
-- Passes and payment (2026-11-11): approval checks the pass; without one, the seller pays within 30 minutes (one live, or a pass), simulated like slot bookings until the payment provider is chosen. Staff can activate a pass after a cash payment; administrators set the prices.
+- Passes (decided 2026-11-12): **everyone who posts a live must have a pass in force** (monthly or annual). Paying for a single live is switched off for now. Payment is simulated like slot bookings until the payment provider is chosen. Staff can activate a pass after a cash payment; administrators set the prices.
 
 ### Open questions
 

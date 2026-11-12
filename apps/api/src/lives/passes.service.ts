@@ -18,7 +18,7 @@ import type { Database } from '../database/schema';
 type Db = Kysely<Database> | Transaction<Database>;
 
 /**
- * Passes (30 or 365 days, prepaid) and the prices of the live directory.
+ * Passes (30 or 365 days, prepaid) and their prices. Posting a live needs a pass in force.
  * A pass bought while another is running starts when that one ends, so nothing is lost.
  */
 @Injectable()
@@ -33,21 +33,17 @@ export class PassesService {
   async prices(db: Db = this.db): Promise<LivePrices> {
     const row = await db
       .selectFrom('t_live_prices')
-      .select(['pass_month_xof', 'pass_year_xof', 'live_xof'])
+      .select(['pass_month_xof', 'pass_year_xof'])
       .where('id', '=', 1)
       .executeTakeFirstOrThrow();
-    return {
-      passMonthXof: row.pass_month_xof,
-      passYearXof: row.pass_year_xof,
-      liveXof: row.live_xof,
-    };
+    return { passMonthXof: row.pass_month_xof, passYearXof: row.pass_year_xof };
   }
 
   async setPrices(prices: LivePrices, admin: AdminPrincipal): Promise<LivePrices> {
-    if (prices.liveXof * 30 <= prices.passMonthXof) {
-      throw badRequest('LIVE_PRICE_TOO_LOW', {
-        fr: `Le prix d’un live doit être supérieur au prix du mois ÷ 30 (${Math.floor(prices.passMonthXof / 30)} FCFA).`,
-        en: `The price of one live must be above the monthly price ÷ 30 (${Math.floor(prices.passMonthXof / 30)} FCFA).`,
+    if (prices.passYearXof >= prices.passMonthXof * 12) {
+      throw badRequest('PASS_YEAR_TOO_HIGH', {
+        fr: `Le pass annuel doit coûter moins que 12 mois (${prices.passMonthXof * 12} FCFA).`,
+        en: `The annual pass must cost less than 12 months (${prices.passMonthXof * 12} FCFA).`,
       });
     }
     await inTransaction(this.db, async (trx) => {
@@ -56,7 +52,6 @@ export class PassesService {
         .set({
           pass_month_xof: prices.passMonthXof,
           pass_year_xof: prices.passYearXof,
-          live_xof: prices.liveXof,
           updated_by_admin_id: admin.id,
         })
         .where('id', '=', 1)

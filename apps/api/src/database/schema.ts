@@ -319,7 +319,6 @@ export interface LivesTable {
   reviewed_by_admin_id: number | null;
   reviewed_at: Date | null;
   reject_reason: string | null;
-  payment_due_at: Date | null;
   ended_at: Date | null;
   ended_by_admin_id: number | null;
   end_reason: string | null;
@@ -372,22 +371,20 @@ export interface ReviewHoursTable {
   created_at: CreatedAt;
 }
 
-/** One row (id = 1): prices of passes and of a single live, set by administrators. */
+/** One row (id = 1): prices of the passes, set by administrators. */
 export interface LivePricesTable {
   id: number;
   pass_month_xof: number;
   pass_year_xof: number;
-  live_xof: number;
   updated_by_admin_id: number | null;
   updated_at: UpdatedAt;
 }
 
-/** A seller's online payment attempt (a live, or a pass). */
+/** A seller's online payment attempt for a pass. */
 export interface SellerPaymentsTable {
   id: Generated<number>;
   seller_id: number;
   purpose: SellerPaymentPurpose;
-  live_id: number | null;
   amount_xof: number;
   method: 'MOBILE_MONEY' | 'CARD';
   channel: string | null;
@@ -400,10 +397,9 @@ export interface SellerPaymentsTable {
   failure_reason: string | null;
   created_at: Date;
   completed_at: Date | null;
-  succeeded_live_id: ColumnType<number | null, never, never>;
 }
 
-/** A pass: all the seller's approved lives go online without paying each one. */
+/** A pass: needed to post lives (30 or 365 days). */
 export interface SellerPassesTable {
   id: Generated<number>;
   seller_id: number;

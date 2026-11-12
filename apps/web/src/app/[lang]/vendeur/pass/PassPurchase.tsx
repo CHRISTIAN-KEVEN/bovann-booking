@@ -56,8 +56,6 @@ export function PassPurchase() {
         <Skeleton height={72} count={3} />
       ) : (
         <SellerPayPanel
-          plans={['PASS_YEAR', 'PASS_MONTH']}
-          liveId={null}
           prices={data.mine.prices}
           pass={data.mine.pass}
           phone={data.me.phone}

@@ -76,11 +76,11 @@ export function SellerHome() {
     return `seller.status.${live.status}` as TKey;
   };
   const tone = (live: SellerLiveDto) =>
-    live.status === 'PENDING' || live.status === 'AWAITING_PAYMENT'
+    live.status === 'PENDING'
       ? local.pending
       : live.status === 'APPROVED' && Date.parse(live.endsAt) > now
         ? local.online
-        : live.status === 'REJECTED' || live.status === 'REMOVED' || live.status === 'EXPIRED'
+        : live.status === 'REJECTED' || live.status === 'REMOVED'
           ? local.refused
           : local.done;
 
@@ -178,14 +178,7 @@ export function SellerHome() {
                           <span className={local.reason}>{live.rejectReason}</span>
                         ) : null}
                       </div>
-                      {live.status === 'AWAITING_PAYMENT' ? (
-                        <Link
-                          href="/en-direct/publier"
-                          className={`${local.action} ${local.payAction}`}
-                        >
-                          {t('pay.payShort')}
-                        </Link>
-                      ) : online || live.status === 'PENDING' ? (
+                      {online || live.status === 'PENDING' ? (
                         <button
                           type="button"
                           className={local.action}

@@ -45,8 +45,7 @@ async function seller(): Promise<SellerClient> {
     .set('X-Bovann-Seller', '1')
     .send({ phone, code: sent.body.devCode })
     .expect(200);
-  // Sellers here hold a pass, so approval puts the live online at once
-  // (sellers without a pass pay after approval: see live-passes.int-spec.ts).
+  // Posting needs a pass in force (see live-passes.int-spec.ts).
   const me = await agent.get('/api/v1/seller/me').expect(200);
   await staff.post(`/sellers/${me.body.id}/pass`, { plan: 'YEAR' }).expect(200);
   return {

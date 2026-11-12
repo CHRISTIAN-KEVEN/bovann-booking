@@ -9,7 +9,6 @@ import {
   LIVE_PLATFORM_LABELS,
   SELLER_NAME_MAX,
   SELLER_NAME_MIN,
-  formatXof,
   type LiveCategoryDto,
   type LiveDto,
   type LivePrices,
@@ -50,6 +49,7 @@ type View =
   | { name: 'loading' }
   | { name: 'error'; message: string }
   | { name: 'closed' }
+  | { name: 'pass' }
   | { name: 'form'; step: Step }
   | { name: 'tracking'; liveId: number };
 
@@ -111,10 +111,10 @@ export function PostLive() {
     started.current = true;
     void load().then((result) => {
       if (!result) return;
-      const pending = result.mine.lives.find(
-        (l) => l.status === 'PENDING' || l.status === 'AWAITING_PAYMENT',
-      );
+      const pending = result.mine.lives.find((l) => l.status === 'PENDING');
       if (pending) setView({ name: 'tracking', liveId: pending.id });
+      // Posting needs a pass in force.
+      else if (!result.mine.pass) setView({ name: 'pass' });
       else if (!result.mine.review.open) setView({ name: 'closed' });
       else {
         const iso = COUNTRY_CODES.find((c) => result.account.phone.startsWith(c.code))?.iso;
@@ -193,7 +193,10 @@ export function PostLive() {
       setView({ name: 'tracking', liveId: sent.id });
       window.scrollTo({ top: 0 });
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'REVIEW_CLOSED') {
+      if (err instanceof ApiError && err.code === 'PASS_REQUIRED') {
+        await load();
+        setView({ name: 'pass' });
+      } else if (err instanceof ApiError && err.code === 'REVIEW_CLOSED') {
         await load();
         setView({ name: 'closed' });
       } else if (err instanceof ApiError && err.code === 'LIVE_PENDING_EXISTS') {
@@ -245,6 +248,36 @@ export function PostLive() {
         <button type="button" className={seller.primary} onClick={() => window.location.reload()}>
           {t('common.retry')}
         </button>
+      </SellerShell>
+    );
+  }
+
+  if (view.name === 'pass' && prices && me) {
+    return (
+      <SellerShell back="/en-direct">
+        <div className={seller.icon} aria-hidden="true">
+          <PassIcon />
+        </div>
+        <div className={seller.titleBlock}>
+          <h1 className={seller.title}>{t('pay.needPassTitle')}</h1>
+          <p className={seller.lead}>{t('pay.needPassLead')}</p>
+        </div>
+        <SellerPayPanel
+          prices={prices}
+          pass={pass}
+          phone={me.phone}
+          onPaid={() => {
+            void load().then((result) => {
+              if (!result) return;
+              if (!result.mine.review.open) setView({ name: 'closed' });
+              else {
+                const iso = COUNTRY_CODES.find((c) => result.account.phone.startsWith(c.code))?.iso;
+                setDraft((d) => ({ ...d, countryCode: d.countryCode ?? iso ?? null }));
+                setView({ name: 'form', step: 1 });
+              }
+            });
+          }}
+        />
       </SellerShell>
     );
   }
@@ -548,10 +581,6 @@ export function PostLive() {
               })}
             </strong>
           </p>
-        ) : prices ? (
-          <p className={styles.passOff}>
-            {t('pay.noPass', { amount: formatXof(prices.liveXof, locale) })}
-          </p>
         ) : null}
         {error ? (
           <p className={seller.error} role="alert">
@@ -603,29 +632,6 @@ export function PostLive() {
   }
 
   function trackingScreen(live: SellerLiveDto) {
-    if (live.status === 'AWAITING_PAYMENT' && prices && me) {
-      return (
-        <SellerShell back="/vendeur">
-          <span className={styles.approvedChip}>
-            <span className={styles.approvedTick} aria-hidden="true">
-              <CheckIcon size={12} />
-            </span>
-            {t('pay.approvedChip')}
-          </span>
-          <h1 className={seller.title}>{t('pay.title')}</h1>
-          <SellerPayPanel
-            plans={['LIVE', 'PASS_MONTH', 'PASS_YEAR']}
-            liveId={live.id}
-            durationMin={live.durationMin}
-            prices={prices}
-            pass={pass}
-            phone={me.phone}
-            dueAt={live.paymentDueAt}
-            onPaid={() => void load()}
-          />
-        </SellerShell>
-      );
-    }
     const working = busy;
     const problem = error;
     const onWithdraw = () => void withdraw(live.id);
@@ -640,17 +646,13 @@ export function PostLive() {
             ? t('post.rejectedTitle')
             : live.status === 'CANCELLED'
               ? t('post.cancelledTitle')
-              : live.status === 'EXPIRED'
-                ? t('pay.expiredTitle')
-                : t(
-                    `seller.status.${live.status === 'APPROVED' ? 'APPROVED_DONE' : live.status}` as TKey,
-                  );
+              : t(
+                  `seller.status.${live.status === 'APPROVED' ? 'APPROVED_DONE' : live.status}` as TKey,
+                );
     return (
       <div className={seller.page}>
         <SiteHeader />
-        <section
-          className={`${styles.hero} ${live.status === 'REJECTED' || live.status === 'EXPIRED' ? styles.heroMuted : ''}`}
-        >
+        <section className={`${styles.hero} ${live.status === 'REJECTED' ? styles.heroMuted : ''}`}>
           <div className={styles.rings} aria-hidden="true">
             {live.status === 'PENDING' ? (
               <>
@@ -659,9 +661,7 @@ export function PostLive() {
               </>
             ) : null}
             <span className={styles.heroIcon}>
-              {live.status === 'REJECTED' ||
-              live.status === 'CANCELLED' ||
-              live.status === 'EXPIRED' ? (
+              {live.status === 'REJECTED' || live.status === 'CANCELLED' ? (
                 <CrossIcon />
               ) : online ? (
                 <CheckIcon size={44} />
@@ -679,8 +679,6 @@ export function PostLive() {
             <p className={styles.heroText}>
               {t('post.approvedText', { time: lomeTime(live.endsAt, locale) })}
             </p>
-          ) : live.status === 'EXPIRED' ? (
-            <p className={styles.heroText}>{t('pay.expiredText')}</p>
           ) : null}
         </section>
 
@@ -924,5 +922,14 @@ const TimerIcon = () =>
       <path d="M9 2h6" />
     </>,
     40,
+    1.8,
+  );
+const PassIcon = () =>
+  svg(
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2.5" />
+      <path d="M3 10h18M7 15h4" />
+    </>,
+    38,
     1.8,
   );

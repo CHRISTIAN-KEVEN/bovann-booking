@@ -141,9 +141,3 @@
 .action {
   text-decoration: none;
 }
-
-.payAction {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  color: #fff;
-}

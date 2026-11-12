@@ -128,8 +128,7 @@ export const reviewHoursSchema = z
 
 export const sellerPaymentSchema = z
   .object({
-    purpose: z.enum(SELLER_PAYMENT_PURPOSES, { message: 'Choisissez ce que vous payez.' }),
-    liveId: z.number().int().positive().nullable().default(null),
+    purpose: z.enum(SELLER_PAYMENT_PURPOSES, { message: 'Choisissez un pass mensuel ou annuel.' }),
     method: z.enum(['MOBILE_MONEY', 'CARD'], { message: 'Choisissez un moyen de paiement.' }),
     channel: z.enum(MOBILE_MONEY_CHANNELS).nullable().default(null),
     payerPhone: z
@@ -140,10 +139,6 @@ export const sellerPaymentSchema = z
       .default(null),
   })
   .strict()
-  .refine((v) => v.purpose !== 'LIVE' || v.liveId !== null, {
-    message: 'Indiquez le live à payer.',
-    path: ['liveId'],
-  })
   .refine((v) => v.method !== 'MOBILE_MONEY' || (v.channel !== null && v.payerPhone !== null), {
     message: 'Choisissez l’opérateur et le numéro Mobile Money.',
     path: ['channel'],
@@ -155,9 +150,7 @@ const amount = z
   .min(100, 'Montant trop petit (100 FCFA minimum).')
   .max(10_000_000, 'Montant trop grand.');
 
-export const livePricesSchema = z
-  .object({ passMonthXof: amount, passYearXof: amount, liveXof: amount })
-  .strict();
+export const livePricesSchema = z.object({ passMonthXof: amount, passYearXof: amount }).strict();
 
 export const passGrantSchema = z
   .object({

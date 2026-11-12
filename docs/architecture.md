@@ -265,16 +265,16 @@ Product-owner decision: sellers sign in with their phone number and a code sent 
 5. **Staff alerts without notifications:** the admin menu shows the number of lives waiting (refreshed every 30 s), the review tab reloads every 20 s and shows when it was last updated. The seller's tracking screen asks every 10 s.
 6. **Web:** `/en-direct/publier` (4 steps: link, country, category with "Autre", duration and name with a preview card; then the tracking screen; the closed screen with today's day bar), `/vendeur` lists the seller's lives with "J’ai terminé" / "Retirer", the wall has "Publier mon live" (sticky on phones, a card in the hero on computers, with the review status). Admin "Lives": tabs À valider / En ligne / Terminés / Heures de validation, refusal with ready-made messages.
 
-## 21. Passes and payment for lives (2026-11-11)
+## 21. Passes (2026-11-12)
 
-Product-owner request: the posting flow checks the seller's pass and simulates payment like slot bookings; only the real payment provider and WhatsApp/SMS remain.
+Product-owner decision of 2026-11-12: **everyone who posts must have a pass** (subscription). Paying for a single live, and the "review first, then pay" flow, are switched off for now, to keep the product simple early on. Payment is simulated like slot bookings; only the real payment provider and WhatsApp/SMS remain.
 
 1. **Migration `011`:**
-   - `t_lives`: statuses `AWAITING_PAYMENT` and `EXPIRED`, `payment_due_at` (CHECK: required while awaiting payment).
-   - `t_live_prices` (one row): monthly pass, annual pass, one live. CHECK: one live × 30 > monthly pass. Seeded with the example prices (10 000 / 100 000 / 1 500 FCFA).
-   - `t_seller_payments`: attempts (purpose, amount, method, operator, payer, status, provider reference, idempotency key). A generated column makes "a live is paid once" a UNIQUE rule.
+   - `t_live_prices` (one row): monthly and annual pass. CHECK: the year costs less than 12 months. Seeded with the example prices (10 000 / 100 000 FCFA).
+   - `t_seller_payments`: pass payment attempts (purpose, amount, method, operator, payer, status, provider reference, idempotency key).
    - `t_seller_passes`: plan, start, end, price, and either the payment or the staff member who activated it (CHECK: exactly one).
-2. **Approval** checks the pass in the same transaction: in force → `APPROVED` from now; otherwise `AWAITING_PAYMENT` for 30 minutes. Past that time the live reads as `EXPIRED` (no job), the seller can't start a payment for it, and may send it again.
-3. **Payment** uses the same `PaymentGateway` contract as bookings (simulated provider until Phase 4). The attempt is written first, the provider is called outside the transaction. Confirmation (simulated: `/dev/seller-payments/:id/succeed`) is idempotent and, in one transaction, adds the pass and/or puts the live online from the payment time. A payment confirmed after the 30 minutes still puts the live online (the money was received), unless its link is on the wall again.
-4. **Passes chain:** a pass bought while another runs starts at its end. Staff can activate one after a cash payment (audited).
-5. **Web:** the posting flow shows the pass (or the price of one live) on the last step; once approved without a pass, the seller chooses "Ce live seulement", the monthly or the annual pass, Mobile Money (T-Money, Flooz) or card, then waits for the confirmation (simulation buttons when `NEXT_PUBLIC_PAYMENT_SIMULATION=true`). `/vendeur/pass` buys or extends a pass; the seller space shows it. Admin "Lives": "Paiement attendu", "Vendeurs et pass" (activate a pass), "Prix".
+   - `t_lives` is unchanged.
+2. **Sending** a live checks the pass inside the submit transaction (402 `PASS_REQUIRED`). **Approval** always puts the live online; the pass isn't checked again, so a pass ending during the few minutes of review doesn't lose the live.
+3. **Payment** uses the same `PaymentGateway` contract as bookings (simulated provider until Phase 4). The attempt is written first, the provider is called outside the transaction. Confirmation (simulated: `/dev/seller-payments/:id/succeed`) is idempotent and adds the pass in the same transaction; a replaced or failed attempt confirmed later by the provider is still honoured (the money arrived).
+4. **Passes chain:** a pass bought while another runs starts at its end (the seller row is locked so two confirmations still chain). Staff can activate one after a cash payment (audited).
+5. **Web:** "Publier mon live" opens with the pass check: without one, "Prenez un pass pour publier" (annual or monthly, Mobile Money T-Money/Flooz or card, waiting screen, "Simuler un paiement réussi / un échec" when `NEXT_PUBLIC_PAYMENT_SIMULATION=true`), then the form. The last posting step and the seller space show the pass; `/vendeur/pass` extends it. Admin "Lives": "Vendeurs et pass" (activate a pass), "Prix" (administrators).
