@@ -7,6 +7,7 @@ Online booking for the Bovann OCD Live live-stream studio in Lomé: customers ch
 - Payment providers analysis: [docs/payment-providers-analysis.md](docs/payment-providers-analysis.md)
 - API reference: [docs/api.md](docs/api.md)
 - Progress & next steps: [docs/progress.md](docs/progress.md)
+- Working with Claude Code: [CLAUDE.md](CLAUDE.md) (role, workflow, commands, current status)
 
 ## Repository layout
 

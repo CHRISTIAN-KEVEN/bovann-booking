@@ -12,3 +12,7 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Claude Code: personal, never committed
+CLAUDE.local.md
+.claude/settings.local.json
