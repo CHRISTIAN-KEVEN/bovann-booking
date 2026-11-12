@@ -18,6 +18,9 @@ const api = vi.hoisted(() => ({
   lives: vi.fn(),
   submit: vi.fn(),
   end: vi.fn(),
+  pay: vi.fn(),
+  payment: vi.fn(),
+  simulatePayment: vi.fn(),
 }));
 vi.mock('@/lib/seller-api', async (importOriginal) => ({
   ...(await importOriginal<typeof SellerApiModule>()),
@@ -41,6 +44,12 @@ const response = (over: Partial<SellerLivesResponse> = {}): SellerLivesResponse 
     { code: 'MODE', name: 'Mode', icon: 'mode' },
     { code: 'BEAUTE', name: 'Beauté', icon: 'beaute' },
   ],
+  pass: {
+    plan: 'MONTH',
+    startsAt: new Date(NOW).toISOString(),
+    endsAt: '2026-12-09T12:00:00.000Z',
+  },
+  prices: { passMonthXof: 10_000, passYearXof: 100_000 },
   ...over,
 });
 
@@ -91,6 +100,7 @@ describe('posting a live', () => {
 
     await user.click(await screen.findByRole('button', { name: '3 h' }));
     expect(screen.getByLabelText('Votre nom')).toHaveValue('afimode');
+    expect(screen.getByText('Pass mensuel · jusqu’au 9 décembre 2026')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Envoyer' }));
 
     expect(api.submit).toHaveBeenCalledWith({
@@ -154,5 +164,90 @@ describe('posting a live', () => {
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith('/vendeur/connexion?suite=/en-direct/publier'),
     );
+  });
+
+  it('shows the pass on the last step when the seller has one', async () => {
+    api.lives.mockResolvedValue(
+      response({
+        pass: { plan: 'MONTH', startsAt: '2026-11-11T09:00:00Z', endsAt: '2026-12-09T09:00:00Z' },
+      }),
+    );
+    const user = userEvent.setup();
+    renderI18n(<PostLive />);
+    await user.type(await screen.findByLabelText('Lien du live'), 'tiktok.com/@afimode/live');
+    await user.click(screen.getByRole('button', { name: /Continuer/ }));
+    await user.click(screen.getByRole('button', { name: 'Togo' }));
+    await user.click(await screen.findByRole('button', { name: 'Mode' }));
+    expect(await screen.findByText('Pass mensuel · jusqu’au 9 décembre 2026')).toBeInTheDocument();
+  });
+
+  it('asks for a pass first when the seller has none, then opens the form once paid', async () => {
+    api.lives.mockResolvedValue(response({ pass: null }));
+    api.pay.mockResolvedValue({
+      id: 3,
+      purpose: 'PASS_MONTH',
+      amountXof: 10_000,
+      method: 'MOBILE_MONEY',
+      channel: 'FLOOZ',
+      status: 'PENDING',
+      instructions: 'Paiement simulé',
+      failureReason: null,
+      createdAt: new Date(NOW).toISOString(),
+    });
+    api.payment.mockResolvedValue({
+      id: 3,
+      purpose: 'PASS_MONTH',
+      amountXof: 10_000,
+      method: 'MOBILE_MONEY',
+      channel: 'FLOOZ',
+      status: 'SUCCEEDED',
+      instructions: null,
+      failureReason: null,
+      createdAt: new Date(NOW).toISOString(),
+    });
+    const user = userEvent.setup();
+    renderI18n(<PostLive />);
+    expect(
+      await screen.findByRole('heading', { name: 'Prenez un pass pour publier' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Lien du live')).not.toBeInTheDocument();
+    // No single-live option.
+    expect(screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual([
+      expect.stringContaining('Pass annuel'),
+      expect.stringContaining('Pass mensuel'),
+    ]);
+
+    await user.click(screen.getByRole('radio', { name: /Pass mensuel/ }));
+    await user.click(screen.getByRole('button', { name: 'Flooz' }));
+    // Once paid, the next load has the pass.
+    api.lives.mockResolvedValue(response());
+    await user.click(screen.getByRole('button', { name: /Payer 10\s?000 FCFA/ }));
+    expect(api.pay).toHaveBeenCalledWith({
+      purpose: 'PASS_MONTH',
+      method: 'MOBILE_MONEY',
+      channel: 'FLOOZ',
+      payerPhone: '+22890123456',
+    });
+    expect(await screen.findByText('Validez le paiement sur votre téléphone')).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText('Lien du live', undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
+  });
+
+  it('goes back to the pass if it ran out while filling in the form', async () => {
+    api.submit.mockRejectedValue(
+      new ApiError(402, 'PASS_REQUIRED', 'Prenez un pass pour publier vos lives.'),
+    );
+    const user = userEvent.setup();
+    renderI18n(<PostLive />);
+    await user.type(await screen.findByLabelText('Lien du live'), 'tiktok.com/@afimode/live');
+    await user.click(screen.getByRole('button', { name: /Continuer/ }));
+    await user.click(screen.getByRole('button', { name: 'Togo' }));
+    await user.click(await screen.findByRole('button', { name: 'Mode' }));
+    api.lives.mockResolvedValue(response({ pass: null }));
+    await user.click(await screen.findByRole('button', { name: 'Envoyer' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Prenez un pass pour publier' }),
+    ).toBeInTheDocument();
   });
 });

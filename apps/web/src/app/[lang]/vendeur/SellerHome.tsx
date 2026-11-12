@@ -1,6 +1,6 @@
 'use client';
 
-import type { SellerLiveDto, SellerMe } from '@bovann/shared';
+import type { SellerLiveDto, SellerMe, SellerPassDto } from '@bovann/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { CategoryIcon } from '@/components/lives/CategoryIcon';
 import { SellerShell } from '@/components/seller/SellerShell';
@@ -19,6 +19,7 @@ export function SellerHome() {
   const router = useLocaleRouter();
   const [me, setMe] = useState<SellerMe | null>(null);
   const [lives, setLives] = useState<SellerLiveDto[] | null>(null);
+  const [pass, setPass] = useState<SellerPassDto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [working, setWorking] = useState<number | 'logout' | null>(null);
@@ -29,6 +30,7 @@ export function SellerHome() {
       const [account, mine] = await Promise.all([sellerApi.me(), sellerApi.lives()]);
       setMe(account);
       setLives(mine.lives);
+      setPass(mine.pass);
       setNow(Date.now());
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) router.replace('/vendeur/connexion');
@@ -112,6 +114,28 @@ export function SellerHome() {
             </svg>
             {t('seller.postLive')}
           </Link>
+
+          <div className={local.passCard}>
+            <div className={local.passText}>
+              <span className={styles.label}>{t('pay.myPass')}</span>
+              <strong className={styles.cardTitle}>
+                {pass
+                  ? t('pay.passActive', {
+                      plan: t(`pay.planName.${pass.plan}` as TKey),
+                      date: new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                        timeZone: 'Africa/Lome',
+                      }).format(new Date(pass.endsAt)),
+                    })
+                  : t('pay.noPassShort')}
+              </strong>
+            </div>
+            <Link href="/vendeur/pass" className={local.action}>
+              {pass ? t('pay.extendPass') : t('pay.takePass')}
+            </Link>
+          </div>
 
           {notice ? (
             <p className={local.notice} role="status">

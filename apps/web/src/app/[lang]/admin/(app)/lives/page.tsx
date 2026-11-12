@@ -8,6 +8,10 @@ import {
   LIVE_PLATFORM_LABELS,
   SELLER_NAME_MIN,
   type AdminLiveDto,
+  type AdminSellerDto,
+  type LivePrices,
+  type PassPlan,
+  formatXof,
   type AdminLiveTab,
   type LiveCategoryDto,
   type ReviewPeriod,
@@ -36,12 +40,13 @@ import { Icon } from '@/components/icons';
 import { Link, useI18n, type TKey } from '@/i18n/I18nProvider';
 import { adminApi } from '@/lib/admin-api';
 import { weekdayNames } from '@/lib/dates';
-import { formatPhone } from '@/lib/admin-format';
+import { formatAmountInput, formatPhone, parseAmount } from '@/lib/admin-format';
 import { CATEGORY_HUES, initialsOf, lomeTime, nextOpening, OTHER_CATEGORY } from '@/lib/lives';
 import local from './lives.module.css';
 
 /** "Lives": what is on the "En direct" page now, and listing a live for a seller. */
-type View = AdminLiveTab | 'hours';
+type View = AdminLiveTab | 'sellers' | 'prices' | 'hours';
+const LIST_TABS: AdminLiveTab[] = ['pending', 'online', 'past'];
 
 export default function AdminLivesPage() {
   const { t, locale } = useI18n();
@@ -54,7 +59,9 @@ export default function AdminLivesPage() {
   const [approving, setApproving] = useState<number | null>(null);
   const [loadedAt, setLoadedAt] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
-  const listTab: AdminLiveTab = tab === 'hours' ? 'pending' : tab;
+  const listTab: AdminLiveTab = LIST_TABS.includes(tab as AdminLiveTab)
+    ? (tab as AdminLiveTab)
+    : 'pending';
   const list = useAsync(() => adminApi.lives(listTab), listTab);
   const categories = useAsync(() => adminApi.liveCategories(), 'categories');
   const { reload } = list;
@@ -154,12 +161,18 @@ export default function AdminLivesPage() {
             count: tab === 'online' ? list.data?.lives.length : undefined,
           },
           { value: 'past', label: t('adminLives.past') },
+          { value: 'sellers', label: t('adminLives.sellers') },
+          { value: 'prices', label: t('adminLives.prices') },
           { value: 'hours', label: t('adminLives.hours') },
         ]}
       />
 
       {tab === 'hours' ? (
         <ReviewHoursEditor />
+      ) : tab === 'sellers' ? (
+        <SellersPanel />
+      ) : tab === 'prices' ? (
+        <PricesEditor />
       ) : list.error ? (
         <LoadError error={list.error} onRetry={list.reload} />
       ) : !list.data ? (
@@ -324,7 +337,9 @@ function LiveRow({
       </div>
       <div className={local.actions}>
         {mode === 'past' && (
-          <Badge tone={live.status === 'REMOVED' ? 'danger' : 'neutral'}>
+          <Badge
+            tone={live.status === 'REMOVED' || live.status === 'REJECTED' ? 'danger' : 'neutral'}
+          >
             {t(`adminLives.status.${live.status}` as TKey)}
           </Badge>
         )}
@@ -959,6 +974,282 @@ function ReviewHoursEditor() {
         <div>
           <button type="button" className={styles.btn} onClick={save} disabled={saving}>
             {t('adminLives.hoursEditor.save')}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- sellers and passes
+
+function SellersPanel() {
+  const { t, locale } = useI18n();
+  const sellers = useAsync(() => adminApi.sellers(), 'sellers');
+  const prices = useAsync(() => adminApi.livePrices(), 'live-prices');
+  const [granting, setGranting] = useState<AdminSellerDto | null>(null);
+  const date = (iso: string) =>
+    new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Africa/Lome',
+    }).format(new Date(iso));
+
+  if (sellers.error) return <LoadError error={sellers.error} onRetry={sellers.reload} />;
+  if (!sellers.data) return <Loading />;
+  return (
+    <>
+      <p className={styles.note}>{t('adminLives.sellersList.intro')}</p>
+      {sellers.data.length === 0 ? (
+        <Empty>{t('adminLives.sellersList.empty')}</Empty>
+      ) : (
+        <ul className={local.list}>
+          {sellers.data.map((s) => (
+            <li key={s.id} className={cx(styles.card, local.row)}>
+              <div className={local.who}>
+                <strong className={local.name}>{formatPhone(s.phone)}</strong>
+                <span className={local.sub}>
+                  {t('adminLives.sellersList.lives', { count: s.livesCount })}
+                  {s.lastSignInAt
+                    ? ` · ${t('adminLives.sellersList.lastSeen', { date: date(s.lastSignInAt) })}`
+                    : ''}
+                </span>
+              </div>
+              <div className={local.actions}>
+                {s.blocked ? (
+                  <Badge tone="danger">{t('adminLives.sellersList.blocked')}</Badge>
+                ) : null}
+                <Badge tone={s.pass ? 'success' : 'neutral'}>
+                  {s.pass
+                    ? t('adminLives.sellersList.passUntil', {
+                        plan: t(`pay.planName.${s.pass.plan}` as TKey),
+                        date: date(s.pass.endsAt),
+                      })
+                    : t('adminLives.sellersList.noPass')}
+                </Badge>
+                {!s.blocked ? (
+                  <button
+                    type="button"
+                    className={cx(styles.btnSecondary, styles.btnSmall)}
+                    onClick={() => setGranting(s)}
+                  >
+                    {t('adminLives.sellersList.grant')}
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <GrantPassDialog
+        seller={granting}
+        prices={prices.data ?? null}
+        onClose={() => setGranting(null)}
+        onGranted={() => {
+          setGranting(null);
+          sellers.reload();
+        }}
+      />
+    </>
+  );
+}
+
+function GrantPassDialog({
+  seller,
+  prices,
+  onClose,
+  onGranted,
+}: {
+  seller: AdminSellerDto | null;
+  prices: LivePrices | null;
+  onClose: () => void;
+  onGranted: () => void;
+}) {
+  const { t, locale } = useI18n();
+  const toast = useToast();
+  const [plan, setPlan] = useState<PassPlan>('MONTH');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const close = () => {
+    setPlan('MONTH');
+    setNote('');
+    setError(null);
+    onClose();
+  };
+
+  async function confirm() {
+    if (!seller) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await adminApi.grantPass(seller.id, plan, note.trim() || null);
+      toast(t('adminLives.grantDialog.done', { phone: formatPhone(seller.phone) }));
+      setNote('');
+      onGranted();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={seller !== null}
+      onClose={close}
+      variant="modal"
+      title={t('adminLives.grantDialog.title')}
+      footer={
+        <>
+          <button type="button" className={styles.btnSecondary} onClick={close}>
+            {t('common.cancel')}
+          </button>
+          <button type="button" className={styles.btn} onClick={confirm} disabled={saving}>
+            {t('adminLives.grantDialog.confirm')}
+          </button>
+        </>
+      }
+    >
+      {seller && (
+        <div className={local.form}>
+          <p className={styles.note}>
+            <strong>{formatPhone(seller.phone)}</strong> — {t('adminLives.grantDialog.intro')}
+          </p>
+          <fieldset className={styles.fieldset}>
+            <legend className={styles.legend}>{t('adminLives.grantDialog.plan')}</legend>
+            <div role="group" className={styles.segmented}>
+              {(['MONTH', 'YEAR'] as const).map((p) => (
+                <button key={p} type="button" aria-pressed={plan === p} onClick={() => setPlan(p)}>
+                  {t(
+                    p === 'MONTH' ? 'adminLives.grantDialog.month' : 'adminLives.grantDialog.year',
+                    {
+                      amount: prices
+                        ? formatXof(
+                            p === 'MONTH' ? prices.passMonthXof : prices.passYearXof,
+                            locale,
+                          )
+                        : '…',
+                    },
+                  )}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <Field label={t('adminLives.grantDialog.note')}>
+            {(props) => (
+              <input
+                {...props}
+                className={styles.input}
+                maxLength={255}
+                placeholder={t('adminLives.grantDialog.notePlaceholder')}
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            )}
+          </Field>
+          {error ? (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      )}
+    </Dialog>
+  );
+}
+
+// ---------------------------------------------------------------- prices
+
+function PricesEditor() {
+  const { t, locale } = useI18n();
+  const { isOwner } = useAdmin();
+  const toast = useToast();
+  const prices = useAsync(() => adminApi.livePrices(), 'live-prices-editor');
+  const [draft, setDraft] = useState<Record<keyof LivePrices, string> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (prices.data) {
+      setDraft({
+        passMonthXof: formatAmountInput(prices.data.passMonthXof, locale),
+        passYearXof: formatAmountInput(prices.data.passYearXof, locale),
+      });
+    }
+  }, [prices.data, locale]);
+
+  if (prices.error) return <LoadError error={prices.error} onRetry={prices.reload} />;
+  if (!draft) return <Loading />;
+
+  const month = parseAmount(draft.passMonthXof);
+  const fields: Array<{ key: keyof LivePrices; label: string; hint?: string }> = [
+    { key: 'passMonthXof', label: t('adminLives.pricesEditor.month') },
+    {
+      key: 'passYearXof',
+      label: t('adminLives.pricesEditor.year'),
+      hint: month
+        ? t('adminLives.pricesEditor.yearHint', { max: formatXof(month * 12 - 1, locale) })
+        : undefined,
+    },
+  ];
+
+  async function save() {
+    const values = {
+      passMonthXof: parseAmount(draft!.passMonthXof),
+      passYearXof: parseAmount(draft!.passYearXof),
+    };
+    if (Object.values(values).some((v) => v === null)) {
+      setError(t('adminLives.pricesEditor.invalid'));
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      await adminApi.setLivePrices(values as LivePrices);
+      toast(t('adminLives.pricesEditor.saved'));
+      prices.reload();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className={cx(styles.card, local.hours)}>
+      <p className={styles.note}>{t('adminLives.pricesEditor.intro')}</p>
+      {!isOwner ? <p className={styles.note}>{t('adminLives.pricesEditor.ownerOnly')}</p> : null}
+      <div className={local.priceFields}>
+        {fields.map((f) => (
+          <Field key={f.key} label={f.label} hint={f.hint}>
+            {(props) => (
+              <span className={local.amount}>
+                <input
+                  {...props}
+                  className={styles.input}
+                  inputMode="numeric"
+                  disabled={!isOwner}
+                  value={draft[f.key]}
+                  onChange={(e) => setDraft((d) => ({ ...d!, [f.key]: e.target.value }))}
+                />
+                <span aria-hidden="true">FCFA</span>
+              </span>
+            )}
+          </Field>
+        ))}
+      </div>
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+      {isOwner ? (
+        <div>
+          <button type="button" className={styles.btn} onClick={save} disabled={saving}>
+            {t('adminLives.pricesEditor.save')}
           </button>
         </div>
       ) : null}

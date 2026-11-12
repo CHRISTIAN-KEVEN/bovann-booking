@@ -11,6 +11,8 @@ import {
   SELLER_NAME_MIN,
   type LiveCategoryDto,
   type LiveDto,
+  type LivePrices,
+  type SellerPassDto,
   type ReviewStatus,
   type SellerLiveDto,
   type SellerMe,
@@ -19,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CategoryIcon } from '@/components/lives/CategoryIcon';
 import { Flag } from '@/components/lives/Flag';
 import { LiveCard } from '@/components/lives/LiveCard';
+import { SellerPayPanel } from '@/components/seller/SellerPayPanel';
 import { SellerShell } from '@/components/seller/SellerShell';
 import { SiteHeader } from '@/components/SiteHeader';
 import seller from '@/components/seller/seller.module.css';
@@ -46,6 +49,7 @@ type View =
   | { name: 'loading' }
   | { name: 'error'; message: string }
   | { name: 'closed' }
+  | { name: 'pass' }
   | { name: 'form'; step: Step }
   | { name: 'tracking'; liveId: number };
 
@@ -63,6 +67,8 @@ export function PostLive() {
   const [review, setReview] = useState<ReviewStatus | null>(null);
   const [categories, setCategories] = useState<LiveCategoryDto[]>([]);
   const [lives, setLives] = useState<SellerLiveDto[]>([]);
+  const [pass, setPass] = useState<SellerPassDto | null>(null);
+  const [prices, setPrices] = useState<LivePrices | null>(null);
   const [draft, setDraft] = useState<Draft>({
     url: '',
     countryCode: null,
@@ -84,6 +90,8 @@ export function PostLive() {
       setReview(mine.review);
       setCategories(mine.categories);
       setLives(mine.lives);
+      setPass(mine.pass);
+      setPrices(mine.prices);
       setNow(Date.now());
       return { account, mine };
     } catch (err) {
@@ -105,6 +113,8 @@ export function PostLive() {
       if (!result) return;
       const pending = result.mine.lives.find((l) => l.status === 'PENDING');
       if (pending) setView({ name: 'tracking', liveId: pending.id });
+      // Posting needs a pass in force.
+      else if (!result.mine.pass) setView({ name: 'pass' });
       else if (!result.mine.review.open) setView({ name: 'closed' });
       else {
         const iso = COUNTRY_CODES.find((c) => result.account.phone.startsWith(c.code))?.iso;
@@ -183,7 +193,10 @@ export function PostLive() {
       setView({ name: 'tracking', liveId: sent.id });
       window.scrollTo({ top: 0 });
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'REVIEW_CLOSED') {
+      if (err instanceof ApiError && err.code === 'PASS_REQUIRED') {
+        await load();
+        setView({ name: 'pass' });
+      } else if (err instanceof ApiError && err.code === 'REVIEW_CLOSED') {
         await load();
         setView({ name: 'closed' });
       } else if (err instanceof ApiError && err.code === 'LIVE_PENDING_EXISTS') {
@@ -235,6 +248,36 @@ export function PostLive() {
         <button type="button" className={seller.primary} onClick={() => window.location.reload()}>
           {t('common.retry')}
         </button>
+      </SellerShell>
+    );
+  }
+
+  if (view.name === 'pass' && prices && me) {
+    return (
+      <SellerShell back="/en-direct">
+        <div className={seller.icon} aria-hidden="true">
+          <PassIcon />
+        </div>
+        <div className={seller.titleBlock}>
+          <h1 className={seller.title}>{t('pay.needPassTitle')}</h1>
+          <p className={seller.lead}>{t('pay.needPassLead')}</p>
+        </div>
+        <SellerPayPanel
+          prices={prices}
+          pass={pass}
+          phone={me.phone}
+          onPaid={() => {
+            void load().then((result) => {
+              if (!result) return;
+              if (!result.mine.review.open) setView({ name: 'closed' });
+              else {
+                const iso = COUNTRY_CODES.find((c) => result.account.phone.startsWith(c.code))?.iso;
+                setDraft((d) => ({ ...d, countryCode: d.countryCode ?? iso ?? null }));
+                setView({ name: 'form', step: 1 });
+              }
+            });
+          }}
+        />
       </SellerShell>
     );
   }
@@ -529,6 +572,16 @@ export function PostLive() {
           </div>
         </section>
 
+        {pass ? (
+          <p className={styles.passOn}>
+            <strong>
+              {t('pay.passActive', {
+                plan: t(`pay.planName.${pass.plan}` as TKey),
+                date: longDate(pass.endsAt),
+              })}
+            </strong>
+          </p>
+        ) : null}
         {error ? (
           <p className={seller.error} role="alert">
             {error}
@@ -567,6 +620,15 @@ export function PostLive() {
         </span>
       </div>
     );
+  }
+
+  function longDate(iso: string) {
+    return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : 'fr-FR', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Africa/Lome',
+    }).format(new Date(iso));
   }
 
   function trackingScreen(live: SellerLiveDto) {
@@ -860,5 +922,14 @@ const TimerIcon = () =>
       <path d="M9 2h6" />
     </>,
     40,
+    1.8,
+  );
+const PassIcon = () =>
+  svg(
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2.5" />
+      <path d="M3 10h18M7 15h4" />
+    </>,
+    38,
     1.8,
   );

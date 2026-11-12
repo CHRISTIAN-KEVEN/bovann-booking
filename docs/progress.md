@@ -523,9 +523,34 @@ Posting a live (link, country, category, duration), the staff review queue and r
 1. Categories: the booking form on the shared list with "Autre", admin list of typed categories.
 2. Passes and one-off payment.
 
+## Live directory, part 4: passes (in review)
+
+**Product owner, 2026-11-12:** posting must check that the seller has a valid subscription, with payment simulated like slot bookings; only the payment provider and WhatsApp/SMS remain. After discussing how to keep jokers out (free sending invites them; paying per live before review needs refunds or credits), the decision is: **everyone who posts must have a pass**, and the single-live payment is switched off for now.
+
+### Delivered
+
+- **No pass, no posting:** "Publier mon live" first checks the pass. Without one: "Prenez un pass pour publier", annual (marked "Le moins cher") or monthly, Mobile Money (T-Money, Flooz, the seller's number pre-filled) or card, a waiting screen and, in demo mode, "Simuler un paiement réussi / un échec". Success opens the form; a failure lets the seller try again.
+- The API refuses a live sent without a pass (402 `PASS_REQUIRED`), so the rule holds whatever the screens do.
+- **Approval** puts the live online at once.
+- **Passes:** shown on the last posting step and in the seller space ("Pass mensuel · jusqu’au …", "Prolonger mon pass"); a new pass follows the current one.
+- **Admin "Lives":** "Vendeurs et pass" with "Activer un pass" for cash payments; "Prix" (administrators) with the rule "a year costs less than 12 months".
+
+### Decisions taken in this step (to confirm)
+
+- Example prices until Bovann sets its own: 10 000 FCFA a month, 100 000 FCFA a year.
+- Staff (both roles) can activate a pass after a cash payment; only administrators change prices.
+- A live sent while the pass was valid still goes online if the pass ends during review.
+
+### Tests
+
+- **API (10 new):** sending refused without a pass; monthly pass by Mobile Money then send, approve, online; failure then retry and replaced attempt; pass ending during review; passes bought ahead chain; a pass running out; staff activation; prices (roles, rule, amounts used); request checks; database rules. The posting tests give their sellers a pass.
+- **Web:** the pass screen when the seller has none (no single-live option), paying then the form; back to the pass when it ran out while filling in the form; the pass on the last step.
+- **Totals:** API 254, shared 12, web 81.
+- **In a real Chrome at phone size:** a new seller signs in from "Publier mon live", gets the pass screen, a first payment fails, the second succeeds, the form opens, the live is sent, staff approve it, it goes online; the seller space shows the pass; staff open "Vendeurs et pass" and "Prix". No browser errors.
+
 ## Then: Phase 4 — Payments
 
-Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow. Needs: the provider's sandbox credentials.
+Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow, for bookings and for sellers' passes. Needs: the provider's sandbox credentials.
 
 ## Known issues / technical debt
 

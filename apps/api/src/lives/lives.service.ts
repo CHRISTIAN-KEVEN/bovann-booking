@@ -26,6 +26,7 @@ import { ApiError, badRequest, notFound } from '../common/errors';
 import { localized } from '../common/request-context';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
+import { PassesService } from './passes.service';
 import { reviewHoursProblems, reviewStatus } from './review-hours';
 
 /** The wall shows at most this many lives (far above what is expected at once). */
@@ -82,6 +83,7 @@ export class LivesService {
   constructor(
     @Inject(DB) private readonly db: Kysely<Database>,
     @Inject(CLOCK) private readonly clock: Clock,
+    private readonly passes: PassesService,
   ) {}
 
   // ------------------------------------------------------------------ public
@@ -168,7 +170,7 @@ export class LivesService {
   async sellerLives(sellerId: number): Promise<SellerLivesResponse> {
     const now = this.clock.now();
     const since = new Date(now.getTime() - PAST_DAYS * 86_400_000);
-    const [rows, review, categories] = await Promise.all([
+    const [rows, review, categories, pass, prices] = await Promise.all([
       this.fullQuery()
         .where('l.seller_id', '=', sellerId)
         .where('l.created_at', '>=', since)
@@ -178,11 +180,24 @@ export class LivesService {
         .execute(),
       this.review(now),
       this.categories(),
+      this.passes.activePass(sellerId, now),
+      this.passes.prices(),
     ]);
-    return { now: now.toISOString(), lives: rows.map(toSellerLiveDto), review, categories };
+    return {
+      now: now.toISOString(),
+      lives: rows.map(toSellerLiveDto),
+      review,
+      categories,
+      pass,
+      prices,
+    };
   }
 
-  /** A seller posts their live: it waits for staff review. Only during review hours. */
+  /**
+   * A seller posts their live: it waits for staff review. Only during review hours, and only
+   * with a pass in force (decision of 2026-11-12). Staff approval then puts it online at once;
+   * the pass is not checked again, so a pass ending during the review doesn't lose the live.
+   */
   async submit(sellerId: number, input: LiveCreateInput): Promise<SellerLiveDto> {
     const id = await inTransaction(this.db, async (trx) => {
       const now = this.clock.now();
@@ -193,6 +208,14 @@ export class LivesService {
         .where('id', '=', sellerId)
         .forUpdate()
         .executeTakeFirstOrThrow();
+
+      if (!(await this.passes.activePass(sellerId, now, trx))) {
+        throw new ApiError(
+          HttpStatus.PAYMENT_REQUIRED,
+          'PASS_REQUIRED',
+          'Prenez un pass pour publier vos lives.',
+        );
+      }
 
       const review = reviewStatus(await this.reviewPeriods(trx), now, REVIEW_TIMEZONE);
       if (!review.open) {

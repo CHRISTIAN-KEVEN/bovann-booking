@@ -229,4 +229,17 @@ export const MESSAGES_EN: Readonly<Record<string, string>> = {
     'You already have a live being reviewed. Wait for the answer before sending another one.',
   'Ce live est déjà en vérification.': 'This live is already being reviewed.',
   'Ce live a déjà été traité.': 'This live has already been handled.',
+
+  // Passes
+  'Choisissez l’opérateur et le numéro Mobile Money.':
+    'Choose the Mobile Money operator and number.',
+  'Montant trop petit (100 FCFA minimum).': 'Amount too small (100 FCFA minimum).',
+  'Montant trop grand.': 'Amount too large.',
+  'Choisissez un pass mensuel ou annuel.': 'Choose a monthly or annual pass.',
+  'Le service de paiement ne répond pas. Réessayez dans un instant.':
+    'The payment service isn’t answering. Try again in a moment.',
+  'Ce paiement est introuvable.': 'This payment can’t be found.',
+  'Ce vendeur est introuvable.': 'This seller can’t be found.',
+  'Ce vendeur est bloqué.': 'This seller is blocked.',
+  'Prenez un pass pour publier vos lives.': 'Take a pass to post your lives.',
 };

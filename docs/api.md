@@ -449,3 +449,25 @@ Sellers sign in with a one-time code sent to their phone; no password. Every POS
 | `POST /lives/:id/reject`    | `{reason}` (3–255 characters, shown to the seller). 409 `LIVE_NOT_PENDING`                                  |
 | `GET /review-hours`         | `{periods: [{weekday 1–7, opensAt, closesAt}]}` (Lomé time)                                                 |
 | `PUT /review-hours` (OWNER) | Replaces the whole week. 400 `REVIEW_HOURS_INVALID` (a period ending before it starts, overlapping periods) |
+
+## Passes (2026-11-12)
+
+Posting a live needs a pass in force: `POST /seller/lives` answers **402 `PASS_REQUIRED`** without one. Staff approval then puts the live online at once (the pass is not checked again, so a pass that ends during review doesn't lose the live). Paying for a single live is switched off for now. `GET /seller/lives` also returns `pass` (`{plan, startsAt, endsAt}` or null) and `prices` (`{passMonthXof, passYearXof}`).
+
+### Seller payments (session cookie + `X-Bovann-Seller`)
+
+| Method & path              | Notes                                                                                                                                                                                     |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /seller/payments`    | `{purpose: PASS_MONTH\|PASS_YEAR, method: MOBILE_MONEY\|CARD, channel, payerPhone}`. A new attempt cancels the seller's unfinished one (`SUPERSEDED`). 502 `PAYMENT_PROVIDER_UNAVAILABLE` |
+| `GET /seller/payments/:id` | `SellerPaymentDto`: `status` `PENDING`, `SUCCEEDED`, `FAILED` or `CANCELLED`, `instructions`, `amountXof`                                                                                 |
+
+**Development only:** `POST /dev/seller-payments/:id/succeed` | `/fail` decides a simulated payment (404 unless `PAYMENT_PROVIDER=mock` outside production). Success adds the pass; it is idempotent (`ALREADY_DONE`).
+
+### Admin
+
+| Method & path            | Who   | Notes                                                                                                             |
+| ------------------------ | ----- | ----------------------------------------------------------------------------------------------------------------- |
+| `GET /sellers`           | any   | Sellers with lives of the last 30 days, pass in force, blocked                                                    |
+| `POST /sellers/:id/pass` | any   | `{plan: MONTH\|YEAR, note?}`: activates a pass paid outside the site (cash…). Starts now or after the current one |
+| `GET /live-prices`       | any   | `{passMonthXof, passYearXof}`                                                                                     |
+| `PUT /live-prices`       | OWNER | Same body. 400 `PASS_YEAR_TOO_HIGH` when the year costs 12 months or more                                         |

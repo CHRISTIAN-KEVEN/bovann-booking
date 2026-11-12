@@ -14,17 +14,22 @@ import type {
   AdminLiveDto,
   AdminLiveListResponse,
   AdminReviewHours,
+  AdminSellerDto,
   LiveCategoryDto,
+  LivePrices,
 } from '@bovann/shared';
 import { parseOrThrow } from '../common/errors';
 import {
   adminLiveListSchema,
   liveCreateSchema,
   liveRejectSchema,
+  livePricesSchema,
   liveRemoveSchema,
+  passGrantSchema,
   reviewHoursSchema,
 } from '../lives/lives.schemas';
 import { LivesService } from '../lives/lives.service';
+import { PassesService } from '../lives/passes.service';
 import { parseId } from './admin-common';
 import { AdminAuthGuard, CurrentAdmin, Roles } from './auth/admin-auth.guard';
 import type { AdminPrincipal } from './auth/admin-auth.service';
@@ -36,7 +41,38 @@ import type { AdminPrincipal } from './auth/admin-auth.service';
 @Controller('admin')
 @UseGuards(AdminAuthGuard)
 export class AdminLivesController {
-  constructor(private readonly lives: LivesService) {}
+  constructor(
+    private readonly lives: LivesService,
+    private readonly passes: PassesService,
+  ) {}
+
+  @Get('live-prices')
+  prices(): Promise<LivePrices> {
+    return this.passes.prices();
+  }
+
+  @Put('live-prices')
+  @Roles('OWNER')
+  setPrices(@Body() body: unknown, @CurrentAdmin() admin: AdminPrincipal): Promise<LivePrices> {
+    return this.passes.setPrices(parseOrThrow(livePricesSchema, body ?? {}), admin);
+  }
+
+  @Get('sellers')
+  sellers(): Promise<AdminSellerDto[]> {
+    return this.passes.sellers();
+  }
+
+  /** Activates a pass after the seller paid in cash or another way (both roles). */
+  @Post('sellers/:id/pass')
+  @HttpCode(HttpStatus.OK)
+  grantPass(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @CurrentAdmin() admin: AdminPrincipal,
+  ): Promise<AdminSellerDto> {
+    const { plan, note } = parseOrThrow(passGrantSchema, body ?? {});
+    return this.passes.grant(parseId(id, 'Vendeur'), plan, note, admin);
+  }
 
   /** For the menu counter (polled by the admin). */
   @Get('lives/pending-count')
