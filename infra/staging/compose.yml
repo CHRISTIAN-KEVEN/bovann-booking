@@ -66,7 +66,7 @@ services:
       STUDIO_CONTACT_PHONE: ${STUDIO_CONTACT_PHONE:-}
 
   web:
-    image: ${IMAGE_REPO}/bovann-web:${IMAGE_TAG}
+    image: ${IMAGE_REPO}/bovann-web-staging:${IMAGE_TAG}
     restart: unless-stopped
     logging: *logging
     depends_on:
@@ -91,7 +91,7 @@ services:
       - caddy-data:/data
       - caddy-config:/config
 
-  # Nightly database dump at 02:00 UTC, the last 14 kept in the mysql-backups volume.
+  # Nightly database dump at 02:00 UTC, the last 14 kept in the mysql-backups volume (backup.sh).
   backup:
     image: mysql:8.0
     restart: unless-stopped
@@ -102,20 +102,8 @@ services:
       MYSQL_PWD: ${MYSQL_PASSWORD}
     volumes:
       - mysql-backups:/backups
-    entrypoint: ['/bin/sh', '-c']
-    command:
-      - |
-        while true; do
-          now=$$(date -u +%s); next=$$(date -u -d 'tomorrow 02:00' +%s)
-          sleep $$((next - now))
-          file=/backups/bovann-$$(date -u +%Y%m%d-%H%M).sql.gz
-          if mysqldump -h mysql -u bovann --single-transaction --routines --no-tablespaces bovann | gzip > "$$file.tmp"; then
-            mv "$$file.tmp" "$$file"; echo "backup ok $$file"
-          else
-            rm -f "$$file.tmp"; echo "backup FAILED" >&2
-          fi
-          ls -1t /backups/bovann-*.sql.gz | tail -n +15 | xargs -r rm -f
-        done
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: ['/bin/bash', '/backup.sh']
 
 volumes:
   mysql-data:

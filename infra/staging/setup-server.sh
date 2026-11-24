@@ -48,6 +48,16 @@ ufw allow 443/tcp
 ufw allow 443/udp
 ufw --force enable
 
+echo "==> SSH: keys only"
+if [ -s /root/.ssh/authorized_keys ]; then
+  printf 'PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n' \
+    > /etc/ssh/sshd_config.d/10-bovann.conf
+  systemctl reload ssh 2>/dev/null || systemctl reload sshd
+else
+  echo "WARNING: root has no SSH key, so password login stays on to avoid locking you out." >&2
+  echo "         Add your key to /root/.ssh/authorized_keys and run this script again." >&2
+fi
+
 echo "==> deploy user (used only by GitHub Actions)"
 id deploy > /dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
 usermod -aG docker deploy

@@ -89,6 +89,7 @@ describe('loadEnv', () => {
       SMTP_HOST: 'mailpit',
       EMAIL_FROM: 'Bovann OCD Live <staging@example.com>',
       PUBLIC_WEB_URL: 'https://staging.example.com',
+      OTP_SECRET: 'x'.repeat(32),
     };
 
     it('allows simulated payments and sign-in codes on staging only', () => {
@@ -112,6 +113,13 @@ describe('loadEnv', () => {
       expect(() => loadEnv({ ...staging, PUBLIC_WEB_URL: 'http://staging.example.com' })).toThrow(
         /PUBLIC_WEB_URL/,
       );
+    });
+
+    it('keeps the other production rules on staging', () => {
+      // Codes that are sent, even simulated, still need their hashing key on staging.
+      const { OTP_SECRET: _secret, ...withoutSecret } = staging;
+      expect(() => loadEnv({ ...withoutSecret, OTP_TRANSPORT: 'simulated' })).toThrow(/OTP_SECRET/);
+      expect(() => loadEnv({ ...withoutSecret, OTP_TRANSPORT: 'disabled' })).not.toThrow();
     });
 
     it('refuses an unknown deployment name', () => {

@@ -8,6 +8,9 @@
 set -euo pipefail
 
 TAG="${1:?usage: deploy.sh <image tag>}"
+# Image tags are commit SHAs (or "smoke" in CI): refuse anything else, so the value can never
+# carry shell or Compose syntax.
+[[ "${TAG}" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || { echo "Invalid image tag: ${TAG}" >&2; exit 1; }
 cd "$(dirname "$0")"
 [ -f .env ] || { echo "Missing .env (run setup-server.sh first)" >&2; exit 1; }
 
@@ -50,6 +53,12 @@ CURL_OPTS=(-fsS --max-time 5)
 for _ in $(seq 1 30); do
   if curl "${CURL_OPTS[@]}" "https://${DOMAIN}/healthz" > /dev/null; then
     echo "==> Staging is up on ${TAG}"
+    # Keep the images of this deploy and the previous one (for a quick rollback); older ones
+    # would slowly fill the disk. ghcr.io keeps them all, so any rollback can pull again.
+    docker image ls --format '{{.Repository}}:{{.Tag}}' \
+      | grep -E '/bovann-(api|web-staging):' \
+      | grep -vE ":(${TAG}${PREVIOUS:+|${PREVIOUS}})$" \
+      | xargs -r docker image rm > /dev/null 2>&1 || true
     docker image prune -f > /dev/null
     exit 0
   fi

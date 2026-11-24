@@ -94,13 +94,13 @@ jobs:
         run: |
           docker build -f apps/web/Dockerfile \
             --build-arg NEXT_PUBLIC_PAYMENT_SIMULATION=true \
-            -t local/bovann-web:smoke .
+            -t local/bovann-web-staging:smoke .
 
       - name: Prepare a staging folder like the server's
         run: |
           dir="$RUNNER_TEMP/staging"
           mkdir -p "$dir"
-          cp infra/staging/compose.yml infra/staging/Caddyfile infra/staging/deploy.sh infra/staging/smoke-test.sh "$dir/"
+          cp infra/staging/compose.yml infra/staging/Caddyfile infra/staging/deploy.sh infra/staging/smoke-test.sh infra/staging/backup.sh "$dir/"
           hash="$(docker run --rm caddy:2.10 caddy hash-password --plaintext "$STAGING_PASSWORD")"
           cat > "$dir/.env" <<ENV
           STAGING_DOMAIN=localhost
@@ -122,6 +122,16 @@ jobs:
       - name: Smoke test, with a booking paid by simulation
         working-directory: ${{ env.STAGING_DIR }}
         run: ./smoke-test.sh localhost --book
+
+      - name: A backup can be made and holds a complete dump
+        working-directory: ${{ env.STAGING_DIR }}
+        run: |
+          dc() { docker compose --env-file .env --env-file release.env "$@"; }
+          dc exec -T backup /bin/bash /backup.sh once
+          file="$(dc exec -T backup sh -c 'ls -1t /backups/bovann-*.sql.gz | head -1')"
+          dc exec -T backup sh -c "gzip -dc '$file' | grep -q 'CREATE TABLE \`t_bookings\`'"
+          dc exec -T backup sh -c "gzip -dc '$file' | grep -q 'BOV-'" # the smoke test's booking
+          echo "backup ok: $file"
 
       - name: A second deploy keeps the data and does not seed again
         working-directory: ${{ env.STAGING_DIR }}

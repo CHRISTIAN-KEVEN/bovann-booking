@@ -131,8 +131,9 @@ const envSchema = z
         message: 'production must send emails (owners are notified of every booking)',
       });
     }
-    if (env.DEPLOY_ENV === 'staging') return;
-    if (env.OTP_TRANSPORT === 'simulated') {
+    // Staging may simulate payments and codes; every other production rule still applies.
+    const staging = env.DEPLOY_ENV === 'staging';
+    if (env.OTP_TRANSPORT === 'simulated' && !staging) {
       ctx.addIssue({
         code: 'custom',
         path: ['OTP_TRANSPORT'],
@@ -146,7 +147,7 @@ const envSchema = z
         message: 'required in production when sign-in codes are sent',
       });
     }
-    if (env.PAYMENT_PROVIDER === 'mock') {
+    if (env.PAYMENT_PROVIDER === 'mock' && !staging) {
       ctx.addIssue({
         code: 'custom',
         path: ['PAYMENT_PROVIDER'],
