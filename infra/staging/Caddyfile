@@ -21,25 +21,29 @@
 		reverse_proxy api:3001
 	}
 
-	basic_auth {
-		{$STAGING_AUTH_USER} {$STAGING_AUTH_HASH}
-	}
+	# Everything else needs the site password. basic_auth sits INSIDE this handle on purpose:
+	# Caddy runs basic_auth before any handle block in the same scope, wherever it is written.
+	handle {
+		basic_auth {
+			{$STAGING_AUTH_USER} {$STAGING_AUTH_HASH}
+		}
 
-	handle /robots.txt {
-		respond "User-agent: *
+		handle /robots.txt {
+			respond "User-agent: *
 Disallow: /
 " 200
-	}
+		}
 
-	handle /api/* {
-		reverse_proxy api:3001
-	}
+		handle /api/* {
+			reverse_proxy api:3001
+		}
 
-	handle /mailpit* {
-		reverse_proxy mailpit:8025
-	}
+		handle /mailpit* {
+			reverse_proxy mailpit:8025
+		}
 
-	handle {
-		reverse_proxy web:3000
+		handle {
+			reverse_proxy web:3000
+		}
 	}
 }

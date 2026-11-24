@@ -581,6 +581,7 @@ All 83 admin and seller sign-in tests started failing once the real date passed 
 
 - **An empty setting blocked the deploy:** `STUDIO_CONTACT_PHONE=` (empty) was refused as "too short" and the migrations never ran. Empty values now mean "not set" (test added).
 - **The CI step showed green while the deploy had failed:** `deploy.sh | tee log` hid the exit code (GitHub's default shell has no `pipefail`). The job now runs with `pipefail`, and the "already seeded?" check stops with a clear error if it can't read the database, instead of silently skipping the seed.
+- **The open health check asked for the password:** Caddy applies `basic_auth` before any `handle` block in the same scope, wherever it is written, so the deploy waited for `/healthz` in vain. The password now sits inside the block that covers everything except `/healthz`. Checked by running Caddy locally against stand-in services: `/healthz` open, pages and API refused without or with a wrong password, `noindex` and HTTPS headers present.
 
 ### Waiting for
 
