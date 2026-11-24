@@ -562,7 +562,7 @@ Posting a live (link, country, category, duration), the staff review queue and r
 
 ### Tests
 
-- **Totals:** API 258, shared 12, web 81.
+- **Totals:** API 259, shared 12, web 81.
 - **API (4 new unit tests):** staging allows simulations; production with or without `DEPLOY_ENV=production` refuses them; staging still needs emails and HTTPS; unknown deployment names refused.
 - **CI job "Staging stack":** on every PR, builds both images, deploys them on the runner, books and pays a slot by simulation, checks the receipt, the double-booking refusal, the owners' email, the password and `noindex`, then deploys again and checks the data stays and the seed does not re-run.
 - Scripts checked with shellcheck, workflows with actionlint.
@@ -576,6 +576,11 @@ All 83 admin and seller sign-in tests started failing once the real date passed 
 - **Admin sessions** took `created_at` from the database clock and `expires_at` from the app clock; the database rule `expires_at > created_at` failed when the two clocks disagreed (frozen test clock; in production, a database clock behind the app). Both now come from the app clock, as for sellers.
 - **Session cookies** carried a fixed expiry date computed from the app clock, so the test client dropped them as already expired. They now carry a lifetime (`Max-Age`): 7 days for staff, 90 for sellers, counted by the browser. This also keeps visitors signed in when their device's clock is wrong.
 - Two tests now check both (`Max-Age` on the cookies, `created_at` on the app clock).
+
+### Found by the new CI deployment test (first run)
+
+- **An empty setting blocked the deploy:** `STUDIO_CONTACT_PHONE=` (empty) was refused as "too short" and the migrations never ran. Empty values now mean "not set" (test added).
+- **The CI step showed green while the deploy had failed:** `deploy.sh | tee log` hid the exit code (GitHub's default shell has no `pipefail`). The job now runs with `pipefail`, and the "already seeded?" check stops with a clear error if it can't read the database, instead of silently skipping the seed.
 
 ### Waiting for
 

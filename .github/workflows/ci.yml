@@ -76,6 +76,10 @@ jobs:
     name: Staging stack (Docker build, deploy, smoke test)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    defaults:
+      run:
+        # pipefail: `deploy.sh | tee log` must fail when deploy.sh fails.
+        shell: bash
     env:
       STAGING_PASSWORD: smoke-only-password
       CURL_INSECURE: '1'

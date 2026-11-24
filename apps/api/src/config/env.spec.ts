@@ -15,6 +15,13 @@ describe('loadEnv', () => {
     });
   });
 
+  it('treats empty values as not set, so their defaults apply', () => {
+    const env = loadEnv({ ...base, STUDIO_CONTACT_PHONE: '', PORT: '', TURNSTILE_SECRET_KEY: ' ' });
+    expect(env.STUDIO_CONTACT_PHONE).toBeUndefined();
+    expect(env.TURNSTILE_SECRET_KEY).toBeUndefined();
+    expect(env.PORT).toBe(3001);
+  });
+
   it('parses a comma-separated CORS list', () => {
     const env = loadEnv({ ...base, CORS_ORIGINS: 'https://bovann.tg, https://admin.bovann.tg' });
     expect(env.CORS_ORIGINS).toEqual(['https://bovann.tg', 'https://admin.bovann.tg']);

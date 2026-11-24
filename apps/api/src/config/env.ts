@@ -166,7 +166,12 @@ export function simulationsAllowed(env: Pick<Env, 'NODE_ENV' | 'DEPLOY_ENV'>): b
 }
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = envSchema.safeParse(source);
+  // An empty value (`KEY=` in a .env file or a Compose file) means "not set", so the default
+  // applies instead of a confusing "too short" error.
+  const defined = Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined && value.trim() !== ''),
+  );
+  const parsed = envSchema.safeParse(defined);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)

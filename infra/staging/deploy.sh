@@ -29,7 +29,10 @@ dc run --rm --no-deps api node dist/database/cli.js latest
 # The seed rewrites opening hours and space settings: run it only when the database is empty,
 # so the client's changes in the admin survive later deploys.
 # shellcheck disable=SC2016 # $MYSQL_PASSWORD is expanded inside the mysql container
-SPACES="$(dc exec -T mysql sh -c 'mysql -ubovann -p"$MYSQL_PASSWORD" bovann -Nse "SELECT COUNT(*) FROM t_spaces"' 2>/dev/null)"
+SPACES="$(dc exec -T mysql sh -c 'mysql -ubovann -p"$MYSQL_PASSWORD" bovann -Nse "SELECT COUNT(*) FROM t_spaces" 2>/dev/null')"
+case "${SPACES}" in
+  ''|*[!0-9]*) echo "Could not read t_spaces from the database (got: '${SPACES}')" >&2; exit 1 ;;
+esac
 if [ "${SPACES}" = "0" ]; then
   echo "==> First deploy: seeding reference data"
   dc run --rm --no-deps api node dist/database/seed.js
