@@ -1,0 +1,16 @@
+# Keep images small and never send secrets or local state to the Docker build.
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.claude
+infra
+docs
+**/*.log
+**/.DS_Store

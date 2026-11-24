@@ -23,7 +23,7 @@ export const OTP_RESEND_SEC = 60;
 export const OTP_MAX_PER_HOUR = 5;
 /** A seller stays signed in for 30 days without activity, 90 days at most. */
 const SESSION_IDLE_MS = 30 * 86_400_000;
-const SESSION_MAX_MS = 90 * 86_400_000;
+export const SESSION_MAX_MS = 90 * 86_400_000;
 /** last_seen_at is written at most this often. */
 const SEEN_EVERY_MS = 60 * 60_000;
 

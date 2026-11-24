@@ -71,3 +71,65 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  staging-smoke:
+    name: Staging stack (Docker build, deploy, smoke test)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      STAGING_PASSWORD: smoke-only-password
+      CURL_INSECURE: '1'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the API image
+        run: docker build -f apps/api/Dockerfile -t local/bovann-api:smoke .
+
+      - name: Build the website image (simulated payments, as on staging)
+        run: |
+          docker build -f apps/web/Dockerfile \
+            --build-arg NEXT_PUBLIC_PAYMENT_SIMULATION=true \
+            -t local/bovann-web:smoke .
+
+      - name: Prepare a staging folder like the server's
+        run: |
+          dir="$RUNNER_TEMP/staging"
+          mkdir -p "$dir"
+          cp infra/staging/compose.yml infra/staging/Caddyfile infra/staging/deploy.sh infra/staging/smoke-test.sh "$dir/"
+          hash="$(docker run --rm caddy:2.10 caddy hash-password --plaintext "$STAGING_PASSWORD")"
+          cat > "$dir/.env" <<ENV
+          STAGING_DOMAIN=localhost
+          IMAGE_REPO=local
+          CADDY_TLS=local_certs
+          MYSQL_ROOT_PASSWORD='$(openssl rand -hex 16)'
+          MYSQL_PASSWORD='$(openssl rand -hex 16)'
+          OTP_SECRET='$(openssl rand -hex 32)'
+          STAGING_AUTH_USER=bovann
+          STAGING_AUTH_HASH='${hash}'
+          ENV
+          sed -i 's/^ *//' "$dir/.env"
+          echo "STAGING_DIR=$dir" >> "$GITHUB_ENV"
+
+      - name: First deploy (migrations and seed)
+        working-directory: ${{ env.STAGING_DIR }}
+        run: SKIP_PULL=1 ./deploy.sh smoke | tee first-deploy.log
+
+      - name: Smoke test, with a booking paid by simulation
+        working-directory: ${{ env.STAGING_DIR }}
+        run: ./smoke-test.sh localhost --book
+
+      - name: A second deploy keeps the data and does not seed again
+        working-directory: ${{ env.STAGING_DIR }}
+        run: |
+          grep -q 'First deploy: seeding' first-deploy.log
+          SKIP_PULL=1 ./deploy.sh smoke | tee second-deploy.log
+          if grep -q 'First deploy: seeding' second-deploy.log; then
+            echo "The seed ran again on a database that already had data" >&2; exit 1
+          fi
+          ./smoke-test.sh localhost
+
+      - name: Logs on failure
+        if: failure()
+        working-directory: ${{ env.STAGING_DIR }}
+        run: docker compose --env-file .env --env-file release.env.next logs --tail 200 || docker compose --env-file .env --env-file release.env logs --tail 200

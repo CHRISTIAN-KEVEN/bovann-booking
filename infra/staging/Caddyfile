@@ -1,0 +1,45 @@
+# Staging front door: automatic HTTPS (Let's Encrypt), one password for the whole site,
+# kept out of search engines. The API and the Mailpit inbox share the site's address.
+{
+	# Empty on the server (real certificates). The CI smoke test sets CADDY_TLS=local_certs.
+	{$CADDY_TLS:}
+}
+
+{$STAGING_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		X-Robots-Tag "noindex, nofollow"
+		Strict-Transport-Security "max-age=31536000"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Health check for the deploy script and uptime monitors (no password, no data).
+	handle /healthz {
+		rewrite * /health/ready
+		reverse_proxy api:3001
+	}
+
+	basic_auth {
+		{$STAGING_AUTH_USER} {$STAGING_AUTH_HASH}
+	}
+
+	handle /robots.txt {
+		respond "User-agent: *
+Disallow: /
+" 200
+	}
+
+	handle /api/* {
+		reverse_proxy api:3001
+	}
+
+	handle /mailpit* {
+		reverse_proxy mailpit:8025
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

@@ -8,6 +8,12 @@ import { z } from 'zod';
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    /**
+     * Which deployment a production build runs as. `staging` keeps production behaviour (Secure
+     * cookies, JSON logs, no database reset) but allows the simulated payment provider and
+     * simulated sign-in codes, so the client can try every flow. Unset = production: the safe default.
+     */
+    DEPLOY_ENV: z.enum(['staging', 'production']).optional(),
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     DATABASE_URL: z
@@ -111,6 +117,13 @@ const envSchema = z
       }
     }
     if (env.NODE_ENV !== 'production') return;
+    if (env.DEPLOY_ENV === 'staging' && env.PUBLIC_WEB_URL.startsWith('http://')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PUBLIC_WEB_URL'],
+        message: 'staging is served over HTTPS (the session cookies are Secure)',
+      });
+    }
     if (env.EMAIL_TRANSPORT !== 'smtp') {
       ctx.addIssue({
         code: 'custom',
@@ -118,6 +131,7 @@ const envSchema = z
         message: 'production must send emails (owners are notified of every booking)',
       });
     }
+    if (env.DEPLOY_ENV === 'staging') return;
     if (env.OTP_TRANSPORT === 'simulated') {
       ctx.addIssue({
         code: 'custom',
@@ -142,6 +156,14 @@ const envSchema = z
   });
 
 export type Env = z.infer<typeof envSchema>;
+
+/**
+ * Whether simulated payments and sign-in codes may be used: always outside production builds,
+ * and in a production build only when it runs as staging.
+ */
+export function simulationsAllowed(env: Pick<Env, 'NODE_ENV' | 'DEPLOY_ENV'>): boolean {
+  return env.NODE_ENV !== 'production' || env.DEPLOY_ENV === 'staging';
+}
 
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = envSchema.safeParse(source);

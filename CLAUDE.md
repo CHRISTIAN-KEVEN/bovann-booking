@@ -27,15 +27,16 @@ The product owner is Keven. He wants to understand decisions, not copy code.
 
 ## Current status (keep this section short; update it in every PR)
 
-_As of 2026-11-12, `main` after PR #22._
+_As of 2026-11-24, branch `chore/staging-and-reviewer` (PR #24)._
 
 - **Built:**
   - Customer booking flow: mode, calendar, slots and packages, details, simulated payment, confirmation, receipt, "Retrouver ma réservation".
   - Admin: bookings, calendar, packages and prices, spaces and hours, clients, payments, users, emails.
   - Emails (Gmail SMTP, outbox worker). French and English everywhere.
+  - Staging deployment: Docker images, Compose stack with Caddy (HTTPS, site password, noindex), Mailpit, nightly backups, auto-deploy after CI on `main`, smoke test. Independent `reviewer` agent.
   - Live directory: the "En direct" wall, seller sign-in by code (simulated sender), posting and staff review with review hours, and **passes: a monthly or annual pass is required to post** (single-live payment switched off).
 - **Next:**
-  1. Staging deployment (VPS + Docker Compose + Caddy, auto-deploy on merge to `main`), so the client can follow progress without the laptop. Waiting for Keven's VPS and domain.
+  1. Staging: built and tested in CI (`docs/deployment.md`); goes live once Keven creates the server and adds the GitHub secrets (setup steps in that doc).
   2. Categories: the booking form uses the shared category list with "Autre"; admin list of typed categories.
   3. Later, offered and not yet requested: block a seller, automatic blocking.
 - **Blocked on Bovann:** the real payment provider (Phase 4) and the WhatsApp/SMS provider.
@@ -50,6 +51,7 @@ Read on demand, before working in their area:
 - `docs/progress.md`: full history of each step, decisions to confirm, known issues and technical debt (end of file).
 - `docs/architecture.md`: data model and design decisions (§ per feature).
 - `docs/api.md`: endpoints and error codes.
+- `docs/deployment.md`: staging setup and operations.
 - `docs/payment-providers-analysis.md`.
 
 ## How we work
@@ -60,9 +62,10 @@ Read on demand, before working in their area:
    ```bash
    pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
    ```
-4. Check user-facing changes in a real browser at phone (390 px) and desktop (1440 px) widths, in French and English, with no console errors.
-5. Report to Keven what changed, how it was tested, and the decisions he needs to confirm. **Merge only when he says "merge"** (squash merge), then update local `main`.
-6. `docs/` in this repo is the source of truth. The claude.ai Project holds copies (`claude/*.md`); they are synced from claude.ai sessions.
+4. **Independent review:** once the change is built and the checks pass, run the `reviewer` agent (`.claude/agents/reviewer.md`). It did not write the code and only reports. Fix its Blockers and Should-fix findings (or explain why not), then post its review as a PR comment, with what was fixed.
+5. Check user-facing changes in a real browser at phone (390 px) and desktop (1440 px) widths, in French and English, with no console errors.
+6. Report to Keven what changed, how it was tested, and the decisions he needs to confirm. **Merge only when he says "merge"** (squash merge), then update local `main`.
+7. `docs/` in this repo is the source of truth. The claude.ai Project holds copies (`claude/*.md`); they are synced from claude.ai sessions.
 
 ## Commands
 
@@ -82,12 +85,13 @@ pnpm --filter @bovann/api admin:create --email … --name "…"
 - The api and web `build`/`dev` scripts build `packages/shared` first. If types from `@bovann/shared` look missing, run `pnpm --filter @bovann/shared build`.
 - **Demo payments:** `PAYMENT_PROVIDER=mock` in the API. The web shows the "Simuler un paiement" buttons only when built with `NEXT_PUBLIC_PAYMENT_SIMULATION=true` (it is read at build time).
 - **Seller sign-in codes:** `OTP_TRANSPORT=simulated` shows the code on screen in development; production uses `disabled` until an SMS/WhatsApp provider exists.
+- **Staging** runs production builds with `DEPLOY_ENV=staging`, which alone allows the simulated payments and codes. Files in `infra/staging/`, runbook in `docs/deployment.md`. CI's "Staging stack" job builds the images and runs the whole stack on every PR.
 
 ## Conventions
 
 - **Stack:** pnpm monorepo. `apps/api` NestJS 11 + Kysely on MySQL 8; `apps/web` Next.js 16 (App Router, CSS Modules, design tokens); `packages/shared` types and rules used by both.
 - **Database:** every table is prefixed `t_`. Times in UTC (`DATETIME(3)`), shown in the space's time zone (`Africa/Lome`). Money is whole XOF.
-- **Migrations:** plain SQL through Kysely, in `apps/api/src/database/migrations/`. Never edit a migration that has run outside your machine; add a new one. Every migration must apply, roll back and re-apply. Keep `schema.ts` in step by hand.
+- **Migrations:** plain SQL through Kysely, in `apps/api/src/database/migrations/`. Never edit a migration that has run outside your machine; add a new one. Every migration must apply, roll back and re-apply, and keep working with the previous version of the code, because a staging rollback does not undo migrations (add columns or tables first; remove them in a later release). Keep `schema.ts` in step by hand.
 - **Business logic lives in services**, never in controllers. Errors use `ApiError(status, CODE, message)` with a French message; add its English version to `apps/api/src/common/messages-en.ts` (a test fails otherwise).
 - **Web text** lives in `apps/web/src/i18n/messages/fr.ts` (the reference) and `en.ts` (same keys). French pages have plain paths; English pages are under `/en`.
 - **Sessions:** admin and seller sessions use httpOnly cookies. Every change request needs the CSRF header (`X-Bovann-Admin: 1` or `X-Bovann-Seller: 1`).

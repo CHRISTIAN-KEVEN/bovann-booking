@@ -548,6 +548,39 @@ Posting a live (link, country, category, duration), the staff review queue and r
 - **Totals:** API 254, shared 12, web 81.
 - **In a real Chrome at phone size:** a new seller signs in from "Publier mon live", gets the pass screen, a first payment fails, the second succeeds, the form opens, the live is sent, staff approve it, it goes online; the seller space shows the pass; staff open "Vendeurs et pass" and "Prix". No browser errors.
 
+## Staging deployment and reviewer agent (in review)
+
+**Product owner, 2026-11-24:** a staging site the client can open at any time without Keven's laptop (replacing the Cloudflare tunnel), and an independent reviewer agent.
+
+### Delivered
+
+- **Staging stack** (`infra/staging/`): Docker images for the API and the website, Compose with Caddy (HTTPS, one site password, hidden from search engines), MySQL, Mailpit for the emails, nightly backups.
+- **Automatic deploys:** after CI passes on `main`, GitHub Actions builds the images, deploys them over SSH, runs the migrations and checks the site from outside. Roll back by re-running the workflow with an earlier commit.
+- **`DEPLOY_ENV=staging`:** production builds that still allow simulated payments and codes, so the client can try everything. Without it, production refuses them as before.
+- **Server setup script and runbook** (`docs/deployment.md`): firewall, automatic security updates, a `deploy` user, random secrets.
+- **Reviewer agent** (`.claude/agents/reviewer.md`) and the rule to run it before every report (CLAUDE.md).
+
+### Tests
+
+- **Totals:** API 258, shared 12, web 81.
+- **API (4 new unit tests):** staging allows simulations; production with or without `DEPLOY_ENV=production` refuses them; staging still needs emails and HTTPS; unknown deployment names refused.
+- **CI job "Staging stack":** on every PR, builds both images, deploys them on the runner, books and pays a slot by simulation, checks the receipt, the double-booking refusal, the owners' email, the password and `noindex`, then deploys again and checks the data stays and the seed does not re-run.
+- Scripts checked with shellcheck, workflows with actionlint.
+- The production bundle of the API (what goes in the image) was run locally: it refuses simulated payments as a plain production build, and with `DEPLOY_ENV=staging` it migrates, seeds, starts and accepts simulated payments.
+- Not testable in the development workspace (Docker Hub is blocked there): the image builds run in CI only.
+
+### Found and fixed on the way: two "time bombs" in the tests
+
+All 83 admin and seller sign-in tests started failing once the real date passed the tests' frozen clock (9–16 November), on `main` too:
+
+- **Admin sessions** took `created_at` from the database clock and `expires_at` from the app clock; the database rule `expires_at > created_at` failed when the two clocks disagreed (frozen test clock; in production, a database clock behind the app). Both now come from the app clock, as for sellers.
+- **Session cookies** carried a fixed expiry date computed from the app clock, so the test client dropped them as already expired. They now carry a lifetime (`Max-Age`): 7 days for staff, 90 for sellers, counted by the browser. This also keeps visitors signed in when their device's clock is wrong.
+- Two tests now check both (`Max-Age` on the cookies, `created_at` on the app clock).
+
+### Waiting for
+
+- Keven: the server, the domain, and the GitHub secrets (steps in `docs/deployment.md`).
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow, for bookings and for sellers' passes. Needs: the provider's sandbox credentials.

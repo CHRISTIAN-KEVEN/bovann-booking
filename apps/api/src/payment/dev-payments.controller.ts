@@ -4,13 +4,13 @@ import { z } from 'zod';
 import { BookingLifecycleService, type ConfirmOutcome } from '../booking/booking-lifecycle.service';
 import { notFound, parseOrThrow } from '../common/errors';
 import { ENV } from '../config/config.module';
-import type { Env } from '../config/env';
+import { simulationsAllowed, type Env } from '../config/env';
 import { DB } from '../database/database.module';
 import type { Database } from '../database/schema';
 
 /**
  * DEVELOPMENT ONLY: decides the outcome of a simulated payment.
- * Answers 404 unless PAYMENT_PROVIDER=mock outside production (and the
+ * Answers 404 unless PAYMENT_PROVIDER=mock outside production or on staging (and the
  * environment validation forbids the mock provider in production). Replaced by real provider webhooks in Phase 4.
  */
 @Controller('dev/payments')
@@ -23,7 +23,7 @@ export class DevPaymentsController {
 
   /** Behaves as if the route did not exist outside the mock setup. */
   private assertEnabled(): void {
-    if (this.env.PAYMENT_PROVIDER !== 'mock' || this.env.NODE_ENV === 'production') {
+    if (this.env.PAYMENT_PROVIDER !== 'mock' || !simulationsAllowed(this.env)) {
       throw notFound('NOT_FOUND', 'Ressource introuvable.');
     }
   }

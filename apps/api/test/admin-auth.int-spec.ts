@@ -47,14 +47,22 @@ describe('signing in', () => {
     expect(cookie).toMatch(/^bovann_admin_session=/);
     expect(cookie).toMatch(/HttpOnly/);
     expect(cookie).toMatch(/SameSite=Lax/);
+    // Lifetime as a duration (7 days), so a wrong clock on the visitor's device (or the
+    // frozen test clock) can't make the browser drop the cookie early.
+    expect(cookie).toMatch(/Max-Age=604800/);
 
     const me = (await client.get('/auth/me').expect(200)).body as AdminMe;
     expect(me.id).toBe(owner.id);
 
     // Only the hash of the token is stored.
     const token = /bovann_admin_session=([^;]+)/.exec(cookie)![1]!;
-    const stored = await db.selectFrom('t_admin_sessions').select('token_hash').execute();
+    const stored = await db
+      .selectFrom('t_admin_sessions')
+      .select(['token_hash', 'created_at'])
+      .execute();
     expect(stored.some((s) => s.token_hash === token)).toBe(false);
+    // Created on the app clock, like its expiry (the database CHECK compares the two).
+    expect(stored.at(-1)!.created_at.toISOString()).toBe(clock.now().toISOString());
   });
 
   it('gives the same answer for a wrong password and an unknown email', async () => {

@@ -6,6 +6,7 @@ Online booking for the Bovann OCD Live live-stream studio in Lomé: customers ch
 - Architecture & data model: [docs/architecture.md](docs/architecture.md)
 - Payment providers analysis: [docs/payment-providers-analysis.md](docs/payment-providers-analysis.md)
 - API reference: [docs/api.md](docs/api.md)
+- Staging deployment: [docs/deployment.md](docs/deployment.md)
 - Progress & next steps: [docs/progress.md](docs/progress.md)
 - Working with Claude Code: [CLAUDE.md](CLAUDE.md) (role, workflow, commands, current status)
 
@@ -15,7 +16,7 @@ Online booking for the Bovann OCD Live live-stream studio in Lomé: customers ch
 apps/api          NestJS REST API (MySQL via Kysely)
 apps/web          Next.js customer site + admin
 packages/shared   Shared domain types and helpers
-infra/            Docker Compose for local services
+infra/            Docker Compose for local services; infra/staging: the staging server
 docs/             Product and technical documentation
 ```
 

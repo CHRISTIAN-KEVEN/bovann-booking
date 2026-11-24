@@ -89,6 +89,7 @@ describe('signing in with a code', () => {
     const cookie = res.get('Set-Cookie')!.find((c) => c.startsWith('bovann_seller_session='))!;
     expect(cookie).toMatch(/HttpOnly/i);
     expect(cookie).toMatch(/SameSite=Lax/i);
+    expect(cookie).toMatch(/Max-Age=7776000/); // 90 days, counted by the browser
 
     const me = await request(app.getHttpServer())
       .get('/api/v1/seller/me')

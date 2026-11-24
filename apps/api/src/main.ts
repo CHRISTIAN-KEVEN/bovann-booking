@@ -14,7 +14,11 @@ async function bootstrap(): Promise<void> {
   configureApp(app, { corsOrigins: env.CORS_ORIGINS, trustProxyHops: env.TRUST_PROXY_HOPS });
 
   await app.listen(env.PORT);
-  app.get(Logger).log(`API listening on port ${env.PORT} (${env.NODE_ENV})`);
+  app
+    .get(Logger)
+    .log(
+      `API listening on port ${env.PORT} (${env.NODE_ENV}${env.DEPLOY_ENV ? `, ${env.DEPLOY_ENV}` : ''})`,
+    );
 }
 
 void bootstrap();

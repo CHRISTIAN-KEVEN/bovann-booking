@@ -65,7 +65,8 @@ export interface AdminSessionsTable {
   id: Generated<number>;
   admin_user_id: number;
   token_hash: string;
-  created_at: CreatedAt;
+  /** Set from the app clock, like `expires_at`: the CHECK compares the two. */
+  created_at: ColumnType<Date, Date, never>;
   last_seen_at: Date;
   expires_at: Date;
   revoked_at: Date | null;

@@ -13,7 +13,7 @@ import type { SellerPaymentDto } from '@bovann/shared';
 import { parseId } from '../admin/admin-common';
 import { notFound, parseOrThrow } from '../common/errors';
 import { ENV } from '../config/config.module';
-import type { Env } from '../config/env';
+import { simulationsAllowed, type Env } from '../config/env';
 import { CurrentSeller, SellerAuthGuard } from '../sellers/seller-auth.guard';
 import type { SellerPrincipal } from '../sellers/seller-auth.service';
 import { devPaymentFailSchema, sellerPaymentSchema } from './lives.schemas';
@@ -44,7 +44,7 @@ export class SellerPaymentsController {
 
 /**
  * DEVELOPMENT ONLY: decides the outcome of a simulated seller payment, like
- * /dev/payments for bookings. 404 unless PAYMENT_PROVIDER=mock outside production.
+ * /dev/payments for bookings. 404 unless PAYMENT_PROVIDER=mock outside production or on staging.
  */
 @Controller('dev/seller-payments')
 export class DevSellerPaymentsController {
@@ -54,7 +54,7 @@ export class DevSellerPaymentsController {
   ) {}
 
   private assertEnabled(): void {
-    if (this.env.PAYMENT_PROVIDER !== 'mock' || this.env.NODE_ENV === 'production') {
+    if (this.env.PAYMENT_PROVIDER !== 'mock' || !simulationsAllowed(this.env)) {
       throw notFound('NOT_FOUND', 'Ressource introuvable.');
     }
   }
