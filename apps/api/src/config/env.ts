@@ -8,6 +8,12 @@ import { z } from 'zod';
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    /**
+     * Which deployment a production build runs as. `staging` keeps production behaviour (Secure
+     * cookies, JSON logs, no database reset) but allows the simulated payment provider and
+     * simulated sign-in codes, so the client can try every flow. Unset = production: the safe default.
+     */
+    DEPLOY_ENV: z.enum(['staging', 'production']).optional(),
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     DATABASE_URL: z
@@ -111,6 +117,13 @@ const envSchema = z
       }
     }
     if (env.NODE_ENV !== 'production') return;
+    if (env.DEPLOY_ENV === 'staging' && env.PUBLIC_WEB_URL.startsWith('http://')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PUBLIC_WEB_URL'],
+        message: 'staging is served over HTTPS (the session cookies are Secure)',
+      });
+    }
     if (env.EMAIL_TRANSPORT !== 'smtp') {
       ctx.addIssue({
         code: 'custom',
@@ -118,7 +131,9 @@ const envSchema = z
         message: 'production must send emails (owners are notified of every booking)',
       });
     }
-    if (env.OTP_TRANSPORT === 'simulated') {
+    // Staging may simulate payments and codes; every other production rule still applies.
+    const staging = env.DEPLOY_ENV === 'staging';
+    if (env.OTP_TRANSPORT === 'simulated' && !staging) {
       ctx.addIssue({
         code: 'custom',
         path: ['OTP_TRANSPORT'],
@@ -132,7 +147,7 @@ const envSchema = z
         message: 'required in production when sign-in codes are sent',
       });
     }
-    if (env.PAYMENT_PROVIDER === 'mock') {
+    if (env.PAYMENT_PROVIDER === 'mock' && !staging) {
       ctx.addIssue({
         code: 'custom',
         path: ['PAYMENT_PROVIDER'],
@@ -143,8 +158,21 @@ const envSchema = z
 
 export type Env = z.infer<typeof envSchema>;
 
+/**
+ * Whether simulated payments and sign-in codes may be used: always outside production builds,
+ * and in a production build only when it runs as staging.
+ */
+export function simulationsAllowed(env: Pick<Env, 'NODE_ENV' | 'DEPLOY_ENV'>): boolean {
+  return env.NODE_ENV !== 'production' || env.DEPLOY_ENV === 'staging';
+}
+
 export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
-  const parsed = envSchema.safeParse(source);
+  // An empty value (`KEY=` in a .env file or a Compose file) means "not set", so the default
+  // applies instead of a confusing "too short" error.
+  const defined = Object.fromEntries(
+    Object.entries(source).filter(([, value]) => value !== undefined && value.trim() !== ''),
+  );
+  const parsed = envSchema.safeParse(defined);
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)

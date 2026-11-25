@@ -1,0 +1,152 @@
+name: Deploy staging
+
+# After CI passes on main: build the images, push them to GitHub's registry (ghcr.io), deploy them
+# on the staging server and check the site from the outside.
+# Run it by hand (Actions → Deploy staging → Run workflow) to redeploy, or to roll back by giving
+# the commit SHA of an earlier deploy. Setup: docs/deployment.md.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Full commit SHA of images already built (rollback). Empty: build and deploy the latest main.'
+        required: false
+        default: ''
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_REPO: ghcr.io/christian-keven
+
+jobs:
+  prepare:
+    name: Check settings and version
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      tag: ${{ steps.check.outputs.tag }}
+      build: ${{ steps.check.outputs.build }}
+    steps:
+      - id: check
+        env:
+          HOST: ${{ secrets.STAGING_HOST }}
+          DOMAIN: ${{ vars.STAGING_DOMAIN }}
+          INPUT_TAG: ${{ inputs.tag }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          if [ -z "$HOST" ] || [ -z "$DOMAIN" ]; then
+            echo "::notice::No staging server configured yet (STAGING_HOST secret or STAGING_DOMAIN variable missing). Nothing deployed."
+            echo "ready=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          tag="${INPUT_TAG:-$RUN_SHA}"
+          # Only a full commit SHA: the tag ends up in a command on the server.
+          if ! [[ "$tag" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::'$tag' is not a full commit SHA (40 hexadecimal characters)."; exit 1
+          fi
+          build=true; [ -n "$INPUT_TAG" ] && build=false
+          { echo "ready=true"; echo "tag=$tag"; echo "build=$build"; } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build and push the images
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'true' && needs.prepare.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Build and push
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STUDIO_PHONE: ${{ vars.STAGING_STUDIO_CONTACT_PHONE }}
+        run: |
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          source="org.opencontainers.image.source=https://github.com/${{ github.repository }}"
+          docker build -f apps/api/Dockerfile --label "$source" -t "$IMAGE_REPO/bovann-api:$TAG" .
+          # Staging website image: simulated payment buttons built in. Named apart so a future
+          # production setup can never pull it by mistake.
+          docker build -f apps/web/Dockerfile --label "$source" \
+            --build-arg NEXT_PUBLIC_PAYMENT_SIMULATION=true \
+            --build-arg NEXT_PUBLIC_STUDIO_CONTACT_PHONE="$STUDIO_PHONE" \
+            -t "$IMAGE_REPO/bovann-web-staging:$TAG" .
+          docker push "$IMAGE_REPO/bovann-api:$TAG"
+          docker push "$IMAGE_REPO/bovann-web-staging:$TAG"
+          docker logout ghcr.io
+
+  deploy:
+    name: Deploy to the server
+    needs: [prepare, build]
+    # Runs after a successful build, or with no build at all (rollback to an existing tag).
+    if: >-
+      always() && needs.prepare.outputs.ready == 'true' &&
+      (needs.build.result == 'success' || needs.build.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read # the server can pull images, never push them
+    environment:
+      name: staging
+      url: https://${{ vars.STAGING_DOMAIN }}
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Deploy on the server
+        env:
+          HOST: ${{ secrets.STAGING_HOST }}
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/staging && chmod 600 ~/.ssh/staging
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh_opts=(-i ~/.ssh/staging -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          dir=/opt/bovann/staging
+          scp "${ssh_opts[@]}" infra/staging/compose.yml infra/staging/Caddyfile \
+            infra/staging/deploy.sh infra/staging/smoke-test.sh infra/staging/backup.sh "deploy@$HOST:$dir/"
+          # shellcheck disable=SC2029 # $TAG (checked: 40 hex characters) and $dir expand here, on the runner.
+          # The registry token is read-only and valid only while this job runs; the server logs out afterwards.
+          printf '%s' "$REGISTRY_TOKEN" | ssh "${ssh_opts[@]}" "deploy@$HOST" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin > /dev/null \
+             && cd $dir && chmod +x deploy.sh smoke-test.sh backup.sh \
+             && { ./deploy.sh '$TAG'; rc=\$?; docker logout ghcr.io > /dev/null; exit \$rc; }"
+
+      - name: Check the site from outside
+        env:
+          STAGING_PASSWORD: ${{ secrets.STAGING_PASSWORD }}
+        run: |
+          if [ -z "$STAGING_PASSWORD" ]; then
+            echo "::warning::STAGING_PASSWORD secret missing: outside check skipped."; exit 0
+          fi
+          infra/staging/smoke-test.sh "${{ vars.STAGING_DOMAIN }}"
+
+      - name: Summary
+        run: |
+          {
+            echo "### Staging deployed"
+            echo "- Site: https://${{ vars.STAGING_DOMAIN }}"
+            echo "- Version: \`$TAG\`"
+            echo "- Roll back: Actions → Deploy staging → Run workflow, with the SHA of the previous deploy."
+          } >> "$GITHUB_STEP_SUMMARY"

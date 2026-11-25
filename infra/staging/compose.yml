@@ -1,0 +1,112 @@
+# Staging stack: one VPS, everything in Docker. Managed by deploy.sh (see docs/deployment.md).
+# Secrets live in .env next to this file on the server (created by setup-server.sh), never in git.
+# The image tag deployed is in release.env (written by deploy.sh).
+name: bovann-staging
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: '10m', max-file: '5' }
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set in .env}
+      MYSQL_DATABASE: bovann
+      MYSQL_USER: bovann
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?set in .env}
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+      - --innodb-buffer-pool-size=256M
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -ubovann -p"$$MYSQL_PASSWORD" --silent']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Catches every email staging sends: nothing reaches real inboxes. Inbox at /mailpit/.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      MP_WEBROOT: mailpit
+      MP_MAX_MESSAGES: 2000
+
+  api:
+    image: ${IMAGE_REPO:?set in .env}/bovann-api:${IMAGE_TAG:?set in release.env}
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      mysql: { condition: service_healthy }
+    environment:
+      NODE_ENV: production
+      DEPLOY_ENV: staging
+      PORT: 3001
+      LOG_LEVEL: info
+      DATABASE_URL: mysql://bovann:${MYSQL_PASSWORD}@mysql:3306/bovann
+      CORS_ORIGINS: https://${STAGING_DOMAIN:?set in .env}
+      PUBLIC_WEB_URL: https://${STAGING_DOMAIN}
+      TRUST_PROXY_HOPS: 1
+      PAYMENT_PROVIDER: mock
+      OTP_TRANSPORT: simulated
+      OTP_SECRET: ${OTP_SECRET:?set in .env}
+      EMAIL_TRANSPORT: smtp
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      EMAIL_FROM: Bovann OCD Live (staging) <staging@bovann.invalid>
+      SEED_OWNER_EMAILS: ${SEED_OWNER_EMAILS:-owners@bovann.invalid}
+      STUDIO_CONTACT_PHONE: ${STUDIO_CONTACT_PHONE:-}
+
+  web:
+    image: ${IMAGE_REPO}/bovann-web-staging:${IMAGE_TAG}
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      api: { condition: service_healthy }
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    logging: *logging
+    depends_on: [web, api, mailpit]
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      STAGING_DOMAIN: ${STAGING_DOMAIN}
+      STAGING_AUTH_USER: ${STAGING_AUTH_USER:?set in .env}
+      STAGING_AUTH_HASH: ${STAGING_AUTH_HASH:?set in .env}
+      CADDY_TLS: ${CADDY_TLS:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  # Nightly database dump at 02:00 UTC, the last 14 kept in the mysql-backups volume (backup.sh).
+  backup:
+    image: mysql:8.0
+    restart: unless-stopped
+    logging: *logging
+    depends_on:
+      mysql: { condition: service_healthy }
+    environment:
+      MYSQL_PWD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-backups:/backups
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: ['/bin/bash', '/backup.sh']
+
+volumes:
+  mysql-data:
+  mysql-backups:
+  caddy-data:
+  caddy-config:

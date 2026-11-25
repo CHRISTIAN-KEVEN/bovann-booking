@@ -24,7 +24,7 @@ import {
   SELLER_SESSION_COOKIE,
   SellerAuthGuard,
 } from './seller-auth.guard';
-import { SellerAuthService, type SellerPrincipal } from './seller-auth.service';
+import { SellerAuthService, SESSION_MAX_MS, type SellerPrincipal } from './seller-auth.service';
 
 const phone = z
   .string({ message: 'Indiquez votre numéro de téléphone.' })
@@ -99,7 +99,9 @@ export class SellerAuthController {
     });
     res.cookie(SELLER_SESSION_COOKIE, session.token, {
       ...this.cookieOptions(),
-      expires: session.expiresAt,
+      // A duration, not a date: browsers count it from now. A date taken from the app clock
+      // would be wrong on a visitor's device whose clock is off (and in tests with a frozen clock).
+      maxAge: SESSION_MAX_MS,
     });
     return session.me;
   }

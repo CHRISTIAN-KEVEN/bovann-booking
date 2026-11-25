@@ -23,7 +23,7 @@ import {
   AllowPendingPasswordChange,
   CurrentAdmin,
 } from './admin-auth.guard';
-import { AdminAuthService, type AdminPrincipal } from './admin-auth.service';
+import { AdminAuthService, SESSION_ABSOLUTE_MS, type AdminPrincipal } from './admin-auth.service';
 import { LoginRateLimiter } from './login-rate-limiter';
 
 const loginSchema = z.object({
@@ -61,7 +61,9 @@ export class AdminAuthController {
     });
     res.cookie(ADMIN_SESSION_COOKIE, session.token, {
       ...this.cookieOptions(),
-      expires: session.expiresAt,
+      // A duration, not a date: browsers count it from now. A date taken from the app clock
+      // would be wrong on a visitor's device whose clock is off (and in tests with a frozen clock).
+      maxAge: SESSION_ABSOLUTE_MS,
     });
     return session.me;
   }

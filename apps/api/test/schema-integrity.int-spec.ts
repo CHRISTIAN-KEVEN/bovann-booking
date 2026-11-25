@@ -407,6 +407,7 @@ describe('admin rules (Phase 5)', () => {
     const session = {
       admin_user_id: Number(admin.insertId),
       token_hash: 'a'.repeat(64),
+      created_at: new Date(),
       last_seen_at: new Date(),
       expires_at: new Date(Date.now() + 60_000),
     };

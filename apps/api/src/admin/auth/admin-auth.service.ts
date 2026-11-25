@@ -103,6 +103,7 @@ export class AdminAuthService {
         .values({
           admin_user_id: user.id,
           token_hash: session.hash,
+          created_at: now,
           last_seen_at: now,
           expires_at: expiresAt,
           ip: client.ip?.slice(0, 45) ?? null,

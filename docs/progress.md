@@ -548,6 +548,55 @@ Posting a live (link, country, category, duration), the staff review queue and r
 - **Totals:** API 254, shared 12, web 81.
 - **In a real Chrome at phone size:** a new seller signs in from "Publier mon live", gets the pass screen, a first payment fails, the second succeeds, the form opens, the live is sent, staff approve it, it goes online; the seller space shows the pass; staff open "Vendeurs et pass" and "Prix". No browser errors.
 
+## Staging deployment and reviewer agent (in review)
+
+**Product owner, 2026-11-24:** a staging site the client can open at any time without Keven's laptop (replacing the Cloudflare tunnel), and an independent reviewer agent.
+
+### Delivered
+
+- **Staging stack** (`infra/staging/`): Docker images for the API and the website, Compose with Caddy (HTTPS, one site password, hidden from search engines), MySQL, Mailpit for the emails, nightly backups.
+- **Automatic deploys:** after CI passes on `main`, GitHub Actions builds the images, deploys them over SSH, runs the migrations and checks the site from outside. Roll back by re-running the workflow with an earlier commit.
+- **`DEPLOY_ENV=staging`:** production builds that still allow simulated payments and codes, so the client can try everything. Without it, production refuses them as before.
+- **Server setup script and runbook** (`docs/deployment.md`): firewall, automatic security updates, a `deploy` user, random secrets.
+- **Reviewer agent** (`.claude/agents/reviewer.md`) and the rule to run it before every report (CLAUDE.md).
+
+### Tests
+
+- **Totals:** API 259, shared 12, web 81.
+- **API (4 new unit tests):** staging allows simulations; production with or without `DEPLOY_ENV=production` refuses them; staging still needs emails and HTTPS; unknown deployment names refused.
+- **CI job "Staging stack":** on every PR, builds both images, deploys them on the runner, books and pays a slot by simulation, checks the receipt, the double-booking refusal, the owners' email, the password and `noindex`, then deploys again and checks the data stays and the seed does not re-run.
+- Scripts checked with shellcheck, workflows with actionlint.
+- The production bundle of the API (what goes in the image) was run locally: it refuses simulated payments as a plain production build, and with `DEPLOY_ENV=staging` it migrates, seeds, starts and accepts simulated payments.
+- Not testable in the development workspace (Docker Hub is blocked there): the image builds run in CI only.
+
+### Found and fixed on the way: two "time bombs" in the tests
+
+All 83 admin and seller sign-in tests started failing once the real date passed the tests' frozen clock (9–16 November), on `main` too:
+
+- **Admin sessions** took `created_at` from the database clock and `expires_at` from the app clock; the database rule `expires_at > created_at` failed when the two clocks disagreed (frozen test clock; in production, a database clock behind the app). Both now come from the app clock, as for sellers.
+- **Session cookies** carried a fixed expiry date computed from the app clock, so the test client dropped them as already expired. They now carry a lifetime (`Max-Age`): 7 days for staff, 90 for sellers, counted by the browser. This also keeps visitors signed in when their device's clock is wrong.
+- Two tests now check both (`Max-Age` on the cookies, `created_at` on the app clock).
+
+### Found by the new CI deployment test (first run)
+
+- **An empty setting blocked the deploy:** `STUDIO_CONTACT_PHONE=` (empty) was refused as "too short" and the migrations never ran. Empty values now mean "not set" (test added).
+- **The CI step showed green while the deploy had failed:** `deploy.sh | tee log` hid the exit code (GitHub's default shell has no `pipefail`). The job now runs with `pipefail`, and the "already seeded?" check stops with a clear error if it can't read the database, instead of silently skipping the seed.
+- **The open health check asked for the password:** Caddy applies `basic_auth` before any `handle` block in the same scope, wherever it is written, so the deploy waited for `/healthz` in vain. The password now sits inside the block that covers everything except `/healthz`. Checked by running Caddy locally against stand-in services: `/healthz` open, pages and API refused without or with a wrong password, `noindex` and HTTPS headers present.
+
+### Independent review (reviewer agent): "Ready after small fixes"
+
+It found what neither the tests nor CI could see, because it only happens on the server or under misuse. All fixed:
+
+- **A failed backup was logged as "ok"** (`mysqldump | gzip` takes gzip's exit status), and a truncated dump would push out a good one. Now `backup.sh` keeps a dump only if it is complete, and CI makes one and checks it.
+- **The restore command in the runbook could not work** (the dumps are in a Docker volume, not on the host). Corrected, with "make a backup now".
+- **The rollback version was not checked:** typed by hand, it went into a command on the server. Only a full commit SHA is accepted now, in the workflow and in `deploy.sh`.
+- **Old images would fill the server's disk** over a few dozen deploys. The server now keeps only the current and previous ones.
+- Smaller points also fixed: the job talking to the server can no longer push images; the staging website image has its own name; `DEPLOY_ENV=staging` lifts only the two simulation rules; a backup night could be skipped; SSH password login is turned off when a key exists; the runbook creates the GitHub environment first and says the `deploy` user is root-equivalent.
+
+### Waiting for
+
+- Keven: the server, the domain, and the GitHub secrets (steps in `docs/deployment.md`).
+
 ## Then: Phase 4 — Payments
 
 Real provider adapter (Hub2 / FedaPay / PayDunya, depending on Bovann Group's choice), signed webhooks, reconciliation job, card redirect flow, for bookings and for sellers' passes. Needs: the provider's sandbox credentials.

@@ -1,5 +1,5 @@
 import { otpTransport } from '../sellers/otp-sender';
-import { loadEnv } from './env';
+import { loadEnv, simulationsAllowed } from './env';
 
 describe('loadEnv', () => {
   const base = { DATABASE_URL: 'mysql://u:p@localhost:3306/db' };
@@ -13,6 +13,13 @@ describe('loadEnv', () => {
       DATABASE_POOL_SIZE: 10,
       CORS_ORIGINS: ['http://localhost:3000'],
     });
+  });
+
+  it('treats empty values as not set, so their defaults apply', () => {
+    const env = loadEnv({ ...base, STUDIO_CONTACT_PHONE: '', PORT: '', TURNSTILE_SECRET_KEY: ' ' });
+    expect(env.STUDIO_CONTACT_PHONE).toBeUndefined();
+    expect(env.TURNSTILE_SECRET_KEY).toBeUndefined();
+    expect(env.PORT).toBe(3001);
   });
 
   it('parses a comma-separated CORS list', () => {
@@ -71,5 +78,52 @@ describe('loadEnv', () => {
 
   it('refuses to run production without sending emails', () => {
     expect(() => loadEnv({ ...base, NODE_ENV: 'production' })).toThrow(/EMAIL_TRANSPORT/);
+  });
+
+  describe('staging', () => {
+    const staging = {
+      ...base,
+      NODE_ENV: 'production',
+      DEPLOY_ENV: 'staging',
+      EMAIL_TRANSPORT: 'smtp',
+      SMTP_HOST: 'mailpit',
+      EMAIL_FROM: 'Bovann OCD Live <staging@example.com>',
+      PUBLIC_WEB_URL: 'https://staging.example.com',
+      OTP_SECRET: 'x'.repeat(32),
+    };
+
+    it('allows simulated payments and sign-in codes on staging only', () => {
+      const env = loadEnv({ ...staging, OTP_TRANSPORT: 'simulated' });
+      expect(env).toMatchObject({ PAYMENT_PROVIDER: 'mock', DEPLOY_ENV: 'staging' });
+      expect(simulationsAllowed(env)).toBe(true);
+      expect(otpTransport(env)).toBe('simulated');
+    });
+
+    it('treats a production build without DEPLOY_ENV as production', () => {
+      const { DEPLOY_ENV: _unused, ...production } = staging;
+      expect(() => loadEnv(production)).toThrow(/PAYMENT_PROVIDER/);
+      expect(() => loadEnv({ ...staging, DEPLOY_ENV: 'production' })).toThrow(/PAYMENT_PROVIDER/);
+      expect(simulationsAllowed({ NODE_ENV: 'production', DEPLOY_ENV: undefined })).toBe(false);
+      expect(simulationsAllowed({ NODE_ENV: 'production', DEPLOY_ENV: 'production' })).toBe(false);
+      expect(simulationsAllowed({ NODE_ENV: 'development', DEPLOY_ENV: undefined })).toBe(true);
+    });
+
+    it('still requires emails and HTTPS on staging', () => {
+      expect(() => loadEnv({ ...staging, EMAIL_TRANSPORT: 'disabled' })).toThrow(/EMAIL_TRANSPORT/);
+      expect(() => loadEnv({ ...staging, PUBLIC_WEB_URL: 'http://staging.example.com' })).toThrow(
+        /PUBLIC_WEB_URL/,
+      );
+    });
+
+    it('keeps the other production rules on staging', () => {
+      // Codes that are sent, even simulated, still need their hashing key on staging.
+      const { OTP_SECRET: _secret, ...withoutSecret } = staging;
+      expect(() => loadEnv({ ...withoutSecret, OTP_TRANSPORT: 'simulated' })).toThrow(/OTP_SECRET/);
+      expect(() => loadEnv({ ...withoutSecret, OTP_TRANSPORT: 'disabled' })).not.toThrow();
+    });
+
+    it('refuses an unknown deployment name', () => {
+      expect(() => loadEnv({ ...staging, DEPLOY_ENV: 'demo' })).toThrow(/DEPLOY_ENV/);
+    });
   });
 });
